@@ -48,4 +48,5 @@
 
     haltRequireJS();
     import('http://localhost:8080/loader/dem-core-loader.js');
+    // TODO: For test
 })();
