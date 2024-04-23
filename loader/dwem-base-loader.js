@@ -51,7 +51,7 @@
     import('https://refracta.github.io/dcss-webtiles-extension-module/loader/dwem-core-loader.js');
 
     // CDN
-    // import('TODO: CDN');
+    // import('https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module/loader/dwem-base-loader.js');
 
     // Local server
     // import('http://localhost:6060/loader/dwem-core-loader.js');
