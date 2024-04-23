@@ -16,17 +16,28 @@ export default class DEMSourceMapperRegistry {
         'BeforeReturnInjection': (injectSource) => {
             return (source) => {
                 const ast = esprima.parseScript(`(${source})`);
+                let topLevelFunction = null;
                 estraverse.traverse(ast, {
-                    enter: function (node, parent) {
-                        if (node.type === 'ReturnStatement' && parent.type === 'BlockStatement') {
-                            const newExpression = esprima.parseScript(injectSource).body[0].expression;
-                            const returnIndex = parent.body.indexOf(node);
-                            parent.body.splice(returnIndex, 0, {
-                                type: 'ExpressionStatement', expression: newExpression
-                            });
+                    enter: function (node) {
+                        if (node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression') {
+                            if (!topLevelFunction) {
+                                topLevelFunction = node;
+                            }
                         }
                     }
                 });
+
+                if (topLevelFunction) {
+                    const newExpression = esprima.parseScript(injectSource).body[0].expression;
+                    const lastIndex = topLevelFunction.body.body.length - 1;
+                    const lastStatement = topLevelFunction.body.body[lastIndex];
+                    if (lastStatement.type === 'ReturnStatement') {
+                        topLevelFunction.body.body.splice(lastIndex, 0, {
+                            type: 'ExpressionStatement', expression: newExpression
+                        });
+                    }
+                }
+
                 return escodegen.generate(ast).slice(1, -2);
             };
         }
