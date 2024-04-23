@@ -4,7 +4,7 @@ export default class TestModule2 {
     static dependencies = ['IOHook']
 
     onLoad() {
-        const {IOHook} = DEM.Modules;
+        const {IOHook} = DWEM.Modules;
         IOHook.send_message.before.push(function (msg, data) {
             console.log(msg, data);
         });

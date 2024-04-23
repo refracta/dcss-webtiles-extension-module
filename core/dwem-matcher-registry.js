@@ -1,4 +1,4 @@
-export default class DEMMatcherRegistry {
+export default class DWEMMatcherRegistry {
     matchers = {}
 
     getDepsMatcher(deps) {

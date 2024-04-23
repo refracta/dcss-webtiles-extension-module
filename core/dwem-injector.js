@@ -1,4 +1,4 @@
-export default class DEMInjector {
+export default class DWEMInjector {
     replacers = []
 
     installDefineHooker() {

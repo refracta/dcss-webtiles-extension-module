@@ -2,7 +2,7 @@ import esprima from 'https://cdn.skypack.dev/esprima';
 import estraverse from 'https://cdn.skypack.dev/estraverse';
 import escodegen from 'https://cdn.skypack.dev/escodegen';
 
-export default class DEMSourceMapperRegistry {
+export default class DWEMSourceMapperRegistry {
     sourceMappers = {};
 
     add(matcherIdentifier, sourceMapper) {

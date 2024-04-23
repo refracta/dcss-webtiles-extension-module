@@ -4,10 +4,10 @@ export default class TestModule1 {
     static dependencies = []
 
     onLoad() {
-        const {SourceMapperRegistry: SMR} = DEM;
+        const {SourceMapperRegistry: SMR} = DWEM;
 
         function injectSource1() {
-            DEM.Modules.TestModule1.toggle = toggle;
+            DWEM.Modules.TestModule1.toggle = toggle;
         }
 
         const myMapper1 = SMR.getSourceMapper('BeforeReturnInjection', `!${injectSource1.toString()}()`);
@@ -15,7 +15,7 @@ export default class TestModule1 {
 
 
         function injectSource2() {
-            DEM.Modules.TestModule1.clear = clear;
+            DWEM.Modules.TestModule1.clear = clear;
         }
 
         const myMapper2 = SMR.getSourceMapper('BeforeReturnInjection', `!${injectSource2.toString()}()`);
