@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Webtiles Expansion Module Loader
+// @name         Webtiles Extension Module Loader
 // @description  Load the WEM from other Webtiles sites as well.
 // @version      1.0
 // @author       refracta
