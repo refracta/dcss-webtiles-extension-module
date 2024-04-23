@@ -47,6 +47,12 @@
     }
 
     haltRequireJS();
-    import('http://localhost:6060/loader/dwem-core-loader.js');
-    // TODO: For test
+    // github.io
+    import('https://refracta.github.io/dcss-webtiles-extension-module/loader/dwem-core-loader.js');
+
+    // CDN
+    // import('TODO: CDN');
+
+    // Local server
+    // import('http://localhost:6060/loader/dwem-core-loader.js');
 })();
