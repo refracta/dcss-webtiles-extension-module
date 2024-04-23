@@ -8,13 +8,6 @@ dcss-webtiles-extension-module (DWEM)은 던전 크롤 스톤 수프 웹 타일�
 
 Tampermonkey, Greasemonkey 등의 스크립트 관리자 설치 후, `loader/dwem-base-loader.js`를 설치합니다.
 
-```javascript
-// loader/dwem-base-loader.js
-import('http://localhost:6060/loader/dwem-core-loader.js');
-```
-
-스크립트를 호스팅하고 있는 URL로 위의 코어 로더 경로를 수정합니다.
-
 # How to develop Module?
 
 `modules/io-hook.js` 예제를 참조
