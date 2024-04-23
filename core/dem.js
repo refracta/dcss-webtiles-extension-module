@@ -117,28 +117,30 @@ export default class DEM {
         }
 
         for (const identifier in this.SourceMapperRegistry.sourceMappers) {
-            const [name, version] = [...identifier.split(':'), 'latest'];
+            const [name, version] = [...identifier.split(':'), 'all'];
             const mappers = this.SourceMapperRegistry.sourceMappers[identifier];
-            const matcher = this.MatcherRegistry.matchers[name][version]
-            this.Injector.replacers.push({
-                matcher, mapper: (argumentsList) => {
-                    const index = argumentsList.findLastIndex(arg => typeof arg === 'function');
-                    let source = argumentsList[index].toString();
-                    for (const mapper of mappers) {
-                        source = mapper(source);
+            const matchers = version === 'all' ? Object.values(this.MatcherRegistry.matchers[name]) : [this.MatcherRegistry.matchers[name][version]];
+            for (const matcher of matchers) {
+                this.Injector.replacers.push({
+                    matcher, mapper: (argumentsList) => {
+                        const index = argumentsList.findLastIndex(arg => typeof arg === 'function');
+                        let source = argumentsList[index].toString();
+                        for (const mapper of mappers) {
+                            source = mapper(source);
+                        }
+                        argumentsList[index] = window.eval(`(${source})`);
+                        return argumentsList;
                     }
-                    argumentsList[index] = window.eval(`(${source})`);
-                    return argumentsList;
-                }
-            });
+                });
+            }
         }
     }
 
     get Config() {
         localStorage.clear();
+        // TODO: For Test
         if (!localStorage.DEM) {
-            localStorage.DEM = JSON.stringify({Modules: []});
-            localStorage.DEM = JSON.stringify({Modules: ['../modules/basic-module.js', '../modules/test-module1.js', '../modules/test-module2.js']});
+            localStorage.DEM = JSON.stringify({Modules: ['../modules/test-module1.js', '../modules/test-module2.js', '../modules/io-hook.js']});
             // TODO: For Test
         }
         return JSON.parse(localStorage.DEM);
