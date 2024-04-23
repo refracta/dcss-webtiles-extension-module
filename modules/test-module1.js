@@ -4,20 +4,21 @@ export default class TestModule1 {
     static dependencies = []
 
     onLoad() {
-        const {SourceMapperRegistry} = DEM;
+        const {SourceMapperRegistry: SMR} = DEM;
 
         function injectSource1() {
             DEM.Modules.TestModule1.toggle = toggle;
         }
 
+        const myMapper1 = SMR.getSourceMapper('BeforeReturnInjection', `!${injectSource1.toString()}()`);
+        SMR.add('chat', myMapper1);
+
+
         function injectSource2() {
             DEM.Modules.TestModule1.clear = clear;
         }
 
-        const myMapper1 = SourceMapperRegistry.getSourceMapper('BeforeReturnInjection', `!${injectSource1.toString()}()`);
-        SourceMapperRegistry.add('chat:latest', myMapper1);
-
-        const myMapper2 = SourceMapperRegistry.getSourceMapper('BeforeReturnInjection', `!${injectSource2.toString()}()`);
-        SourceMapperRegistry.add('chat:latest', myMapper2);
+        const myMapper2 = SMR.getSourceMapper('BeforeReturnInjection', `!${injectSource2.toString()}()`);
+        SMR.add('chat', myMapper2);
     }
 }
