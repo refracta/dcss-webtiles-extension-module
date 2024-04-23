@@ -6,12 +6,12 @@ export default class IOHook {
     send_message = {before: [], after: []}
 
     onLoad() {
-        const {SourceMapperRegistry: SMR} = DEM;
+        const {SourceMapperRegistry: SMR} = DWEM;
 
         function handle_message_hooker() {
             const original_handle_message = handle_message;
             handle_message = function (msg) {
-                for (const handler of DEM.Modules.IOHook.handle_message.before) {
+                for (const handler of DWEM.Modules.IOHook.handle_message.before) {
                     try {
                         handler(msg);
                     } catch (e) {
@@ -19,7 +19,7 @@ export default class IOHook {
                     }
                 }
                 original_handle_message(msg);
-                for (const handler of DEM.Modules.IOHook.handle_message.after) {
+                for (const handler of DWEM.Modules.IOHook.handle_message.after) {
                     try {
                         handler(msg);
                     } catch (e) {
@@ -35,7 +35,7 @@ export default class IOHook {
         function send_message_hooker() {
             const original_send_message = send_message;
             send_message = function (msg, data) {
-                for (const handler of DEM.Modules.IOHook.send_message.before) {
+                for (const handler of DWEM.Modules.IOHook.send_message.before) {
                     try {
                         handler(msg, data);
                     } catch (e) {
@@ -43,7 +43,7 @@ export default class IOHook {
                     }
                 }
                 original_send_message(msg, data);
-                for (const handler of DEM.Modules.IOHook.send_message.after) {
+                for (const handler of DWEM.Modules.IOHook.send_message.after) {
                     try {
                         handler(msg, data);
                     } catch (e) {

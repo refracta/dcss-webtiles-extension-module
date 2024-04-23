@@ -1,13 +1,13 @@
-import DEMInjector from "./dem-injector.js";
-import DEMMatcherRegistry from "./dem-matcher-registry.js";
-import DEMSourceMapperRegistry from "./dem-source-mapper-registry.js";
+import DWEMInjector from "./dwem-injector.js";
+import DWEMMatcherRegistry from "./dwem-matcher-registry.js";
+import DWEMSourceMapperRegistry from "./dwem-source-mapper-registry.js";
 
-export default class DEM {
+export default class DWEM {
     constructor() {
-        this.Injector = new DEMInjector();
+        this.Injector = new DWEMInjector();
         this.Injector.installDefineHooker();
-        this.SourceMapperRegistry = new DEMSourceMapperRegistry();
-        this.MatcherRegistry = new DEMMatcherRegistry();
+        this.SourceMapperRegistry = new DWEMSourceMapperRegistry();
+        this.MatcherRegistry = new DWEMMatcherRegistry();
     }
 
     async init() {
@@ -139,14 +139,14 @@ export default class DEM {
     get Config() {
         localStorage.clear();
         // TODO: For Test
-        if (!localStorage.DEM) {
-            localStorage.DEM = JSON.stringify({Modules: ['../modules/test-module1.js', '../modules/test-module2.js', '../modules/io-hook.js']});
+        if (!localStorage.DWEM) {
+            localStorage.DWEM = JSON.stringify({Modules: ['../modules/test-module1.js', '../modules/test-module2.js', '../modules/io-hook.js']});
             // TODO: For Test
         }
-        return JSON.parse(localStorage.DEM);
+        return JSON.parse(localStorage.DWEM);
     }
 
     set Config(config) {
-        localStorage.DEM = JSON.stringify(config);
+        localStorage.DWEM = JSON.stringify(config);
     }
 }

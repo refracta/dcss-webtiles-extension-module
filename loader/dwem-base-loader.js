@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         Webtiles Extension Module Loader
-// @description  Load the WEM from other Webtiles sites as well.
+// @name         DCSS Webtiles Extension Module Loader
+// @description  Load the DWEM from other Webtiles sites as well.
 // @version      1.0
 // @author       refracta
 // @match        http://webzook.net:8080/*
@@ -47,6 +47,6 @@
     }
 
     haltRequireJS();
-    import('http://localhost:6060/loader/dem-core-loader.js');
+    import('http://localhost:6060/loader/dwem-core-loader.js');
     // TODO: For test
 })();
