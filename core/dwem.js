@@ -137,7 +137,7 @@ export default class DWEM {
     }
 
     get Config() {
-        localStorage.clear();
+        localStorage.removeItem('DWEM');
         // TODO: For Test
         if (!localStorage.DWEM) {
             localStorage.DWEM = JSON.stringify({Modules: ['../modules/test-module1.js', '../modules/test-module2.js', '../modules/io-hook.js']});
