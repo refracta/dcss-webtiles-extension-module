@@ -49,7 +49,6 @@
     haltRequireJS();
     (async () => {
         if (localStorage.DWEM_DEBUG === 'true') {
-            localStorage.DWEM_DEBUG_LOADER_PATH = localStorage.DWEM_DEBUG_LOADER_PATH || 'http://localhost:6060/loader/dwem-core-loader.js';
             await import(localStorage.DWEM_DEBUG_LOADER_PATH);
         } else {
             try {
