@@ -3,6 +3,7 @@ import DWEMMatcherRegistry from "./dwem-matcher-registry.js";
 import DWEMSourceMapperRegistry from "./dwem-source-mapper-registry.js";
 
 export default class DWEM {
+    static version = '0.1';
     constructor() {
         this.Injector = new DWEMInjector();
         this.Injector.installDefineHooker();
@@ -140,7 +141,7 @@ export default class DWEM {
         localStorage.removeItem('DWEM');
         // TODO: For Test
         if (!localStorage.DWEM) {
-            localStorage.DWEM = JSON.stringify({Modules: ['../modules/test-module1.js', '../modules/test-module2.js', '../modules/io-hook.js']});
+            localStorage.DWEM = JSON.stringify({Modules: ['../modules/module-manager.js','../modules/test-module1.js', '../modules/test-module2.js', '../modules/io-hook.js']});
             // TODO: For Test
         }
         return JSON.parse(localStorage.DWEM);
