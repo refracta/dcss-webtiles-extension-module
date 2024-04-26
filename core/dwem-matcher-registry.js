@@ -13,6 +13,7 @@ export default class DWEMMatcherRegistry {
     }
 
     constructor() {
+        // automation or hook req.load
         this.matchers['chat'] = {};
         this.matchers['chat']['latest'] = this.getDepsMatcher(['jquery', 'comm', 'linkify']);
         this.matchers['client'] = {};

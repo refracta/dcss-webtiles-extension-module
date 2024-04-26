@@ -11,12 +11,16 @@ export default class IOHook {
         function handle_message_hooker() {
             const original_handle_message = handle_message;
             handle_message = function (msg) {
+                let cancel = false;
                 for (const handler of DWEM.Modules.IOHook.handle_message.before) {
                     try {
-                        handler(msg);
+                        cancel = cancel || handler(msg);
                     } catch (e) {
                         console.error(e);
                     }
+                }
+                if (cancel) {
+                    return;
                 }
                 original_handle_message(msg);
                 for (const handler of DWEM.Modules.IOHook.handle_message.after) {
@@ -35,12 +39,16 @@ export default class IOHook {
         function send_message_hooker() {
             const original_send_message = send_message;
             send_message = function (msg, data) {
+                let cancel = false;
                 for (const handler of DWEM.Modules.IOHook.send_message.before) {
                     try {
-                        handler(msg, data);
+                        cancel = cancel || handler(msg);
                     } catch (e) {
                         console.error(e);
                     }
+                }
+                if (cancel) {
+                    return;
                 }
                 original_send_message(msg, data);
                 for (const handler of DWEM.Modules.IOHook.send_message.after) {
