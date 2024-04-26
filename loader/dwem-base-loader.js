@@ -20,7 +20,7 @@
     'use strict';
     const [head] = document.getElementsByTagName('head');
 
-    function haltRequireJS() {
+    async function haltRequireJS() {
         let disableRJSInjection = true;
         for (const funcName of ['appendChild', 'insertBefore']) {
             head['_' + funcName] = head[funcName];
@@ -36,20 +36,40 @@
         const rjsScript = Array.from(scripts).find(s => s.src?.endsWith('require.js'));
         rjsScript?.remove();
 
-        window.reloadRequireJS = async () => {
-            window.require = window.define = window.requirejs = undefined;
-            disableRJSInjection = false;
-            const newRJSScript = document.createElement('script');
-            newRJSScript.setAttribute('data-main', rjsScript.getAttribute('data-main'));
-            let rjsScriptRaw = await fetch(rjsScript.src).then(r => r.text());
-            rjsScriptRaw = rjsScriptRaw.replace('define=', '_define=').replace('define.', '_define.');
-            newRJSScript.src = URL.createObjectURL(new Blob([rjsScriptRaw], {type: 'application/javascript'}))
+        const config = (() => {
+            const dataMain = rjsScript.getAttribute('data-main');
+            let mainScript = dataMain;
+            const src = mainScript.split('/');
+            mainScript = src.pop();
+            const baseUrl = src.length ? src.join('/') + '/' : './';
+            mainScript = mainScript.replace(/\.js$/, '');
+            if (/^\/|:|\?|\.js$/.test(mainScript)) {
+                mainScript = dataMain;
+            }
+            return {deps: [mainScript], baseUrl};
+        })();
+
+        window.require = window.define = window.requirejs = undefined;
+        disableRJSInjection = false;
+        const newRJSScript = document.createElement('script');
+        newRJSScript.src = rjsScript.src;
+        await new Promise(resolve => {
+            newRJSScript.onload = newRJSScript.onreadystatechange = () => {
+                if (!newRJSScript.readyState || /loaded|complete/.test(newRJSScript.readyState)) {
+                    newRJSScript.onload = newRJSScript.onreadystatechange = null;
+                    resolve();
+                }
+            };
             head.appendChild(newRJSScript);
+        })
+
+        window.startMainScript = async () => {
+            // require.config(config);
         };
     }
 
-    haltRequireJS();
     (async () => {
+        await haltRequireJS();
         if (localStorage.DWEM_DEBUG === 'true') {
             await import(localStorage.DWEM_DEBUG_LOADER);
         } else {
