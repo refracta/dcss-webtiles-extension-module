@@ -2,83 +2,91 @@ export default class DWEMMatcherRegistry {
     matchers = {}
 
     getDepsMatcher(deps) {
-        return ([dependencies]) => JSON.stringify(deps) === JSON.stringify(dependencies);
+        return ({args}) => JSON.stringify(deps) === JSON.stringify(args[0]);
     }
 
     getSourceMatcher(regexp) {
-        return ([argumentsList]) => {
-            const func = argumentsList.find(arg => typeof arg === 'function')
-            return func ? func.toString().match(regexp) : false
+        return ({args}) => {
+            const func = args.find(arg => typeof arg === 'function');
+            return func ? func.toString().match(regexp) : false;
         };
     }
 
+    getModuleMatcher(targetModule) {
+        return ({module}) => module.endsWith(targetModule);
+    }
+
+    getURLMatcher(targetURL) {
+        return ({url}) => url.endsWith(targetURL);
+    }
+
     constructor() {
-        // automation or hook req.load
         this.matchers['chat'] = {};
-        this.matchers['chat']['latest'] = this.getDepsMatcher(['jquery', 'comm', 'linkify']);
+        this.matchers['chat']['latest'] = this.getModuleMatcher('chat');
         this.matchers['client'] = {};
-        this.matchers['client']['latest'] = this.getDepsMatcher(["exports", "jquery", "key_conversion", "chat", "comm", "contrib/jquery.cookie", "contrib/jquery.tablesorter", "contrib/jquery.waitforimages", "contrib/inflate"]);
+        this.matchers['client']['latest'] = this.getModuleMatcher('client');
         this.matchers['comm'] = {};
-        this.matchers['comm']['latest'] = this.getDepsMatcher(["jquery", "contrib/jquery.json"]);
+        this.matchers['comm']['latest'] = this.getModuleMatcher('comm');
         this.matchers['./action_panel'] = {};
-        this.matchers['./action_panel']['latest'] = this.getDepsMatcher(["jquery", "comm", "client", "./cell_renderer", "./enums", "./options", "./player", "./tileinfo-icons", "./tileinfo-gui", "./tileinfo-main", "./util", "./focus-trap", "./ui"]);
+        this.matchers['./action_panel']['latest'] = this.getModuleMatcher('/action_panel');
         this.matchers['./cell_renderer'] = {};
-        this.matchers['./cell_renderer']['latest'] = this.getDepsMatcher(["jquery", "./view_data", "./tileinfo-gui", "./tileinfo-main", "./tileinfo-player", "./tileinfo-icons", "./tileinfo-dngn", "./enums", "./map_knowledge", "./tileinfos", "./player", "./options", "contrib/jquery.json"]);
+        this.matchers['./cell_renderer']['latest'] = this.getModuleMatcher('/cell_renderer');
         this.matchers['./display'] = {};
-        this.matchers['./display']['latest'] = this.getDepsMatcher(["jquery", "comm", "./map_knowledge", "./view_data", "./monster_list", "./minimap", "./dungeon_renderer"]);
+        this.matchers['./display']['latest'] = this.getModuleMatcher('/display');
         this.matchers['./dungeon_renderer'] = {};
-        this.matchers['./dungeon_renderer']['latest'] = this.getDepsMatcher(["jquery", "comm", "./cell_renderer", "./map_knowledge", "./options", "./tileinfo-dngn", "./util", "./view_data", "./enums", "./mouse_control"]);
+        this.matchers['./dungeon_renderer']['latest'] = this.getModuleMatcher('/dungeon_renderer');
         this.matchers['./enums'] = {};
-        this.matchers['./enums']['latest'] = this.getSourceMatcher(`TODO: Generate this automatically from enum.h?`);
+        this.matchers['./enums']['latest'] = this.getModuleMatcher('/enums');
         this.matchers['./game'] = {};
-        this.matchers['./game']['latest'] = this.getDepsMatcher(["jquery", "exports", "comm", "client", "key_conversion", "./dungeon_renderer", "./display", "./minimap", "./enums", "./messages", "./options", "./mouse_control", "./text", "./menu", "./action_panel", "./player", "./ui", "./ui-layouts"]);
+        this.matchers['./game']['latest'] = this.getModuleMatcher('/game');
         this.matchers['./map_knowledge'] = {};
-        this.matchers['./map_knowledge']['latest'] = this.getDepsMatcher(["jquery", "./enums", "./util"]);
+        this.matchers['./map_knowledge']['latest'] = this.getModuleMatcher('/map_knowledge');
         this.matchers['./menu'] = {};
-        this.matchers['./menu']['latest'] = this.getDepsMatcher(["jquery", "comm", "client", "./ui", "./enums", "./cell_renderer", "./util", "./options", "./scroller"]);
+        this.matchers['./menu']['latest'] = this.getModuleMatcher('/menu');
         this.matchers['./messages'] = {};
-        this.matchers['./messages']['latest'] = this.getDepsMatcher(["jquery", "comm", "client", "./textinput", "./util", "./options"]);
+        this.matchers['./messages']['latest'] = this.getModuleMatcher('/messages');
         this.matchers['./minimap'] = {};
-        this.matchers['./minimap']['latest'] = this.getDepsMatcher(["jquery", "./map_knowledge", "./dungeon_renderer", "./view_data", "./tileinfo-player", "./tileinfo-main", "./tileinfo-dngn", "./enums", "./player", "./options", "./util"]);
+        this.matchers['./minimap']['latest'] = this.getModuleMatcher('/minimap');
         this.matchers['./monster_list'] = {};
-        this.matchers['./monster_list']['latest'] = this.getDepsMatcher(["jquery", "./map_knowledge", "./cell_renderer", "./dungeon_renderer", "./options", "./util"]);
+        this.matchers['./monster_list']['latest'] = this.getModuleMatcher('/monster_list');
         this.matchers['./mouse_control'] = {};
-        this.matchers['./mouse_control']['latest'] = this.getDepsMatcher(["jquery", "comm", "./dungeon_renderer", "./tileinfo-gui", "./map_knowledge", "./enums"]);
+        this.matchers['./mouse_control']['latest'] = this.getModuleMatcher('/mouse_control');
         this.matchers['./options'] = {};
         this.matchers['./options']['latest'] = this.getSourceMatcher(`function get_option(name)`);
         this.matchers['./player'] = {};
-        this.matchers['./player']['latest'] = this.getDepsMatcher(["jquery", "comm", "client", "./enums", "./map_knowledge", "./messages", "./options", "./util"]);
+        this.matchers['./player']['latest'] = this.getModuleMatcher('/player');
         this.matchers['./scroller'] = {};
-        this.matchers['./scroller']['latest'] = this.getDepsMatcher(["jquery", "./simplebar"]);
+        this.matchers['./scroller']['latest'] = this.getModuleMatcher('/scroller');
         this.matchers['./text'] = {};
-        this.matchers['./text']['latest'] = this.getSourceMatcher(`function get_container(id)`);
+        this.matchers['./text']['latest'] = this.getModuleMatcher('/text');
         this.matchers['./textinput'] = {};
-        this.matchers['./textinput']['latest'] = this.getDepsMatcher(["jquery", "comm", "client", "./enums", "./util", "./options", "./ui"]);
+        this.matchers['./textinput']['latest'] = this.getModuleMatcher('/textinput');
         this.matchers['./tileinfo-dngn'] = {};
-        this.matchers['./tileinfo-dngn']['latest'] = this.getDepsMatcher(["jquery", "./tileinfo-floor", "./tileinfo-wall", "./tileinfo-feat",]);
+        this.matchers['./tileinfo-dngn']['latest'] = this.getModuleMatcher('/tileinfo-dngn');
         this.matchers['./tileinfo-feat'] = {};
-        this.matchers['./tileinfo-feat']['latest'] = this.getDepsMatcher(["./tileinfo-wall"]);
+        this.matchers['./tileinfo-feat']['latest'] = this.getModuleMatcher('/tileinfo-feat');
         this.matchers['./tileinfo-floor'] = {};
-        this.matchers['./tileinfo-floor']['latest'] = this.getSourceMatcher('exports.DNGN_UNSEEN');
+        this.matchers['./tileinfo-floor']['latest'] = this.getModuleMatcher('/tileinfo-floor');
         this.matchers['./tileinfo-gui'] = {};
-        this.matchers['./tileinfo-gui']['latest'] = this.getDepsMatcher(["./tileinfo-player"]);
+        this.matchers['./tileinfo-gui']['latest'] = this.getModuleMatcher('/tileinfo-gui');
         this.matchers['./tileinfo-icons'] = {};
-        this.matchers['./tileinfo-icons']['latest'] = this.getDepsMatcher(["./tileinfo-gui"]);
+        this.matchers['./tileinfo-icons']['latest'] = this.getModuleMatcher('/tileinfo-icons');
         this.matchers['./tileinfo-main'] = {};
-        this.matchers['./tileinfo-main']['latest'] = this.getDepsMatcher(["./tileinfo-feat"]);
+        this.matchers['./tileinfo-main']['latest'] = this.getModuleMatcher('/tileinfo-main');
         this.matchers['./tileinfo-player'] = {};
-        this.matchers['./tileinfo-player']['latest'] = this.getDepsMatcher(["./tileinfo-main"]);
+        this.matchers['./tileinfo-player']['latest'] = this.getModuleMatcher('/tileinfo-player');
         this.matchers['./tileinfo-wall'] = {};
-        this.matchers['./tileinfo-wall']['latest'] = this.getDepsMatcher(["./tileinfo-floor"]);
+        this.matchers['./tileinfo-wall']['latest'] = this.getModuleMatcher('/tileinfo-wall');
         this.matchers['./tileinfos'] = {};
-        this.matchers['./tileinfos']['latest'] = this.getDepsMatcher(["./tileinfo-floor", "./tileinfo-wall", "./tileinfo-feat", "./tileinfo-player", "./tileinfo-main", "./tileinfo-gui", "./tileinfo-icons"]);
+        this.matchers['./tileinfos']['latest'] = this.getModuleMatcher('/tileinfos');
         this.matchers['./ui-layouts'] = {};
-        this.matchers['./ui-layouts']['latest'] = this.getDepsMatcher(["jquery", "comm", "client", "./ui", "./enums", "./cell_renderer", "./util", "./scroller", "./tileinfo-main", "./tileinfo-gui", "./tileinfo-player", "./options"]);
+        this.matchers['./ui-layouts']['latest'] = this.getModuleMatcher('/ui-layouts');
         this.matchers['./ui'] = {};
-        this.matchers['./ui']['latest'] = this.getDepsMatcher(["jquery", "comm", "client", "./options", "./focus-trap"]);
+        this.matchers['./ui']['latest'] = this.getModuleMatcher('/ui');
         this.matchers['./util'] = {};
-        this.matchers['./util']['latest'] = this.getSourceMatcher(`// this is a bit weird because the crawl binary never closes color`);
+        this.matchers['./util']['latest'] = this.getModuleMatcher('/util');
         this.matchers['./view_data'] = {};
-        this.matchers['./view_data']['latest'] = this.getSourceMatcher(`// Compare tilereg-dgn.cc`);
+        this.matchers['./view_data']['latest'] = this.getModuleMatcher('/view_data');
+        console.log(Object.keys(this.matchers));
     }
 }
