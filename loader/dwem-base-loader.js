@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DCSS Webtiles Extension Module Loader
 // @description  Load the DWEM from other Webtiles sites as well.
-// @version      1.0
+// @version      1.1
 // @author       refracta
 // @match        http://webzook.net:8080/*
 // @match        https://crawl.kelbi.org/*
@@ -25,7 +25,7 @@
         for (const funcName of ['appendChild', 'insertBefore']) {
             head['_' + funcName] = head[funcName];
             head[funcName] = function (tag) {
-                if (disableRJSInjection && (tag.dataset.requirecontext !== undefined || tag.dataset.requiremodule !== undefined)) {
+                if (disableRJSInjection && (tag.getAttribute('data-requirecontext') !== null || tag.getAttribute('data-requiremodule') !== null)) {
                     return tag;
                 }
                 return this['_' + funcName].apply(this, arguments);
@@ -51,7 +51,7 @@
     haltRequireJS();
     (async () => {
         if (localStorage.DWEM_DEBUG === 'true') {
-            await import(localStorage.DWEM_DEBUG_LOADER_PATH);
+            await import(localStorage.DWEM_DEBUG_LOADER);
         } else {
             try {
                 await import('https://refracta.github.io/dcss-webtiles-extension-module/loader/dwem-core-loader.js');
