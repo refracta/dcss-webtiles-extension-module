@@ -4,15 +4,15 @@ export default class TestModule1 {
     static dependencies = []
 
     onLoad() {
-        const {SourceMapperRegistry: SMR} = DWEM;
+        const {SourceMapperRegistry: SMR, MatcherRegistry: MR} = DWEM;
 
         function injectSource1() {
             DWEM.Modules.TestModule1.toggle = toggle;
         }
 
         const myMapper1 = SMR.getSourceMapper('BeforeReturnInjection', `!${injectSource1.toString()}()`);
-        SMR.add('chat', myMapper1);
-
+        MR.matchers['my-matcher'] = {'latest': MR.getModuleMatcher('chat')};
+        SMR.add('my-matcher', myMapper1);
 
         function injectSource2() {
             DWEM.Modules.TestModule1.clear = clear;
