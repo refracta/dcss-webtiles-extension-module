@@ -22,17 +22,15 @@
 
     function haltRequireJS() {
         let disableRJSInjection = true;
-        const blockFunction = (func) => {
-            head['_' + func] = head[func];
-            head[func] = function (tag) {
+        for (const funcName of ['appendChild', 'insertBefore']) {
+            head['_' + funcName] = head[funcName];
+            head[funcName] = function (tag) {
                 if (disableRJSInjection && (tag.dataset.requirecontext !== undefined || tag.dataset.requiremodule !== undefined)) {
                     return tag;
                 }
-                return this['_' + func].apply(this, arguments);
+                return this['_' + funcName].apply(this, arguments);
             }
         }
-        blockFunction('appendChild');
-        blockFunction('insertBefore');
 
         const scripts = head.getElementsByTagName('script');
         const rjsScript = Array.from(scripts).find(s => s.src?.endsWith('require.js'));
