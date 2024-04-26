@@ -50,7 +50,6 @@
         })();
 
         window.require = window.define = window.requirejs = undefined;
-        disableRJSInjection = false;
         const newRJSScript = document.createElement('script');
         newRJSScript.src = rjsScript.src;
         await new Promise(resolve => {
@@ -64,7 +63,8 @@
         })
 
         window.startMainScript = async () => {
-            // require.config(config);
+            disableRJSInjection = false;
+            require.config(config);
         };
     }
 
