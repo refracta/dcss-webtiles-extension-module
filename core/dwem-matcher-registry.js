@@ -1,10 +1,6 @@
 export default class DWEMMatcherRegistry {
     matchers = {}
 
-    getDepsMatcher(deps) {
-        return ({args}) => JSON.stringify(deps) === JSON.stringify(args[0]);
-    }
-
     getSourceMatcher(regexp) {
         return ({args}) => {
             const func = args.find(arg => typeof arg === 'function');
