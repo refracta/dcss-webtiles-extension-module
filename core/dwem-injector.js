@@ -3,12 +3,11 @@ export default class DWEMInjector {
 
     installDefineHooker() {
         let originalDefine;
-        let proxiedDefine;
-        Object.defineProperty(window, 'define', {
-            get: () => proxiedDefine, set: (newValue) => {
+        Object.defineProperty(window, '_define', {
+            get: () => window.define, set: (newValue) => {
                 if (newValue) {
                     originalDefine = newValue;
-                    proxiedDefine = new Proxy(originalDefine, {
+                    window.define = new Proxy(originalDefine, {
                         apply: (target, thisArg, argumentsList) => {
                             for (const replacer of this.replacers) {
                                 const {matcher, mapper} = replacer;

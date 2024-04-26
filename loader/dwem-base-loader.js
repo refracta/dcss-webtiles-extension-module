@@ -21,27 +21,31 @@
     const [head] = document.getElementsByTagName('head');
 
     function haltRequireJS() {
+        let disableRJSInjection = true;
+        const blockFunction = (func) => {
+            head['_' + func] = head[func];
+            head[func] = function (tag) {
+                if (disableRJSInjection && (tag.dataset.requirecontext !== undefined || tag.dataset.requiremodule !== undefined)) {
+                    return tag;
+                }
+                return this['_' + func].apply(this, arguments);
+            }
+        }
+        blockFunction('appendChild');
+        blockFunction('insertBefore');
+
         const scripts = head.getElementsByTagName('script');
         const rjsScript = Array.from(scripts).find(s => s.src?.endsWith('require.js'));
-        rjsScript.remove();
+        rjsScript?.remove();
 
-        const newRJSScript = document.createElement('script');
-        newRJSScript.src = rjsScript.src;
-        newRJSScript.setAttribute('data-main', rjsScript.getAttribute('data-main'));
-
-        const generateDummyAttributes = () => {
-            let value;
-            return {
-                configurable: true, get: () => value, set: newValue => value = newValue
-            };
-        }
-
-        Object.defineProperty(window, 'define', generateDummyAttributes());
-        Object.defineProperty(window, 'require', generateDummyAttributes());
-        Object.defineProperty(window, 'requirejs', generateDummyAttributes());
-
-        window.reloadRequireJS = () => {
+        window.reloadRequireJS = async () => {
             window.require = window.define = window.requirejs = undefined;
+            disableRJSInjection = false;
+            const newRJSScript = document.createElement('script');
+            newRJSScript.setAttribute('data-main', rjsScript.getAttribute('data-main'));
+            let rjsScriptRaw = await fetch(rjsScript.src).then(r => r.text());
+            rjsScriptRaw = rjsScriptRaw.replace('define=', '_define=').replace('define.', '_define.');
+            newRJSScript.src = URL.createObjectURL(new Blob([rjsScriptRaw], {type: 'application/javascript'}))
             head.appendChild(newRJSScript);
         };
     }
