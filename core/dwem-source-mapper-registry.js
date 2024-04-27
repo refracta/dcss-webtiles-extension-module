@@ -6,8 +6,13 @@ export default class DWEMSourceMapperRegistry {
     sourceMappers = {};
 
     add(matcherIdentifier, sourceMapper) {
-        const [name, version] = [...matcherIdentifier.split(':'), 'latest'];
-        matcherIdentifier = `${name}:${version}`;
+        if (!Array.isArray(matcherIdentifier)) {
+            matcherIdentifier = [matcherIdentifier]
+        }
+        matcherIdentifier = Array.from(new Set(matcherIdentifier.map(i => i.trim()).map(i => {
+            const [name, version] = [...i.split(':'), 'all'];
+            return `${name}:${version}`
+        }))).sort().join(',');
         this.sourceMappers[matcherIdentifier] = this.sourceMappers[matcherIdentifier] || [];
         this.sourceMappers[matcherIdentifier].push(sourceMapper);
     }

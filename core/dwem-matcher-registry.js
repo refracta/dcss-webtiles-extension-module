@@ -9,17 +9,19 @@ export default class DWEMMatcherRegistry {
     }
 
     getModuleMatcher(regexp) {
+        regexp = typeof regexp === 'string' ? new RegExp(`^${regexp}$`) : regexp;
         return ({module}) => module.match(regexp);
     }
 
     getURLMatcher(regexp) {
+        regexp = typeof regexp === 'string' ? new RegExp(`^${regexp}$`) : regexp;
         return ({url}) => url.match(regexp);
     }
 
     constructor() {
         const mainModules = ['chat', 'client', 'comm'];
         for (const module of mainModules) {
-            this.matchers[module] = {'latest': this.getModuleMatcher(new RegExp(`^${module}$`))};
+            this.matchers[module] = {'latest': this.getModuleMatcher(module)};
         }
         const gameModules = ['./action_panel', './cell_renderer', './display', './dungeon_renderer', './enums', './game', './map_knowledge', './menu', './messages', './minimap', './monster_list', './mouse_control', './options', './player', './scroller', './text', './textinput', './tileinfo-dngn', './tileinfo-feat', './tileinfo-floor', './tileinfo-gui', './tileinfo-icons', './tileinfo-main', './tileinfo-player', './tileinfo-wall', './tileinfos', './ui-layouts', './ui', './util', './view_data'];
         for (const module of gameModules) {
