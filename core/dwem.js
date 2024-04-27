@@ -4,6 +4,7 @@ import DWEMSourceMapperRegistry from "./dwem-source-mapper-registry.js";
 
 export default class DWEM {
     static version = '0.1';
+
     constructor() {
         this.Injector = new DWEMInjector();
         this.Injector.installDefineHooker();
@@ -118,22 +119,25 @@ export default class DWEM {
         }
 
         for (const identifier in this.SourceMapperRegistry.sourceMappers) {
-            const [name, version] = [...identifier.split(':'), 'all'];
             const mappers = this.SourceMapperRegistry.sourceMappers[identifier];
-            const matchers = version === 'all' ? Object.values(this.MatcherRegistry.matchers[name]) : [this.MatcherRegistry.matchers[name][version]];
-            for (const matcher of matchers) {
-                this.Injector.replacers.push({
-                    matcher, mapper: (argumentsList) => {
-                        const index = argumentsList.findLastIndex(arg => typeof arg === 'function');
-                        let source = argumentsList[index].toString();
-                        for (const mapper of mappers) {
-                            source = mapper(source);
-                        }
-                        argumentsList[index] = window.eval(`(${source})`);
-                        return argumentsList;
+            const matchers = Array.from(new Set(identifier.split(',').map(i => i.trim()).map(i => {
+                const [name, version] = [...i.split(':'), 'all'];
+                return version === 'all' ? Object.values(this.MatcherRegistry.matchers[name]) : [this.MatcherRegistry.matchers[name][version]]
+            }).flat())).filter(m => m);
+            const matcher = (argumentsList) => {
+                return matchers.some(m => m(argumentsList));
+            };
+            this.Injector.replacers.push({
+                matcher, mapper: (argumentsList) => {
+                    const index = argumentsList.findLastIndex(arg => typeof arg === 'function');
+                    let source = argumentsList[index].toString();
+                    for (const mapper of mappers) {
+                        source = mapper(source);
                     }
-                });
-            }
+                    argumentsList[index] = window.eval(`(${source})`);
+                    return argumentsList;
+                }
+            });
         }
     }
 
@@ -141,7 +145,10 @@ export default class DWEM {
         localStorage.removeItem('DWEM');
         // TODO: For Test
         if (!localStorage.DWEM) {
-            localStorage.DWEM = JSON.stringify({Modules: ['../modules/module-manager.js','../modules/test-module1.js', '../modules/test-module2.js', '../modules/io-hook.js']});
+            localStorage.DWEM = JSON.stringify({
+                Version: DWEM.version,
+                Modules: ['../modules/module-manager.js', '../modules/test-module1.js', '../modules/test-module2.js', '../modules/io-hook.js']
+            });
             // TODO: For Test
         }
         return JSON.parse(localStorage.DWEM);
