@@ -12,7 +12,7 @@ Tampermonkey, Greasemonkey 등의 스크립트 관리자 설치 후, `loader/dwe
 
 # How to develop Module?
 
-`modules/io-hook.js` 예제를 참조
+`modules/io-hook.js`, `modules/test-module1.js` 예제를 참조
 
 # Module list
 

@@ -60,7 +60,7 @@
                 }
             };
             head.appendChild(newRJSScript);
-        })
+        });
 
         window.startMainScript = async () => {
             disableRJSInjection = false;
