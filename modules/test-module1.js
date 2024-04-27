@@ -11,8 +11,8 @@ export default class TestModule1 {
         }
 
         const myMapper1 = SMR.getSourceMapper('BeforeReturnInjection', `!${injectSource1.toString()}()`);
-        MR.matchers['my-matcher'] = {'latest': MR.getModuleMatcher('chat')};
-        SMR.add('my-matcher', myMapper1);
+        MR.matchers['my-matcher'] = {'test': MR.getModuleMatcher('chat')};
+        SMR.add('my-matcher:test', myMapper1);
 
         function injectSource2() {
             DWEM.Modules.TestModule1.clear = clear;
