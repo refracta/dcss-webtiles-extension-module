@@ -13,3 +13,12 @@ Tampermonkey, Greasemonkey 등의 스크립트 관리자 설치 후, `loader/dwe
 # How to develop Module?
 
 `modules/io-hook.js` 예제를 참조
+
+# Module list
+
+- `ModuleManager:1.0` : Ctrl + F12로 모듈 목록 확인 (개발 중)
+- `IOHook:1.0`: 입출력 관련 후킹을 돕는 모듈
+
+# 기타
+
+DWEM은 현재 개발 및 테스트 단계입니다.
