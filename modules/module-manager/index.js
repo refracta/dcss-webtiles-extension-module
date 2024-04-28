@@ -57,6 +57,7 @@ export default class ModuleManager {
         margin-left: 10px;
       }
     `;
+        this.shadow.innerHTML = '';
         this.shadow.appendChild(style);
 
         this.panel = document.createElement('div');
