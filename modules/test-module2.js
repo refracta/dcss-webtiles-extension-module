@@ -5,8 +5,11 @@ export default class TestModule2 {
 
     onLoad() {
         const {IOHook} = DWEM.Modules;
-        IOHook.send_message.before.push(function (msg, data) {
-            console.log(msg, data);
+        IOHook.send_message.after.push(function (msg, data) {
+            console.log('send_message.after', msg, data);
+        });
+        IOHook.handle_message.after.push(function (data) {
+            console.log('handle_message.after', data);
         });
     }
 }
