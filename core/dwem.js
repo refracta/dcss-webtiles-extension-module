@@ -147,7 +147,7 @@ export default class DWEM {
         if (!localStorage.DWEM) {
             localStorage.DWEM = JSON.stringify({
                 Version: DWEM.version,
-                Modules: ['../modules/test-module3.js', '../modules/module-manager/index.js', '../modules/test-module1.js', '../modules/test-module2.js', '../modules/io-hook.js']
+                Modules: ['../modules/module-manager/index.js', '../modules/test-module1.js', '../modules/test-module2.js', '../modules/io-hook.js']
             });
             // TODO: For Test
         }
