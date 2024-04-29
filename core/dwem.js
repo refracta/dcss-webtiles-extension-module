@@ -14,6 +14,7 @@ export default class DWEM {
 
     async init() {
         const config = this.Config;
+        this.Config = config;
         const paths = config.Modules;
         this.ModuleClasses = [];
         let loadResults = await Promise.allSettled(paths.map(path => import(path)));
