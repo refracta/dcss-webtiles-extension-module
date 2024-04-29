@@ -70,6 +70,7 @@
 
     (async () => {
         await haltRequireJS();
+        localStorage.DWEM_MODULES = JSON.stringify(['../modules/module-manager/index.js', '../modules/io-hook.js']);
         if (localStorage.DWEM_DEBUG === 'true') {
             await import(localStorage.DWEM_DEBUG_LOADER);
         } else {

@@ -142,16 +142,32 @@ export default class DWEM {
     }
 
     get Config() {
-        localStorage.removeItem('DWEM');
-        // TODO: For Test
+        const defaultConfig = {
+            Version: DWEM.version, Modules: []
+        };
         if (!localStorage.DWEM) {
-            localStorage.DWEM = JSON.stringify({
-                Version: DWEM.version,
-                Modules: ['../modules/module-manager/index.js', '../modules/test-module1.js', '../modules/test-module2.js', '../modules/io-hook.js']
-            });
-            // TODO: For Test
+            localStorage.DWEM = JSON.stringify(defaultConfig);
         }
-        return JSON.parse(localStorage.DWEM);
+        const config = JSON.parse(localStorage.DWEM);
+        if (DWEM.version !== config.Version) {
+            if (confirm(`DWEM config version mismatch. (Config: ${config.Version}, DWEM: ${DWEM.version})\nDo you want to keep your settings?`)) {
+                config.Version = DWEM.version;
+                this.Config = config;
+            } else {
+                localStorage.DWEM = JSON.stringify(defaultConfig);
+            }
+        }
+        const allModules = new Set();
+        const defaultModules = JSON.parse(localStorage.DWEM_MODULES || '[]');
+        const configModules = config.Modules;
+        config.Modules = [];
+        for (const module of [...defaultModules, ...configModules]) {
+            if (!allModules.has(module)) {
+                config.Modules.push(module);
+            }
+            allModules.add(module);
+        }
+        return config;
     }
 
     set Config(config) {
