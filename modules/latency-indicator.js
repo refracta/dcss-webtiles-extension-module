@@ -5,7 +5,7 @@ Chart.register(...registerables);
 export default class LatencyIndicator {
     static name = 'LatencyIndicator';
     static version = '1.0';
-    static dependencies = [];
+    static dependencies = ['IOHook'];
     static measurementInterval = parseInt(localStorage.LI_INTERVAL || '30');
 
     constructor() {
