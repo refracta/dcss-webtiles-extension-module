@@ -33,8 +33,11 @@
         }
 
         const scripts = head.getElementsByTagName('script');
-        const rjsScript = Array.from(scripts).find(s => s.src?.endsWith('require.js'));
-        rjsScript?.remove();
+        let rjsScript = Array.from(scripts).find(s => s.src?.endsWith('require.js'));
+        if (!rjsScript) {
+            rjsScript = {src: "/static/scripts/contrib/require.js", getAttribute: () => "/static/scripts/app"};
+        }
+        rjsScript?.remove?.();
 
         const config = (() => {
             const dataMain = rjsScript.getAttribute('data-main');
