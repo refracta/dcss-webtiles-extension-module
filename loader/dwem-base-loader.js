@@ -80,7 +80,7 @@
             try {
                 await import('https://refracta.github.io/dcss-webtiles-extension-module/loader/dwem-core-loader.js');
             } catch (e) {
-                await import('https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module/loader/dwem-base-loader.js');
+                await import('https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module/loader/dwem-core-loader.js');
             }
         }
     })();
