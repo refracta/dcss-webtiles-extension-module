@@ -12,12 +12,12 @@ Tampermonkey, Greasemonkey 등의 스크립트 관리자 설치 후, `loader/dwe
 
 # How to develop Module?
 
-`modules/io-hook.js`, `modules/test-module1.js` 예제를 참조
+`modules/io-hook/index.js`, `modules/test-module1/index.js` 예제를 참조
 
 # Module list
 
 - `ModuleManager:1.0` : Ctrl + F12로 모듈 목록 확인 (개발 중)
-- `IOHook:1.0`: 입출력 관련 후킹을 돕는 모듈
+- `Index:1.0`: 입출력 관련 후킹을 돕는 모듈
 
 # 기타
 

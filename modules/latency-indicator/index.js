@@ -79,7 +79,7 @@ export default class LatencyIndicator {
     startMeasurement() {
         if (this.isMeasuring) return; // Prevent multiple intervals
         this.isMeasuring = true;
-        this.measurementTimer = setInterval(() => this.sendInput(), LatencyIndicator.measurementInterval);
+        this.measurementTimer = setInterval(() => this.sendInput(), Index.measurementInterval);
     }
 
     stopMeasurement() {
