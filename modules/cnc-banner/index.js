@@ -1,7 +1,7 @@
 export default class CNCBanner {
     static name = 'CNCBanner';
     static version = '1.0';
-    static dependencies = ['SiteInformation'];
+    static dependencies = ['IOHook', 'SiteInformation'];
     static description = 'This module sets the banner for the CNC server.';
 
     onLoad() {
