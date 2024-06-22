@@ -6,6 +6,8 @@ export default class DWEM {
     static version = '0.1';
 
     constructor() {
+        const url = new URL(import.meta.url + '/..');
+        this.Entrypoint = url.protocol + '//' + url.host + url.pathname;
         this.Injector = new DWEMInjector();
         this.Injector.installDefineHooker();
         this.SourceMapperRegistry = new DWEMSourceMapperRegistry();
@@ -25,6 +27,10 @@ export default class DWEM {
                 console.error(`Failed to load module path. (${path})`, loadResult.reason);
             } else if (loadResult.status === 'fulfilled') {
                 const moduleClass = loadResult.value.default;
+                if (!moduleClass) {
+                    console.error(`Failed to load module class. (${path})`);
+                    continue;
+                }
                 moduleClass.path = path;
                 moduleClass.identifier = `${moduleClass.name}:${moduleClass.version}`;
 
@@ -158,15 +164,28 @@ export default class DWEM {
                 localStorage.DWEM = JSON.stringify(defaultConfig);
             }
         }
-        const allModules = new Set();
+        const moduleSet = new Set();
         const defaultModules = JSON.parse(localStorage.DWEM_MODULES || '[]');
         const configModules = config.Modules;
+        const allModules = [...defaultModules, ...configModules];
         config.Modules = [];
-        for (const module of [...defaultModules, ...configModules]) {
-            if (!allModules.has(module)) {
+        for (let i = 0; i < allModules.length; i++) {
+            const module = allModules[i];
+            try {
+                const url = new URL(module);
+            } catch (e) {
+                try {
+                    allModules[i] = new URL(this.Entrypoint + module).href;
+                } catch (e) {
+                    console.error(`The URL format of the module is invalid. (${module})`);
+                }
+            }
+        }
+        for (const module of allModules) {
+            if (!moduleSet.has(module)) {
                 config.Modules.push(module);
             }
-            allModules.add(module);
+            moduleSet.add(module);
         }
         return config;
     }
