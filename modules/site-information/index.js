@@ -2,7 +2,7 @@ export default class SiteInformation {
     static name = 'SiteInformation'
     static version = '1.0'
     static dependencies = []
-    static description = '(Library) This module returns site information to other modules. (Library)'
+    static description = '(Library) This module returns site information to other modules.'
 
     onLoad() {
         const {SourceMapperRegistry: SMR, MatcherRegistry: MR} = DWEM;
