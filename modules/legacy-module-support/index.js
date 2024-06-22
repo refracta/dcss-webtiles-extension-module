@@ -1,7 +1,7 @@
 export default class LegacyModuleSupport {
     static name = 'LegacyModuleSupport';
     static version = '1.0';
-    static dependencies = [];
+    static description = 'This module serves to increase compatibility with the previous CWZ module.'
 
     onLoad() {
         const {SourceMapperRegistry: SMR, MatcherRegistry: MR} = DWEM;
