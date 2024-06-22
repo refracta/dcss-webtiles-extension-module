@@ -119,7 +119,7 @@ export default class DWEM {
 
         for (const moduleInstance of this.ModuleInstances) {
             try {
-                await moduleInstance?.onLoad();
+                await moduleInstance?.onLoad?.();
             } catch (e) {
                 console.error(e);
             }
