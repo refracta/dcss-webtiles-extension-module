@@ -69,7 +69,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                     </p>
                     ${SiteInformation.current_user ? `
                     <p>
-                        Hello, ${SiteInformation.current_user}! View your <a href="https://archive.nemelex.cards/morgue/${SiteInformation.current_user}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${SiteInformation.getUsername()}/">ttyrecs</a>.
+                        Hello, ${SiteInformation.current_user}! View your <a href="https://archive.nemelex.cards/morgue/${SiteInformation.current_user}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${SiteInformation.current_user}/">ttyrecs</a>.
                     </p>
                     <script>
                         function getRandomColor() {
