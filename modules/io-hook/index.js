@@ -1,7 +1,7 @@
 export default class IOHook {
     static name = 'IOHook'
     static version = '1.0'
-    static description = 'This module allows users to add hooks before and after sending and receiving WebSocket data.'
+    static description = '(Library) This module allows users to add hooks before and after sending and receiving WebSocket data.'
 
     handle_message = {before: [], after: []}
     send_message = {before: [], after: []}
