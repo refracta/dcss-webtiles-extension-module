@@ -4,9 +4,13 @@ class ModuleContainer extends HTMLDivElement {
         const span = document.createElement('div');
         span.innerHTML = `
 <div class="ui-popup" data-generation-id="3">
+    <div class="ui-popup-overlay"></div>
     <div class="ui-popup-outer">
         <div class="ui-popup-inner">
             <div class="module-list"></div>
+            <div class="actions">
+                <button class="close-button">Close</button>
+            </div>
         </div>
     </div>
 </div>`;
@@ -34,6 +38,16 @@ const style = `
 .ui-popup + .ui-popup + .ui-popup { padding-top: 40px; }
 .ui-popup + .ui-popup + .ui-popup + .ui-popup { padding-top: 60px; }
 
+.ui-popup-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9998;
+}
+
 .ui-popup-outer {
     margin: 50px;
     max-height: calc(95vh - 100px);
@@ -42,9 +56,11 @@ const style = `
     border: 1px solid black;
     outline: 2px solid #7d623c;
     display: flex;
-    z-index: 0;
+    z-index: 9999;
     position: relative;
     overflow: hidden;
+    flex-direction: column;
+    width: calc(100% - 140px);
 }
 
 .ui-popup-inner {
@@ -63,6 +79,21 @@ const style = `
     padding: 10px;
     margin: 5px 0;
     cursor: pointer;
+}
+
+.actions {
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+}
+
+.close-button {
+    padding: 10px 20px;
+    background-color: #7d623c;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
 }
 `;
 
@@ -94,19 +125,29 @@ export default class ModuleManager {
         document.body.append(this.content);
 
         // 초기 상태를 비활성 상태로 설정
-        this.toggleVisibility(false);
+        this.showModules();
+        this.toggle(false);
 
         document.addEventListener('keydown', (event) => {
             if (event.ctrlKey && event.key === 'F12') {
                 this.showModules();
-                this.toggleVisibility();
+                this.toggle();
             }
+        });
+
+        this.shadow.querySelector('.close-button').addEventListener('click', () => {
+            this.toggle(false);
+        });
+
+        this.shadow.querySelector('.ui-popup-overlay').addEventListener('click', () => {
+            this.toggle(false);
         });
     }
 
     showModules() {
         const container = this.shadow.querySelector('.module-list');
         container.innerHTML = ''; // Clear previous content
+
         DWEM.ModuleClasses.forEach((module, index) => {
             const { name, version, dependencies = [], description = '', onMMMClicked } = module;
             const entrypoint = DWEM.Config.Modules[index];
@@ -133,7 +174,7 @@ export default class ModuleManager {
         });
     }
 
-    toggleVisibility(forceState) {
+    toggle(forceState) {
         const container = this.shadow.querySelector('.module-container');
         if (typeof forceState === 'boolean') {
             container.style.display = forceState ? 'block' : 'none';
