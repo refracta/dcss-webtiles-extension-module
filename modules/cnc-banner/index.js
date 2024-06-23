@@ -1,7 +1,7 @@
 export default class CNCBanner {
     static name = 'CNCBanner';
     static version = '1.0';
-    static dependencies = ['IOHook', 'SiteInformation', 'ModuleManager'];
+    static dependencies = ['IOHook', 'SiteInformation', 'ModuleManager', 'WebSocketFactory'];
     static description = 'This module sets the banner for the CNC server.';
 
     openRCLinks() {
@@ -47,14 +47,62 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         document.getElementById('coloredText').innerHTML = coloredWords.join(" ");
     }
 
+    getLatency() {
+        const {WebSocketFactory} = DWEM.Modules;
+        return new Promise(resolve => {
+            let startTime, endTime;
+            const socket = WebSocketFactory.create((data) => {
+                if (data.msg === 'register_fail') {
+                    socket.close();
+                    endTime = Date.now();
+                    resolve(endTime - startTime);
+                }
+            });
+
+            socket.onopen = () => {
+                startTime = Date.now();
+                socket.send(JSON.stringify({
+                    msg: 'register', username: '', password: 'LATENCY_CHECK', email: ''
+                }));
+            }
+        });
+    }
+
+    async updateLatencyText() {
+        const latency = await this.getLatency();
+        $('#latency').text(latency);
+
+        function interpolateColor(color1, color2, factor) {
+            const result = color1.slice(1).match(/.{2}/g)
+                .map((hex, i) => Math.round(parseInt(hex, 16) * (1 - factor) + parseInt(color2.slice(1).match(/.{2}/g)[i], 16) * factor)
+                    .toString(16).padStart(2, '0')).join('');
+            return `#${result}`;
+        }
+
+        let color;
+        if (latency <= 50) {
+            color = interpolateColor('#00FF00', '#0000FF', latency / 50); // Green to Blue
+        } else if (latency <= 150) {
+            color = interpolateColor('#0000FF', '#FFFF00', (latency - 50) / 100); // Blue to Yellow
+        } else if (latency <= 300) {
+            color = interpolateColor('#FFFF00', '#FF0000', (latency - 150) / 150); // Yellow to Red
+        } else if (latency <= 1000) {
+            color = interpolateColor('#FF0000', '#808080', (latency - 300) / 700); // Red to Grey
+        } else {
+            color = '#808080'; // Grey
+        }
+
+        $('#latency').css('color', color);
+    }
+
     onLoad() {
         const {IOHook, SiteInformation} = DWEM.Modules;
-
         IOHook.handle_message.before.push((data) => {
             if (data.msg === 'html' && data.id === 'banner') {
                 const {current_user} = SiteInformation;
+                this.updateLatencyText();
                 data.content = `
-                    <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">It's all in the cards!</a>
+                    <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">It's all in the cards!</a> <a title="This is your server latency. Click to remeasure." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText()">(<span id="latency">?</span> MS)</a>
                     <br>
                     ${current_user ? `
                     <a href="https://webtiles.nethack.live" style="font-size: small; margin: 0; padding:0; text-decoration: none"> Did you know that NetHack can be played on WebTiles? </a>
