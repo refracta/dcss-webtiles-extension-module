@@ -114,7 +114,7 @@ export default class DWEM {
             });
         }
         if (sortedIdentifiers.length !== this.ModuleClasses.length) {
-            throw new Error('Cycle detected in dependencies');
+            console.error('Cycle detected in dependencies');
         }
         this.ModuleClasses.sort((a, b) => {
             return sortedIdentifiers.indexOf(a.identifier) - sortedIdentifiers.indexOf(b.identifier);
