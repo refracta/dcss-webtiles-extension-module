@@ -169,18 +169,6 @@ export default class DWEM {
         const configModules = config.Modules;
         const allModules = [...defaultModules, ...configModules];
         config.Modules = [];
-        for (let i = 0; i < allModules.length; i++) {
-            const module = allModules[i];
-            try {
-                const url = new URL(module);
-            } catch (e) {
-                try {
-                    allModules[i] = new URL(this.Entrypoint + module).href;
-                } catch (e) {
-                    console.error(`The URL format of the module is invalid. (${module})`);
-                }
-            }
-        }
         for (const module of allModules) {
             if (!moduleSet.has(module)) {
                 config.Modules.push(module);
