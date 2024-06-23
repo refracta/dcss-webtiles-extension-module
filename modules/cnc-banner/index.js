@@ -69,7 +69,12 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     }
 
     async updateLatencyText() {
+        if (this.isWaiting) {
+            return;
+        }
+        this.isWaiting = true;
         const latency = await this.getLatency();
+        this.isWaiting = false;
         $('#latency').text(latency);
 
         function interpolateColor(color1, color2, factor) {
