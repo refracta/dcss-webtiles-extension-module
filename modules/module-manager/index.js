@@ -166,7 +166,7 @@ export default class ModuleManager {
 
         DWEM.ModuleClasses.forEach((module, index) => {
             const {name, version, dependencies = [], description = '', onMMMClicked} = module;
-            let entrypoint = DWEM.Config.Modules[index];
+            let entrypoint = DWEM.Config.ModuleInstances[index];
             try {
                 new URL(entrypoint);
             } catch (e) {
