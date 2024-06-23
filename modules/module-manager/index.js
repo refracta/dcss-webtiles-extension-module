@@ -171,7 +171,7 @@ export default class ModuleManager {
                 <div><strong>${name}:${version}</strong></div>
                 ${dependenciesHTML}
                 <div>Description: ${description}</div>
-                <div>Entrypoint: ${entrypoint}</div>
+                <div>Entrypoint: <a style="color: white" href="${entrypoint}">${entrypoint}</a></div>
             `;
 
             moduleDiv.addEventListener('click', () => {
