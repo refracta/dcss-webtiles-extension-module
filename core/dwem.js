@@ -44,6 +44,7 @@ export default class DWEM {
                 }
 
                 moduleClass.dependencies = moduleClass.dependencies || [];
+                moduleClass.dependencies.sort();
                 const isDepError = moduleClass.dependencies.some(dep => {
                     if (dep.indexOf(':') !== dep.lastIndexOf(':')) {
                         console.error(`Module dependency="${dep}" is incorrect. (${moduleClass.path})`);
