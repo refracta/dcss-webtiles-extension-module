@@ -74,16 +74,27 @@
     (async () => {
         await haltRequireJS();
         // localStorage.DWEM_MODULES = JSON.stringify(['https://example.org/module.js', ...]);
-        // localStorage.DWEM_CACHE_PARAMETER = `?t=${Math.floor(Date.now() / 1000 * 60 * 5)}`;
-        localStorage.DWEM_CACHE_PARAMETER = localStorage.DWEM_CACHE_PARAMETER || '';
+        localStorage.DWEM_LATEST_DURATION ||= 300;
+        localStorage.DWEM_LATEST_TIME ||= 0;
         if (localStorage.DWEM_DEBUG === 'true') {
-            await import(localStorage.DWEM_DEBUG_LOADER + localStorage.DWEM_CACHE_PARAMETER);
+            await import(localStorage.DWEM_DEBUG_LOADER);
         } else {
-            try {
-                await import('https://refracta.github.io/dcss-webtiles-extension-module/loader/dwem-core-loader.js' + localStorage.DWEM_CACHE_PARAMETER);
-            } catch (e) {
-                await import('https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module/loader/dwem-core-loader.js' + localStorage.DWEM_CACHE_PARAMETER);
+            const currentTime = Date.now();
+            if (localStorage.DWEM_LATEST_TIME && localStorage.DWEM_LATEST_DURATION) {
+                const latestTime = parseInt(localStorage.DWEM_LATEST_TIME);
+                const duration = parseInt(localStorage.DWEM_LATEST_DURATION);
+                const cacheAge = (currentTime - latestTime) / 1000;
+                console.log(`DWEM_LATEST Cache Age:`, cacheAge);
+                if (cacheAge > duration) {
+                    try {
+                        localStorage.DWEM_LATEST = (await fetch(`https://api.github.com/repos/refracta/dcss-webtiles-extension-module/commits/main`).then(r => r.json())).sha;
+                        localStorage.DWEM_LATEST_TIME = Date.now();
+                    } catch (e) {
+                    }
+                }
             }
+            localStorage.DWEM_LATEST = localStorage.DWEM_LATEST || 'latest';
+            await import(`https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module@${localStorage.DWEM_LATEST}/loader/dwem-core-loader.js`);
         }
     })();
 })();
