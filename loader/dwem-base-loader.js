@@ -84,7 +84,8 @@
                 const latestTime = parseInt(localStorage.DWEM_LATEST_TIME);
                 const duration = parseInt(localStorage.DWEM_LATEST_DURATION);
                 const cacheAge = (currentTime - latestTime) / 1000;
-                console.log(`DWEM_LATEST Cache Age:`, cacheAge);
+                console.log(`DWEM_LATEST Cache Age: ${cacheAge}s`);
+                console.log(`DWEM_LATEST Cache Duration: ${duration}s`);
                 if (cacheAge > duration) {
                     try {
                         localStorage.DWEM_LATEST = (await fetch(`https://api.github.com/repos/refracta/dcss-webtiles-extension-module/commits/main`).then(r => r.json())).sha;
