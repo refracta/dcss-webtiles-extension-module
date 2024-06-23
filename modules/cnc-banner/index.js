@@ -60,7 +60,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                     <p style="padding:5px; border-radius:10px; background-color:#2c6f17; display:inline-block; margin:20px 0 10px 0; line-height:1.3;">
                         <a href="https://archive.nemelex.cards">Player Data</a> -
                         <a href="https://github.com/refracta/dcss-server/issues">Report a Bug</a> -
-                        <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM Module Manager</a>
+                        <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM Module Manager (Ctrl + F12)</a>
                         <br>
                         SSH is available on port 1326 with the user 'nemelex'. You can use the password 'xobeh' or authenticate using the <a href="https://archive.nemelex.cards/cao_key" style="text-decoration:none;">CAO key</a>.
                         <br>
