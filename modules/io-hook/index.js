@@ -43,7 +43,7 @@ export default class IOHook {
                 let cancel = false;
                 for (const handler of DWEM.Modules.IOHook.send_message.before) {
                     try {
-                        cancel = cancel || handler(msg);
+                        cancel = cancel || handler(msg, data);
                     } catch (e) {
                         console.error(e);
                     }
