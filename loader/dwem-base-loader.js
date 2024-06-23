@@ -73,14 +73,16 @@
 
     (async () => {
         await haltRequireJS();
-        // localStorage.DWEM_MODULES = JSON.stringify([]);
+        // localStorage.DWEM_MODULES = JSON.stringify(['https://example.org/module.js', ...]);
+        // localStorage.DWEM_CACHE_PARAMETER = `?t=${Math.floor(Date.now() / 1000 * 60 * 5)}`;
+        localStorage.DWEM_CACHE_PARAMETER = localStorage.DWEM_CACHE_PARAMETER || '';
         if (localStorage.DWEM_DEBUG === 'true') {
-            await import(localStorage.DWEM_DEBUG_LOADER);
+            await import(localStorage.DWEM_DEBUG_LOADER + localStorage.DWEM_CACHE_PARAMETER);
         } else {
             try {
-                await import('https://refracta.github.io/dcss-webtiles-extension-module/loader/dwem-core-loader.js');
+                await import('https://refracta.github.io/dcss-webtiles-extension-module/loader/dwem-core-loader.js' + localStorage.DWEM_CACHE_PARAMETER);
             } catch (e) {
-                await import('https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module/loader/dwem-core-loader.js');
+                await import('https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module/loader/dwem-core-loader.js' + localStorage.DWEM_CACHE_PARAMETER);
             }
         }
     })();

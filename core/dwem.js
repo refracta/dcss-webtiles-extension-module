@@ -19,7 +19,7 @@ export default class DWEM {
         this.Config = config;
         const paths = config.Modules;
         this.ModuleClasses = [];
-        let loadResults = await Promise.allSettled(paths.map(path => import(path)));
+        let loadResults = await Promise.allSettled(paths.map(path => import(path + localStorage.DWEM_CACHE_PARAMETER)));
         for (let i = 0; i < loadResults.length; i++) {
             const loadResult = loadResults[i];
             const path = paths[i];
