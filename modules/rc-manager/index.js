@@ -13,7 +13,8 @@ export default class RCManager {
                 if (data.msg === 'login_success') {
                     socket.send(JSON.stringify({msg: 'get_rc', game_id}));
                 } else if (data.msg === 'rcfile_contents') {
-                    resolve([game_id, data.contents]);
+                    socket.close();
+                    resolve({contents: data.contents, game_id});
                 }
             });
             socket.onopen = () => {
@@ -26,10 +27,21 @@ export default class RCManager {
         const {IOHook} = DWEM.Modules;
         IOHook.send_message.after.push(async (msg, data) => {
             if (msg === 'play') {
-                const [game_id, contents] = await this.get_rc(data.game_id);
+                const rc = await this.get_rc(data.game_id);
                 for (const watcher of this.watchers) {
                     try {
-                        watcher(game_id, contents);
+                        watcher(msg, rc);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+            }
+        });
+        IOHook.handle_message.after.push(async (data) => {
+            if (data.msg === 'go_lobby') {
+                for (const watcher of this.watchers) {
+                    try {
+                        watcher(data.msg);
                     } catch (e) {
                         console.error(e);
                     }
