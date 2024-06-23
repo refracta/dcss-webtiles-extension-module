@@ -3,7 +3,7 @@ import DWEMMatcherRegistry from "./dwem-matcher-registry.js";
 import DWEMSourceMapperRegistry from "./dwem-source-mapper-registry.js";
 
 export default class DWEM {
-    static version = '0.1';
+    static version = '0.2';
 
     constructor() {
         const url = new URL(import.meta.url + '/..');
