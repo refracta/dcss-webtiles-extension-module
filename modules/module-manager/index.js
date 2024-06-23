@@ -141,7 +141,6 @@ export default class ModuleManager {
 
         document.body.append(this.content);
 
-        // 초기 상태를 비활성 상태로 설정
         this.showModules();
         this.toggle(false);
 
