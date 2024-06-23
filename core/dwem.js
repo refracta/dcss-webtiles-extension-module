@@ -80,16 +80,43 @@ export default class DWEM {
             counts[name]++;
         }
 
-        this.ModuleClasses.sort((a, b) => {
-            const aDependsOnB = a.dependencies.includes(b.identifier) || a.dependencies.includes(b.name);
-            const bDependsOnA = b.dependencies.includes(a.identifier) || b.dependencies.includes(a.name);
-            if (aDependsOnB && !bDependsOnA) {
-                return 1;
-            } else if (bDependsOnA && !aDependsOnB) {
-                return -1;
-            } else {
-                return 0;
+        const graph = new Map();
+        const indegree = new Map();
+        this.ModuleClasses.forEach(module => {
+            graph.set(module.identifier, []);
+            indegree.set(module.identifier, 0);
+        });
+        this.ModuleClasses.forEach(module => {
+            module.dependencies.forEach(dependency => {
+                const dependencyModule = this.ModuleClasses.find(m => m.identifier === dependency || m.name === dependency);
+                if (dependencyModule) {
+                    graph.get(dependencyModule.identifier).push(module.identifier);
+                    indegree.set(module.identifier, indegree.get(module.identifier) + 1);
+                }
+            });
+        });
+        const queue = [];
+        indegree.forEach((count, key) => {
+            if (count === 0) {
+                queue.push(key);
             }
+        });
+        const sortedIdentifiers = [];
+        while (queue.length > 0) {
+            const node = queue.shift();
+            sortedIdentifiers.push(node);
+            graph.get(node).forEach(neighbor => {
+                indegree.set(neighbor, indegree.get(neighbor) - 1);
+                if (indegree.get(neighbor) === 0) {
+                    queue.push(neighbor);
+                }
+            });
+        }
+        if (sortedIdentifiers.length !== this.ModuleClasses.length) {
+            throw new Error('Cycle detected in dependencies');
+        }
+        this.ModuleClasses.sort((a, b) => {
+            return sortedIdentifiers.indexOf(a.identifier) - sortedIdentifiers.indexOf(b.identifier);
         });
 
         const loadedDependencies = new Set();
@@ -99,6 +126,7 @@ export default class DWEM {
             for (let j = 0; j < dependencies.length; j++) {
                 const dependency = dependencies[j];
                 if (!loadedDependencies.has(dependency)) {
+                    console.log(Array.from(loadedDependencies), dependency, moduleClass);
                     console.error(`Can't resolve module dependency=${dependency}. (${moduleClass.name}:${moduleClass.version}, ${moduleClass.path})`);
                     this.ModuleClasses.splice(i--, 1);
                     continue classesLoop;
