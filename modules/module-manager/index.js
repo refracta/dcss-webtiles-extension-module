@@ -7,6 +7,11 @@ class ModuleContainer extends HTMLDivElement {
     <div class="ui-popup-overlay"></div>
     <div class="ui-popup-outer">
         <div class="ui-popup-inner">
+            <div class="popup-header">
+                <a href="https://github.com/refracta/dcss-webtiles-extension-module" target="_blank">
+                    DWEM v${DWEM.Config.Version}
+                </a>
+            </div>
             <div class="module-list"></div>
             <div class="actions">
                 <button class="close-button">Close</button>
@@ -71,6 +76,18 @@ const style = `
     overflow-x: hidden;
     flex-direction: column;
     width: 100%;
+}
+
+.popup-header {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+.popup-header a {
+    color: #fff;
+    text-decoration: none;
 }
 
 .module-info {
