@@ -41,7 +41,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     }
 
     colorizeText() {
-        const text = "It's all in the cards!";
+        const text = $('#coloredText').text();
         const words = text.split(" ");
         const coloredWords = words.map(word => `<span style="color:${this.#getRandomColor()};">${word}</span>`);
         document.getElementById('coloredText').innerHTML = coloredWords.join(" ");
@@ -100,14 +100,47 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         $('#latency').css('color', color);
     }
 
-    onLoad() {
-        const {IOHook, SiteInformation} = DWEM.Modules;
-        IOHook.handle_message.before.push((data) => {
-            if (data.msg === 'html' && data.id === 'banner') {
-                const {current_user} = SiteInformation;
-                this.updateLatencyText();
-                data.content = `
-                    <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">It's all in the cards!</a> <a title="This is your server latency. Click to remeasure." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText()">(<span id="latency">?</span> MS)</a>
+    getKoreanBanner(current_user) {
+        return `
+        <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a> <a title="이것은 귀하의 서버 지연 시간입니다. 다시 측정하려면 클릭하세요." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText()">(<span id="latency">?</span> MS)</a>
+        <br>
+        ${current_user ? `
+        <a href="https://webtiles.nethack.live" style="font-size: small; margin: 0; padding:0; text-decoration: none"> 넷핵도 웹타일로 플레이 할 수 있다는 것을 아시나요?</a>
+        <br>` : ''}
+        <details>
+            <summary style="cursor: pointer;">KST 2024.06.19 14:12:00 시점의 <a href="https://crawl.project357.org">CPO (호주 서버)</a> 사용자 데이터베이스를 사용하여 서버를 시작했습니다.</summary>
+            <div>
+                <p>이것은 단순히 계정 트롤링을 방지하기 위한 방법입니다. 여러 서버에 다른 소유자를 가진 있는 계정이 있는 경우, 이러한 계정 소유자를 CPO 계정의 소유자로 간주하지 않습니다. 소명 기간은 1년입니다. 다른 서버의 자격 증명을 2025년 6월까지 수동으로 제출하면 계정이 최초 요청자에게 이전됩니다.</p>
+                <p><strong>[자격 증명 제출 방법]</strong><br>
+                    다른 서버에 로그인하여 RC 파일 상단에 "# CRAWL.NEMELEX.CARDS" 줄을 추가한 후 <a href="javascript:DWEM.Modules.CNCBanner.openRCLinks()">RC 링크</a>를 제출하세요 (<a href="https://discord.com/invite/mNcPSDendT">서버 디스코드 - cnc-account-migration 채널</a>). 계정을 받은 후에는 소명 기간이 끝날 때까지 CNC 계정의 RC 파일 상단에 "# CRAWL.NEMELEX.CARDS" 줄을 추가하고 유지하세요. 또한, 이러한 상황에 있는 CPO 사용자는 이 서버의 RC 파일 상단에 "# CRAWL.NEMELEX.CARDS" 줄을 추가해야 합니다. 이 줄이 있으면 CPO 계정 사용자를 최초 요청자로 간주합니다.</p>
+                <p>KST 2024.06.19 19:00:00 갱신: 본 서버에 처음 로그인할 때 "# CRAWL.NEMELEX.CARDS" 줄이 자동으로 RC 파일에 삽입됩니다.</p>
+                <p>KST 2024.06.18 00:00:00에서 2024.06.18 07:03:00 사이에 등록한 사용자에 대해서는 계정 자격 증명이 CPO의 것으로 전환되었습니다 (게임 데이터는 유지됩니다). 로그인하는 데 문제가 있는 경우 관리자에게 연락주세요.</p>
+            </div>
+        </details>
+        <p style="padding:5px; border-radius:10px; background-color:#2c6f17; display:inline-block; margin:20px 0 10px 0; line-height:1.3;">
+            <a href="https://archive.nemelex.cards">플레이어 데이터</a> -
+            <a href="https://github.com/refracta/dcss-server/issues">버그 신고</a> -
+            <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM 모듈 관리자 (Ctrl + F12)</a>
+            <br>
+            'nemelex' 사용자로 포트 1326에서 SSH 접속이 가능합니다. 암호 'xobeh' 또는 <a href="https://archive.nemelex.cards/cao_key" style="text-decoration:none;">CAO 키</a>를 사용하여 인증할 수 있습니다.
+            <br>
+            <a href="https://archive.nemelex.cards/code_of_conduct.txt">서버 규칙</a>을 준수해주세요.
+            <br>
+            계정 또는 서버 문제의 경우, <a href="https://discord.com/invite/mNcPSDendT">서버 디스코드</a>에서 ASCIIPhilia에게 문의할 수 있습니다.
+        </p>
+        ${current_user ? `
+        <p>
+            안녕하세요, ${current_user}! <br>여기서 기록을 확인할 수 있습니다: <a href="https://archive.nemelex.cards/morgue/${current_user}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${current_user}/">ttyrecs</a>
+        </p>
+        <script>
+            DWEM.Modules.CNCBanner.colorizeText();
+        </script>
+        ` : ''}
+    `;
+    }
+
+    getEnglishBanner(current_user) {
+        return `<a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">It's all in the cards!</a> <a title="This is your server latency. Click to remeasure." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText()">(<span id="latency">?</span> MS)</a>
                     <br>
                     ${current_user ? `
                     <a href="https://webtiles.nethack.live" style="font-size: small; margin: 0; padding:0; text-decoration: none"> Did you know that NetHack can be played on WebTiles? </a>
@@ -142,6 +175,20 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                     </script>
                     ` : ''}
                 `;
+    }
+
+    onLoad() {
+        const {IOHook, SiteInformation} = DWEM.Modules;
+        IOHook.handle_message.before.push((data) => {
+            if (data.msg === 'html' && data.id === 'banner') {
+                const {current_user} = SiteInformation;
+                this.updateLatencyText();
+                const userLang = navigator.language || navigator.userLanguage;
+                if (userLang.startsWith('ko')) {
+                    data.content = this.getKoreanBanner(current_user);
+                } else {
+                    data.content = this.getEnglishBanner(current_user);
+                }
             }
         });
     }
