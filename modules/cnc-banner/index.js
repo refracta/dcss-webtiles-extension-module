@@ -110,7 +110,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         <details>
             <summary style="cursor: pointer;">KST 2024.06.19 14:12:00 시점의 <a href="https://crawl.project357.org">CPO (호주 서버)</a> 사용자 데이터베이스를 사용하여 서버를 시작했습니다.</summary>
             <div>
-                <p>이것은 단순히 계정 트롤링을 방지하기 위한 방법입니다. 여러 서버에 걸쳐 서로 다른 소유자를 가진 있는 계정이 있는 경우, 이러한 계정 소유자를 CPO 계정의 소유자로 간주하지 않습니다. 소명 기간은 1년입니다. 다른 서버의 자격 증명을 2025년 6월까지 수동으로 제출하면 계정이 최초 요청자에게 이전됩니다.</p>
+                <p>이것은 단순히 계정 트롤링을 방지하기 위한 방법입니다. 여러 서버에 걸쳐 서로 다른 소유자를 가진 있는 계정이 있는 경우, 이러한 계정 소유자를 CPO 계정의 소유자로 간주하지 않습니다. 소명 기간은 1년입니다. 다른 서버의 자격 증명을 <strong>2025년 6월</strong>까지 수동으로 제출하면 계정이 최초 요청자에게 이전됩니다.</p>
                 <p><strong>[자격 증명 제출 방법]</strong><br>
                     다른 서버에 로그인하여 RC 파일 상단에 "# CRAWL.NEMELEX.CARDS" 줄을 추가한 후 <a href="javascript:DWEM.Modules.CNCBanner.openRCLinks()">RC 링크</a>를 제출하세요 (<a href="https://discord.com/invite/mNcPSDendT">서버 디스코드 - cnc-account-migration 채널</a>). 계정을 받은 후에는 소명 기간이 끝날 때까지 CNC 계정의 RC 파일 상단에 "# CRAWL.NEMELEX.CARDS" 줄을 추가하고 유지하세요. 또한, 이러한 상황에 있는 CPO 사용자는 이 서버의 RC 파일 상단에 "# CRAWL.NEMELEX.CARDS" 줄을 추가해야 합니다. 이 줄이 있으면 CPO 계정 사용자를 최초 요청자로 간주합니다.</p>
                 <p>KST 2024.06.19 19:00:00 갱신: 본 서버에 처음 로그인할 때 "# CRAWL.NEMELEX.CARDS" 줄이 자동으로 RC 파일에 삽입됩니다.</p>
