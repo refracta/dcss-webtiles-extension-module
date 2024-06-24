@@ -102,7 +102,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
 
     getKoreanBanner(current_user) {
         return `
-        <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a> <a title="이것은 귀하의 서버 지연 시간입니다. 다시 측정하려면 클릭하세요." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText()">(<span id="latency">?</span> MS)</a>
+        <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a> <a title="서버 지연 시간입니다. 다시 측정하려면 클릭하세요." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText()">(<span id="latency">?</span> MS)</a>
         <br>
         ${current_user ? `
         <a href="https://webtiles.nethack.live" style="font-size: small; margin: 0; padding:0; text-decoration: none"> 넷핵도 웹타일로 플레이 할 수 있다는 것을 아시나요?</a>
