@@ -179,11 +179,14 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
 
     onLoad() {
         const {IOHook, SiteInformation} = DWEM.Modules;
+        const userLang = navigator.language || navigator.userLanguage;
+        if (userLang.startsWith('ko')) {
+            document.title = '웹타일 - 던전 크롤 스톤 수프';
+        }
         IOHook.handle_message.before.push((data) => {
             if (data.msg === 'html' && data.id === 'banner') {
                 const {current_user} = SiteInformation;
                 this.updateLatencyText();
-                const userLang = navigator.language || navigator.userLanguage;
                 if (userLang.startsWith('ko')) {
                     data.content = this.getKoreanBanner(current_user);
                 } else {
