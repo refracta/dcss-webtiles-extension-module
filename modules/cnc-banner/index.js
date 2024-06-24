@@ -122,7 +122,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             <a href="https://github.com/refracta/dcss-server/issues">버그 신고</a> -
             <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM 모듈 관리자 (Ctrl + F12)</a>
             <br>
-            'nemelex' 사용자로 포트 1326에서 SSH 접속이 가능합니다. 암호 'xobeh' 또는 <a href="https://archive.nemelex.cards/cao_key" style="text-decoration:none;">CAO 키</a>를 사용하여 인증할 수 있습니다.
+            'nemelex' 사용자로 포트 1326에서 SSH 접속이 가능합니다. 비밀번호 'xobeh' 또는 <a href="https://archive.nemelex.cards/cao_key" style="text-decoration:none;">CAO 키</a>를 사용하여 인증할 수 있습니다.
             <br>
             <a href="https://archive.nemelex.cards/code_of_conduct.txt">서버 규칙</a>을 준수해주세요.
             <br>
