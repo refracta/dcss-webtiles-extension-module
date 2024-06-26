@@ -43,7 +43,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     colorizeText() {
         const text = $('#coloredText').text();
         const words = text.split(" ");
-        const coloredWords = words.map(word => `<span style="color:${this.#getRandomColor()};">${word}</span>`);
+        this.colors = this.colors || words.map(_ => this.#getRandomColor());
+        const coloredWords = words.map((word, index) => `<span style="color:${this.colors[index]};">${word}</span>`);
         document.getElementById('coloredText').innerHTML = coloredWords.join(" ");
     }
 
@@ -68,14 +69,11 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         });
     }
 
-    async updateLatencyText() {
-        if (this.isWaiting) {
-            return;
+    async updateLatencyText(force = false) {
+        if (!this.latency || force) {
+            this.latency = await this.getLatency();
         }
-        this.isWaiting = true;
-        const latency = await this.getLatency();
-        this.isWaiting = false;
-        $('#latency').text(latency);
+        $('#latency').text(this.latency);
 
         function interpolateColor(color1, color2, factor) {
             const result = color1.slice(1).match(/.{2}/g)
@@ -85,14 +83,14 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         }
 
         let color;
-        if (latency <= 50) {
-            color = interpolateColor('#00FF00', '#0000FF', latency / 50); // Green to Blue
-        } else if (latency <= 150) {
-            color = interpolateColor('#0000FF', '#FFFF00', (latency - 50) / 100); // Blue to Yellow
-        } else if (latency <= 300) {
-            color = interpolateColor('#FFFF00', '#FF0000', (latency - 150) / 150); // Yellow to Red
-        } else if (latency <= 1000) {
-            color = interpolateColor('#FF0000', '#808080', (latency - 300) / 700); // Red to Grey
+        if (this.latency <= 50) {
+            color = interpolateColor('#00FF00', '#0000FF', this.latency / 50); // Green to Blue
+        } else if (this.latency <= 150) {
+            color = interpolateColor('#0000FF', '#FFFF00', (this.latency - 50) / 100); // Blue to Yellow
+        } else if (this.latency <= 300) {
+            color = interpolateColor('#FFFF00', '#FF0000', (this.latency - 150) / 150); // Yellow to Red
+        } else if (this.latency <= 1000) {
+            color = interpolateColor('#FF0000', '#808080', (this.latency - 300) / 700); // Red to Grey
         } else {
             color = '#808080'; // Grey
         }
@@ -102,7 +100,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
 
     getKoreanBanner(current_user) {
         return `
-        <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a> <a title="서버 지연 시간입니다. 다시 측정하려면 클릭하세요." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText()">(<span id="latency">?</span> MS)</a>
+        <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a> <a title="서버 지연 시간입니다. 다시 측정하려면 클릭하세요." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)">(<span id="latency">?</span> MS)</a>
         <br>
         ${current_user ? `
         <a href="https://webtiles.nethack.live" style="font-size: small; margin: 0; padding:0; text-decoration: none"> 넷핵도 웹타일로 플레이 할 수 있다는 것을 아시나요?</a>
@@ -134,13 +132,14 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         </p>
         <script>
             DWEM.Modules.CNCBanner.colorizeText();
+            DWEM.Modules.CNCBanner.updateLatencyText();
         </script>
         ` : ''}
     `;
     }
 
     getEnglishBanner(current_user) {
-        return `<a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">It's all in the cards!</a> <a title="This is your server latency. Click to remeasure." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText()">(<span id="latency">?</span> MS)</a>
+        return `<a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">It's all in the cards!</a> <a title="This is your server latency. Click to remeasure." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)">(<span id="latency">?</span> MS)</a>
                     <br>
                     ${current_user ? `
                     <a href="https://webtiles.nethack.live" style="font-size: small; margin: 0; padding:0; text-decoration: none"> Did you know that NetHack can be played on WebTiles? </a>
@@ -172,6 +171,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                     </p>
                     <script>
                         DWEM.Modules.CNCBanner.colorizeText();
+                        DWEM.Modules.CNCBanner.updateLatencyText();
                     </script>
                     ` : ''}
                 `;
@@ -183,7 +183,6 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         IOHook.handle_message.before.push((data) => {
             if (data.msg === 'html' && data.id === 'banner') {
                 const {current_user} = SiteInformation;
-                this.updateLatencyText();
                 if (userLang.startsWith('ko')) {
                     data.content = this.getKoreanBanner(current_user);
                 } else {
