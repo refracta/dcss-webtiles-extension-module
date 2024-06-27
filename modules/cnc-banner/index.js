@@ -126,13 +126,15 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             <br>
             계정 또는 서버 문제의 경우, <a href="https://discord.com/invite/mNcPSDendT">서버 디스코드</a>에서 ASCIIPhilia에게 문의할 수 있습니다.
         </p>
+        <script>
+            DWEM.Modules.CNCBanner.updateLatencyText();
+        </script>
         ${current_user ? `
         <p>
             안녕하세요, ${current_user}! <br>여기서 기록을 확인할 수 있습니다: <a href="https://archive.nemelex.cards/morgue/${current_user}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${current_user}/">ttyrecs</a>
         </p>
         <script>
             DWEM.Modules.CNCBanner.colorizeText();
-            DWEM.Modules.CNCBanner.updateLatencyText();
         </script>
         ` : ''}
     `;
@@ -165,6 +167,9 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         <br>
                         For account or server issues, contact ASCIIPhilia on <a href="https://discord.com/invite/mNcPSDendT">Server Discord</a>.
                     </p>
+                    <script>
+                        DWEM.Modules.CNCBanner.updateLatencyText();
+                    </script>
                     ${current_user ? `
                     <p>
                         Hello, ${current_user}! View your <a href="https://archive.nemelex.cards/morgue/${current_user}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${current_user}/">ttyrecs</a>.
