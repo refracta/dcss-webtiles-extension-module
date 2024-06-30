@@ -4,18 +4,18 @@ export default class DWEMMatcherRegistry {
     getSourceMatcher(regexp) {
         return ({args}) => {
             const func = args.find(arg => typeof arg === 'function');
-            return func ? func.toString().match(regexp) : false;
+            return func ? func.toString()?.match(regexp) : false;
         };
     }
 
     getModuleMatcher(regexp) {
         regexp = typeof regexp === 'string' ? new RegExp(`^${regexp}$`) : regexp;
-        return ({module}) => module.match(regexp);
+        return ({module}) => module?.match(regexp);
     }
 
     getURLMatcher(regexp) {
         regexp = typeof regexp === 'string' ? new RegExp(`^${regexp}$`) : regexp;
-        return ({url}) => url.match(regexp);
+        return ({url}) => url?.match(regexp);
     }
 
     constructor() {
