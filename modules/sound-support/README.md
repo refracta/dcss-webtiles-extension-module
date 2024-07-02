@@ -30,14 +30,8 @@ sound-related settings that can be used in the RC configuration:
 - **sound_on**
     - **Description:** Determines whether the sound feature is enabled.
     - **Value:** true or false
+    - **Default:** false
     - **Example:** `sound_on = true`
-
-- **sound_fade_time**
-    - **Description:** Sets the fade-out time for sounds. This represents the time it takes for the sound to gradually
-      decrease in volume at the end.
-    - **Value:** Number (in seconds)
-    - **Default:** 0.5
-    - **Example:** `sound_fade_time = 1.0`
 
 - **sound_volume**
     - **Description:** Sets the volume of the sound.
@@ -49,7 +43,15 @@ sound-related settings that can be used in the RC configuration:
     - **Description:** Determines whether to use a single SDL sound channel. If a single channel is used, only one sound
       can be played at a time.
     - **Value:** true or false
+    - **Default:** false
     - **Example:** `one_SDL_sound_channel = true`
+
+- **sound_fade_time**
+  - **Description:** Sets the fade-out time for sounds. This represents the time it takes for the sound to gradually
+    decrease in volume at the end. It only works when one_SDL_sound_channel is true
+  - **Value:** Number (in seconds)
+  - **Default:** 0.5
+  - **Example:** `sound_fade_time = 1.0`
 
 - **sound_pack**
     - **Description:** Adds the URL of the sound pack and the match file configuration within that sound pack.
@@ -84,7 +86,7 @@ sound_volume = 0.8 (default: 1)
 # Enable single SDL sound channel
 one_SDL_sound_channel = true (default: false)
 
-# Set sound fade-out time (in seconds, It only works when one_SDL_sound_channel is true)
+# Set sound fade-out time (in seconds)
 sound_fade_time = 1.0 (default: 0.5)
 
 # Add sound pack
