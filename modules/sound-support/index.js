@@ -81,12 +81,15 @@ export default class SoundSupport {
             for (const line of matches) {
                 if (line.includes('sound_file_path')) {
                     soundFilePath = line.split('=')[1].trim();
+                    if (soundFilePath.length > 0 && !soundFilePath.endsWith('/')) {
+                        soundFilePath += '/';
+                    }
                 } else {
                     try {
                         const config = line.split(/[+^]=/)[1].trim().split(/(?<!\\):/);
                         let [regex, path] = config;
                         regex = new RegExp(regex);
-                        path = soundFilePath + path.replaceAll('\\', '/');
+                        path = (soundFilePath + path).replaceAll('\\', '/');
                         matchData.push({regex, path});
                     } catch (e) {
                         console.error(`Invalid sound line: `, line, e);
