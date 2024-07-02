@@ -3,9 +3,14 @@
 The SoundSupport module provides sound functionality in a web tile environment. With this module, various sounds can be
 played within the game, and sound packs can be added through RC configuration.
 
-You can host a sound pack on your personal server that supports CORS, or you can use the /SoundSupport register command to register and use a sound pack.
+You can host a sound pack on your personal server that supports CORS, or you can use the /SoundSupport register command
+to register and use a sound pack.
+
+# RC example
 
 ```
+sound_on = true
+
 # BindTheEarth Sound Pack
 sound_pack += https://sound-packs.nemelex.cards/Autofire/BindTheEarth/BindTheEarth.zip
 
