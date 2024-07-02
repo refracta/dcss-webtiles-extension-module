@@ -245,6 +245,12 @@ export default class SoundSupport {
         });
         RCManager.watchers.push(async (msg, data) => {
             if (msg === 'play') {
+                const queue = [];
+                IOHook.handle_message.after.push(this.saveBeforeLoadingMsgs = (data) => {
+                    if (data.msg === 'msgs') {
+                        queue.push(data);
+                    }
+                });
                 await this.waitInputMode();
                 let {
                     soundOn, soundVolume, soundFadeTime, oneSDLSoundChannel, soundPackConfigList
@@ -301,31 +307,40 @@ export default class SoundSupport {
                 soundPackConfigList = soundPackConfigList.filter(config => config.soundPack);
                 let totalMegaBytes = totalBytes / (1024 * 1024);
                 this.sendMessage(`<cyan>[SoundSupport]</cyan> ${soundPackConfigList.length} sound pack (${Math.floor(totalMegaBytes * 10) / 10} MB), ${totalMatchData} match data loaded successfully.`);
-                IOHook.handle_message.after.push(this.soundHandler = async (data) => {
-                    if (data.msg === 'msgs' && data.messages) {
-                        const {messages} = data;
-                        for (const message of messages.filter(m => m.text)) {
-                            const rawText = message.text.replace(/<.+?>/g, '');
-                            for (const config of soundPackConfigList) {
-                                const {files, matchData} = config;
-                                const {path} = matchData.find(data => rawText.match(data.regex)) || {};
-                                if (path) {
-                                    let audioBuffer;
-                                    if (files[path].audioBuffer) {
-                                        audioBuffer = files[path].audioBuffer;
-                                    } else {
-                                        files[path].audioBuffer = audioBuffer = await this.soundManager.blobToAudioBuffer(files[path]);
-                                    }
-                                    if (oneSDLSoundChannel) {
-                                        this.soundManager.stop();
-                                    }
-                                    this.soundManager.play(audioBuffer);
-                                    break;
+                const handleSoundMessage = async (data) => {
+                    const {messages} = data;
+                    for (const message of messages.filter(m => m.text)) {
+                        const rawText = message.text.replace(/<.+?>/g, '');
+                        for (const config of soundPackConfigList) {
+                            const {files, matchData} = config;
+                            const {path} = matchData.find(data => rawText.match(data.regex)) || {};
+                            if (path) {
+                                let audioBuffer;
+                                if (files[path].audioBuffer) {
+                                    audioBuffer = files[path].audioBuffer;
+                                } else {
+                                    files[path].audioBuffer = audioBuffer = await this.soundManager.blobToAudioBuffer(files[path]);
                                 }
+                                if (oneSDLSoundChannel) {
+                                    this.soundManager.stop();
+                                }
+                                this.soundManager.play(audioBuffer);
+                                break;
                             }
                         }
                     }
+                }
+
+                IOHook.handle_message.after.push(this.soundHandler = async (data) => {
+                    if (data.msg === 'msgs' && data.messages) {
+                        handleSoundMessage(data);
+                    }
                 });
+                const index = IOHook.handle_message.after.indexOf(this.saveBeforeLoadingMsgs);
+                IOHook.handle_message.after.splice(index, 1);
+                for (const data of queue) {
+                    handleSoundMessage(data);
+                }
             } else if (msg === 'go_lobby') {
                 const index = IOHook.handle_message.after.indexOf(this.soundHandler);
                 IOHook.handle_message.after.splice(index, 1);
