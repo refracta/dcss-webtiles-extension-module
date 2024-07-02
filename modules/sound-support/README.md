@@ -17,7 +17,7 @@ sound_on = true
 sound_pack += https://sound-packs.nemelex.cards/Autofire/BindTheEarth/BindTheEarth.zip
 
 # Crawler's Sound Pack
-sound_pack += https://sound-packs.nemelex.cards/crawler/2018-03-27/DCSS.22.zip
+sound_pack += https://sound-packs.nemelex.cards/crawler/2018-03-27/DCSS.22.zip:["사운드 적용하는법.txt"]
 ```
 
 ## RC Configuration
