@@ -11,6 +11,7 @@ export default class IOHook {
 
         function handle_message_hooker() {
             const original_handle_message = handle_message;
+            const {IOHook} = DWEM.Modules;
             handle_message = function (msg) {
                 let cancel = false;
                 for (const handler of DWEM.Modules.IOHook.handle_message.before) {
@@ -32,6 +33,9 @@ export default class IOHook {
                     }
                 }
             }
+            handle_message.before = IOHook.handle_message.before;
+            handle_message.after = IOHook.handle_message.after;
+            IOHook.handle_message = handle_message;
         }
 
         const handleMessageMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${handle_message_hooker.toString()}()`);
@@ -39,6 +43,7 @@ export default class IOHook {
 
         function send_message_hooker() {
             const original_send_message = send_message;
+            const {IOHook} = DWEM.Modules;
             send_message = function (msg, data) {
                 let cancel = false;
                 for (const handler of DWEM.Modules.IOHook.send_message.before) {
@@ -60,6 +65,9 @@ export default class IOHook {
                     }
                 }
             }
+            send_message.before = IOHook.send_message.before;
+            send_message.after = IOHook.send_message.after;
+            IOHook.send_message = send_message;
         }
 
         const sendMessageMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${send_message_hooker.toString()}()`);
