@@ -53,8 +53,8 @@ sound-related settings that can be used in the RC configuration:
   - **Description:** Sets the fade-out time for sounds. This represents the time it takes for the sound to gradually
     decrease in volume at the end. It only works when one_SDL_sound_channel is true
   - **Value:** Number (in seconds)
-  - **Default:** 0.5
-  - **Example:** `sound_fade_time = 1.0`
+  - **Default:** 0
+  - **Example:** `sound_fade_time = 0.5`
 
 - **sound_pack**
     - **Description:** Adds the URL of the sound pack and the match file configuration within that sound pack.

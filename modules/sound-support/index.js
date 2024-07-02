@@ -457,7 +457,7 @@ export default class SoundSupport {
 
 
 class SoundManager {
-    constructor(options = {fadeTime: 0.5, volume: 1}) {
+    constructor(options = {fadeTime: 0, volume: 1}) {
         this.context = new AudioContext();
         this.fadeTime = options.fadeTime;
         this.volume = options.volume;
