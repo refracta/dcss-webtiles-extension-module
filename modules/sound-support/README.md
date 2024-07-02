@@ -78,16 +78,16 @@ Refer to the [options_guide](https://raw.githubusercontent.com/crawl/crawl/maste
 
 ```plaintext
 # Enable sound feature
-sound_on = true (default: false)
+sound_on = true
 
 # Set sound volume (between 0 and 1)
-sound_volume = 0.8 (default: 1)
+sound_volume = 0.8
 
 # Enable single SDL sound channel
-one_SDL_sound_channel = true (default: false)
+one_SDL_sound_channel = true
 
 # Set sound fade-out time (in seconds)
-sound_fade_time = 1.0 (default: 0.5)
+sound_fade_time = 1.0
 
 # Add sound pack
 sound_pack += https://example.com/soundpack.zip:["match1.txt", "match2.txt"]
