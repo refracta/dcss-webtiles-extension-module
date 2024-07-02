@@ -242,7 +242,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         <br>
                         For account or server issues, contact ASCIIPhilia on <a href="https://discord.com/invite/mNcPSDendT">Server Discord</a>.
                         <br>
-                        7/2 Update: Try using the <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a> module added to the <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a>!
+                        7/2 Update: Try the new <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a> module <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a>!
                     </p>
                     <script>
                         DWEM.Modules.CNCBanner.updateLatencyText();
