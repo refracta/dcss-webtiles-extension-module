@@ -58,6 +58,20 @@ sound-related settings that can be used in the RC configuration:
     - **Explanation:** After the URL, the match file configuration is in JSON array format, specifying specific match
       files within the sound pack. If no match files are specified, all text files within the sound pack are used.
 
+A sound pack is a compressed format that includes configuration settings in the form of an init.txt file and the associated sound files used in the downloaded version of Crawl. For example:
+```plaintext
+init.txt
+sound/quit.mp3
+sound/hit.mp3
+```
+```plaintext
+[init.txt]
+sound ^= quit:sound/quit.mp3
+sound_file_path = sound/
+sound ^= hit:hit.mp3
+```
+Refer to the [options_guide](https://raw.githubusercontent.com/crawl/crawl/master/crawl-ref/docs/options_guide.txt)
+
 ### Example Configuration
 
 ```plaintext
