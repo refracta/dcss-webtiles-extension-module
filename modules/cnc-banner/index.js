@@ -197,7 +197,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             <br>
             계정 또는 서버 문제의 경우, <a href="https://discord.com/invite/mNcPSDendT">서버 디스코드</a>에서 ASCIIPhilia에게 문의할 수 있습니다.
             <br>
-            7/2 업데이트: <a href="https://github.com/refracta/dcss-webtiles-extension-module"></a>에 추가된 <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a> 모듈을 사용해보세요!
+            7/2 업데이트: <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a>에 추가된 <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a> 모듈을 사용해보세요!
         </p>
         <script>
             DWEM.Modules.CNCBanner.updateLatencyText();
@@ -242,7 +242,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         <br>
                         For account or server issues, contact ASCIIPhilia on <a href="https://discord.com/invite/mNcPSDendT">Server Discord</a>.
                         <br>
-                        7/2 Update: Try using the [SoundSupport](https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md) module added to the [dcss-webtiles-extension-module](https://github.com/refracta/dcss-webtiles-extension-module)!
+                        7/2 Update: Try using the <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a> module added to the <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a>!
                     </p>
                     <script>
                         DWEM.Modules.CNCBanner.updateLatencyText();
