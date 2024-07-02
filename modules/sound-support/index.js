@@ -218,12 +218,22 @@ export default class SoundSupport {
                             } catch (error) {
                                 this.sendChatMessage(`<b>[SoundSupport]</b> Error clearing sound packs: ${error.message}`);
                             }
+                        } else if (args[1] === 'volume') {
+                            const newVolume = parseFloat(args[2]);
+                            if (!isNaN(newVolume) && newVolume >= 0 && newVolume <= 1) {
+                                this.soundManager.volume = newVolume;
+                                this.sendChatMessage(`<b>[SoundSupport]</b> Sound volume set to ${newVolume}`);
+                            } else {
+                                this.sendChatMessage(`<b>[SoundSupport]</b> Invalid volume value. Please provide a number between 0 and 1.`);
+                            }
                         } else {
                             this.sendChatMessage(`<b>[SoundSupport v${SoundSupport.version}]</b><br>
-                        /SoundSupport list: List all local sound packs<br>
-                        /SoundSupport register: Register local sound pack<br>
-                        /SoundSupport remove [URL]: Remove local sound pack<br>
-                        /SoundSupport clear: Clear all local sound packs`);
+                                /SoundSupport list: List all local sound packs<br>
+                                /SoundSupport register: Register local sound pack<br>
+                                /SoundSupport remove [URL]: Remove local sound pack<br>
+                                /SoundSupport clear: Clear all local sound packs<br>
+                                /SoundSupport volume [0-1]: Set sound volume
+                            `);
                         }
                     })();
                     return true;

@@ -6,7 +6,7 @@ played within the game, and sound packs can be added through RC configuration.
 You can host a sound pack on your personal server that supports CORS, or you can use the /SoundSupport register command
 to register and use a sound pack.
 
- - [CNC Server Sound Pack Archive](https://sound-packs.nemelex.cards)
+- [CNC Server Sound Pack Archive](https://sound-packs.nemelex.cards)
 
 # RC example
 
@@ -86,4 +86,5 @@ Various functions can be accessed in the game chat window using the /SoundSuppor
 /SoundSupport register: Registers a local sound pack. A file selection window will open, and the selected zip file will be registered as a sound pack.
 /SoundSupport remove [URL]: Removes the local sound pack from the specified URL.
 /SoundSupport clear: Removes all local sound packs.
+/SoundSupport volume [0-1]: Set sound volume
 ```
