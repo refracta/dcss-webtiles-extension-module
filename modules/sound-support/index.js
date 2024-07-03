@@ -5,7 +5,7 @@ import JSZip from 'https://cdn.skypack.dev/jszip';
 export default class SoundSupport {
     static name = 'SoundSupport';
     static version = '0.1';
-    static dependencies = ['RCManager', 'IOHook'];
+    static dependencies = ['RCManager', 'IOHook', 'SiteInformation'];
     static description = '(Beta) This module implements sound features in the webtiles environment. You can use it by adding a sound pack to the RC configuration.';
 
     constructor() {
@@ -183,7 +183,7 @@ export default class SoundSupport {
     }
 
     onLoad() {
-        const {RCManager, IOHook} = DWEM.Modules;
+        const {RCManager, IOHook, SiteInformation} = DWEM.Modules;
 
         // TODO: Migrate to CommandManager
         IOHook.send_message.before.push((msg, data) => {
@@ -330,20 +330,24 @@ export default class SoundSupport {
                         }
                     }
                 }
-
-                IOHook.handle_message.after.push(this.soundHandler = async (data) => {
-                    if (data.msg === 'msgs' && data.messages) {
-                        handleSoundMessage(data);
-                    }
-                });
                 const index = IOHook.handle_message.after.indexOf(this.saveBeforeLoadingMsgs);
                 IOHook.handle_message.after.splice(index, 1);
-                for (const data of queue) {
-                    handleSoundMessage(data);
+
+                if (SiteInformation.current_hash !== '#lobby') {
+                    IOHook.handle_message.after.push(this.soundHandler = async (data) => {
+                        if (data.msg === 'msgs' && data.messages) {
+                            handleSoundMessage(data);
+                        }
+                    });
+                    for (const data of queue) {
+                        handleSoundMessage(data);
+                    }
                 }
             } else if (msg === 'go_lobby') {
                 const index = IOHook.handle_message.after.indexOf(this.soundHandler);
-                IOHook.handle_message.after.splice(index, 1);
+                if (index > -1) {
+                    IOHook.handle_message.after.splice(index, 1);
+                }
             }
         });
     }
