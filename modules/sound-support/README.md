@@ -16,12 +16,6 @@ sound_on = true
 # CNC Open Sound Pack
 sound_pack += https://osp.nemelex.cards/build/latest.zip:["init.txt"]
 
-# Crawler's Sound Pack (Original)
-sound_pack += https://sound-packs.nemelex.cards/crawler/2018-03-27/DCSS.22.zip:["사운드 적용하는법.txt"]
-
-# Crawler's Sound Pack (Original + Zin Sermon)
-sound_pack += https://sound-packs.nemelex.cards/crawler/2018-03-27/DCSS.22.zip
-
 # BindTheEarth Sound Pack
 sound_pack += https://sound-packs.nemelex.cards/Autofire/BindTheEarth/BindTheEarth.zip
 ```
