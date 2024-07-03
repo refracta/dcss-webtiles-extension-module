@@ -13,6 +13,9 @@ to register and use a sound pack.
 ```
 sound_on = true
 
+# CNC Open Sound Pack
+sound_pack += https://osp.nemelex.cards/build/latest.zip:["init.txt"]
+
 # Crawler's Sound Pack (Original)
 sound_pack += https://sound-packs.nemelex.cards/crawler/2018-03-27/DCSS.22.zip:["사운드 적용하는법.txt"]
 
@@ -107,3 +110,45 @@ Various functions can be accessed in the game chat window using the /SoundSuppor
 /SoundSupport clear: Removes all local sound packs.
 /SoundSupport volume [0-1]: Set sound volume
 ```
+
+# CNC Open Sound Pack
+We are initiating a project to develop a new sound patch for Webtiles. The current sound patch (Crawler's Sound Patch) has not been updated since version 0.22 and does not reflect recent monsters. We aim to update and enhance it with your participation.
+
+## How to Contribute
+
+### 1. Uploading Sound Files
+
+Visit the CNC server's Open Sound Pack page to upload sound files. The page allows you to select and upload up to 20 sound files (MP3 or WAV format) at a time. Each file should be no larger than 5MB, and each IP can upload up to 20 files per hour.
+
+For those who wish to contribute more extensively, an unlimited upload limit can be granted upon request. Please contact us via the CNC server contact information to obtain an authorization code.
+
+Once uploaded, you will receive an accessible link for each file. You can also check all uploaded files by clicking on "View Uploaded Files."
+
+### 2. Editing the Sound Pack List
+
+Access the [CNC Open Sound Pack sheet](https://docs.google.com/spreadsheets/d/1ePlT10S0uyhqyBm4bZixnGSkfnHmcfUa8JViuDqE0Ow/edit?gid=155014829#gid=155014829). This sheet allows you to edit the list of files to be included in the sound patch.
+
+Based on the contents of this sheet, a ZIP file of the sound pack will be automatically built. The process is as follows:
+
+1. Automatically generates RC match syntax (`sound ^= REGEX:PATH`) based on the REGEX and PATH columns.
+2. Adds the generated RC match syntax to the RCFILE.
+3. The SOUND link should be in the format `https://osp.nemelex.cards/uploads/*.mp3|wav`, and the corresponding file will be automatically inserted into the ZIP file's PATH.
+
+The sheet is editable by anyone, and by clicking the [real-time build request URL](https://osp.nemelex.cards/request-build) and waiting a bit, the sound pack will be built and available at: `https://osp.nemelex.cards/build/latest.zip`
+
+To use this link in RC, add: `sound_pack += https://osp.nemelex.cards/build/latest.zip`
+
+This allows everyone to use the collaboratively created sound pack. The webtiles sound pack is designed to be compatible with offline sound settings, so it can be used in offline versions as well.
+
+## Notes and Guidelines
+
+- The current Open Sound Pack sheet data is based on Crawler's 22 version sound pack.
+- Most of the incorrect data has been corrected during my review.
+- Entries labeled as `NEED_PATH_INFO` only have REGEX added by Crawler without the sound file. Please add appropriate files if possible.
+- While WAV and MP3 file uploads are supported, please use MP3 files to reduce file size. I've converted all WAV files to MP3 (192kbps), reducing the size to 1/4, which is better for frequent web use.
+- Avoid uploading duplicate files to prevent unnecessary increases in file size.
+- Fill in the UPLOADER, SOURCE, and NOTE columns to facilitate collaboration.
+- The basic part of Crawler's sound patch is set in `init.txt`, and the traditional sermon sound patch part is set in `zin.txt`. For DWEM users, using `sound_pack += URL:["init.txt"]` will apply only the basic patch. If the RCFILE list is not manually specified, the sermon patch will also be applied.
+- The Webtiles SoundSupport module uses locally stored sound patches after downloading from the URL. To update, use the `/SoundSupport clear` command, refresh, and download the new patch.
+
+Let's work together to create a new, updated sound patch for Webtiles!
