@@ -148,7 +148,7 @@ This allows everyone to use the collaboratively created sound pack. The webtiles
 - While WAV and MP3 file uploads are supported, please use MP3 files to reduce file size. I've converted all WAV files to MP3 (192kbps), reducing the size to 1/4, which is better for frequent web use.
 - Avoid uploading duplicate files to prevent unnecessary increases in file size.
 - Fill in the UPLOADER, SOURCE, and NOTE columns to facilitate collaboration.
-- The basic part of Crawler's sound patch is set in `init.txt`, and the traditional sermon sound patch part is set in `zin.txt`. For DWEM users, using `sound_pack += URL:["init.txt"]` will apply only the basic patch. If the RCFILE list is not manually specified, the sermon patch will also be applied.
+- The basic part of Crawler's sound patch is set in `init.txt`, and the Zin's sermon sound patch part is set in `zin.txt`. For DWEM users, using `sound_pack += URL:["init.txt"]` will apply only the basic patch. If the RCFILE list is not manually specified, the sermon patch will also be applied.
 - The Webtiles SoundSupport module uses locally stored sound patches after downloading from the URL. To update, use the `/SoundSupport clear` command, refresh, and download the new patch.
 
 Let's work together to create a new, updated sound patch for Webtiles!
