@@ -118,7 +118,7 @@ We are initiating a project to develop a new sound patch for Webtiles. The curre
 
 ### 1. Uploading Sound Files
 
-Visit the CNC server's Open Sound Pack page to upload sound files. The page allows you to select and upload up to 20 sound files (MP3 or WAV format) at a time. Each file should be no larger than 5MB, and each IP can upload up to 20 files per hour.
+Visit the CNC server's [Open Sound Pack page](https://osp.nemelex.cards/) to upload sound files. The page allows you to select and upload up to 20 sound files (MP3 or WAV format) at a time. Each file should be no larger than 5MB, and each IP can upload up to 20 files per hour.
 
 For those who wish to contribute more extensively, an unlimited upload limit can be granted upon request. Please contact us via the CNC server contact information to obtain an authorization code.
 
