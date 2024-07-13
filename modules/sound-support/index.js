@@ -314,7 +314,7 @@ export default class SoundSupport {
                         for (const config of soundPackConfigList) {
                             const {files, matchData} = config;
                             const {path} = matchData.find(data => rawText.match(data.regex)) || {};
-                            if (path) {
+                            if (files[path]) {
                                 let audioBuffer;
                                 if (files[path].audioBuffer) {
                                     audioBuffer = files[path].audioBuffer;
@@ -326,6 +326,8 @@ export default class SoundSupport {
                                 }
                                 this.soundManager.play(audioBuffer);
                                 break;
+                            } else {
+                                console.error('No match file:', data);
                             }
                         }
                     }
