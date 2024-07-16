@@ -326,7 +326,7 @@ export default class SoundSupport {
                                 }
                                 this.soundManager.play(audioBuffer);
                                 break;
-                            } else {
+                            } else if (path) {
                                 console.error('No match file:', data);
                             }
                         }
