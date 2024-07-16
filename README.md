@@ -11,7 +11,18 @@ dcss-webtiles-extension-module (DWEM)은 던전 크롤 스톤 수프 웹 타일�
 [Tampermonkey](https://www.tampermonkey.net), [Greasemonkey](https://www.greasespot.net) 등의 스크립트 관리자 설치
 후, `loader/dwem-base-loader.js`를 설치합니다.
 
-[Greasy Fork](https://greasyfork.org/ko/scripts/493267-dcss-webtiles-extension-module-loader)
+[Greasy Fork (loader/dwem-base-loader.js)](https://greasyfork.org/ko/scripts/493267-dcss-webtiles-extension-module-loader)
+
+설치 한 뒤, 스크립트의 아래 부분을 다음과 같이 변경합니다.
+```js
+// localStorage.DWEM_MODULES = JSON.stringify(['https://example.org/module.js', ...]);
+```
+```js
+// Example
+localStorage.DWEM_MODULES = JSON.stringify(
+    ["io-hook", "site-information", "websocket-factory", "rc-manager", "module-manager", "sound-support"].map(m => "../modules/" + m + "/index.js")
+);
+```
 
 경고: CNC 서버에는 이미 DWEM이 적용되어 있으며(따라서 이미 적용된 모듈들을 그냥 바로 이용할 수 있습니다), 이것은 DWEM이 미적용된 서버에서 DWEM을 사용하기 위해서 해야하는 일입니다.
 
