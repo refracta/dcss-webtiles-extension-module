@@ -14,7 +14,7 @@ export default class IOHook {
             const {IOHook} = DWEM.Modules;
             handle_message = function (msg) {
                 let cancel = false;
-                for (const handler of DWEM.Modules.IOHook.handle_message.before) {
+                for (const handler of IOHook.handle_message.before) {
                     try {
                         cancel = cancel || handler(msg);
                     } catch (e) {
@@ -25,7 +25,7 @@ export default class IOHook {
                     return;
                 }
                 original_handle_message(msg);
-                for (const handler of DWEM.Modules.IOHook.handle_message.after) {
+                for (const handler of IOHook.handle_message.after) {
                     try {
                         handler(msg);
                     } catch (e) {
