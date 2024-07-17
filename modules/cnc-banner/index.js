@@ -167,6 +167,85 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         $('#latency').css('color', color);
     }
 
+    #getTimeRemaining(endTime) {
+        const total = Date.parse(endTime) - Date.parse(new Date());
+        const seconds = Math.floor((total / 1000) % 60);
+        const minutes = Math.floor((total / 1000 / 60) % 60);
+        const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
+        const days = Math.floor(total / (1000 * 60 * 60 * 24));
+        return {
+            total,
+            days,
+            hours,
+            minutes,
+            seconds
+        };
+    }
+
+    startUpdateTournamentInfo() {
+        if (!this.updateTournamentKey) {
+            this.updateTournamentKey = setInterval(() => {
+                const tag = document.getElementById('tournament-info');
+                if (tag) {
+                    tag.innerHTML = this.getTournamentInfo();
+                }
+            }, 1000);
+        }
+    }
+
+    getTournamentInfo() {
+        const startUTC = new Date(Date.UTC(2024, 7, 16, 8, 0, 0));
+        const endUTC = new Date(Date.UTC(2024, 7, 30, 8, 0, 0));
+        const now = new Date();
+        const sevenDays = 7 * 24 * 60 * 60 * 1000;
+
+        const version = '0.32';
+        const url = `https://crawl.develz.org/tournament/${version}/`;
+        const options = {
+            month: 'long', day: 'numeric',
+            hour: 'numeric', minute: 'numeric'
+        };
+
+        const userLang = navigator.language || navigator.userLanguage;
+        const isKorean = userLang.startsWith('ko');
+        const locales = isKorean ? 'ko' : 'en';
+        const startLocal = startUTC.toLocaleString(locales, options);
+        const endLocal = endUTC.toLocaleString(locales, options);
+        let message = '';
+
+        const startTimeRemaining = this.#getTimeRemaining(startUTC).total;
+        const endTimeRemaining = this.#getTimeRemaining(endUTC).total;
+        if (isKorean) {
+            message += `🏆 <a href="${url}">${version} 토너먼트</a>가 ${startLocal}부터 ${endLocal}까지 진행됩니다! `;
+            if (startTimeRemaining > 0 && startTimeRemaining <= sevenDays) {
+                const timeToStart = this.#getTimeRemaining(startUTC);
+                message += `(시작까지 ${timeToStart.days}일 ${timeToStart.hours}시간 ${timeToStart.minutes}분 남음)`;
+            } else if (now >= startUTC && now < endUTC) {
+                const timeToEnd = this.#getTimeRemaining(endUTC);
+                message += `(종료까지 ${timeToEnd.days}일 ${timeToEnd.hours}시간 ${timeToEnd.minutes}분 남음)`;
+            } else if (Math.abs(endTimeRemaining) <= sevenDays && endTimeRemaining < 0) {
+                message = `🏆 <a href="${url}">${version} 토너먼트</a>가 종료되었습니다. 모두 고생하셨습니다!`;
+            } else {
+                message = '';
+            }
+        } else {
+            message += `🏆 <a href="${url}">${version} Tournament</a> runs from ${startLocal} to ${endLocal}. `;
+            if (startTimeRemaining > 0 && startTimeRemaining <= sevenDays) {
+                const timeToStart = this.#getTimeRemaining(startUTC);
+                message += `(Starts in ${timeToStart.days} days ${timeToStart.hours} hours ${timeToStart.minutes} minutes)`;
+            } else if (now >= startUTC && now < endUTC) {
+                const timeToEnd = this.#getTimeRemaining(endUTC);
+                message += `(Ends in ${timeToEnd.days} days ${timeToEnd.hours} hours ${timeToEnd.minutes} minutes)`;
+            } else if (Math.abs(endTimeRemaining) <= sevenDays && endTimeRemaining < 0) {
+                message = `🏆 <a href="${url}">${version} Tournament</a> has ended. Thank you for participating.`;
+            } else {
+                message = '';
+            }
+        }
+        return message;
+    }
+
+
     getKoreanBanner(current_user) {
         return `
         <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a> <a title="서버 지연 시간입니다. 다시 측정하려면 클릭하세요." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)">(<span id="latency">?</span> MS)</a>
@@ -198,9 +277,12 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             계정 또는 서버 문제의 경우, <a href="https://discord.com/invite/mNcPSDendT">서버 디스코드</a>에서 ASCIIPhilia에게 문의할 수 있습니다.
             <br>
             7/2 업데이트: <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a>에 추가된 <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a> 모듈을 사용해보세요!
+            <br>            
+            <span id="tournament-info">${this.getTournamentInfo()}</span>
         </p>
         <script>
             DWEM.Modules.CNCBanner.updateLatencyText();
+            DWEM.Modules.CNCBanner.startUpdateTournamentInfo();
         </script>
         ${current_user ? `
         <p>
@@ -243,9 +325,12 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         For account or server issues, contact ASCIIPhilia on <a href="https://discord.com/invite/mNcPSDendT">Server Discord</a>.
                         <br>
                         7/2 Update: Try the new <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a> module <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a>!
+                        <br>            
+                        <span id="tournament-info">${this.getTournamentInfo()}</span>
                     </p>
                     <script>
                         DWEM.Modules.CNCBanner.updateLatencyText();
+                        DWEM.Modules.CNCBanner.startUpdateTournamentInfo();
                     </script>
                     ${current_user ? `
                     <p>
