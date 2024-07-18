@@ -18,7 +18,6 @@ dcss-webtiles-extension-module (DWEM)은 던전 크롤 스톤 수프 웹 타일�
 // localStorage.DWEM_MODULES = JSON.stringify(['https://example.org/module.js', ...]);
 ```
 ```js
-// Example
 localStorage.DWEM_MODULES = JSON.stringify(
     ["io-hook", "site-information", "websocket-factory", "rc-manager", "module-manager", "sound-support"].map(m => "../modules/" + m + "/index.js")
 );
