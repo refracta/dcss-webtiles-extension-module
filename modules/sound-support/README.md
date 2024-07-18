@@ -9,13 +9,19 @@ to register and use a sound pack.
 - [CNC Server Sound Pack Archive](https://sound-packs.nemelex.cards)
 
 # RC example
-
-```
+```bash
+# Recommended settings
 sound_on = true
+sound_pack += https://osp.nemelex.cards/build/latest.zip:["init.txt"]
+one_SDL_sound_channel = true
+sound_fade_time = 0.5
+```
 
+```bash
+# OSP + BindTheEarth example settings
+sound_on = true
 # CNC Open Sound Pack
 sound_pack += https://osp.nemelex.cards/build/latest.zip:["init.txt"]
-
 # BindTheEarth Sound Pack
 sound_pack += https://sound-packs.nemelex.cards/Autofire/BindTheEarth/BindTheEarth.zip
 ```
