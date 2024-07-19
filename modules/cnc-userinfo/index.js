@@ -88,13 +88,13 @@ class UserDropdown extends HTMLDivElement {
         const lowerUsername = realUsername.toLowerCase();
         this.dropdownContent.innerHTML = `
             <div style="font-weight: bold"><a href="#watch-${realUsername}" target="_blank">${realUsername}${isAdmin ? ' (ADMIN)' : ''}</a></div>
-            <div><a href="https://dcss-stats.vercel.app/players/${realUsername}" target="_blank"">DCSS Stats</a></div>
-            <div><a onclick="DWEM.Modules.CNCUserinfo.openTournamentPage('${lowerUsername}');" target="_blank">Latest Tournament</a></div>
             <div><a href="https://crawl.akrasiac.org/scoring/players/${lowerUsername}.html" target="_blank">CAO Scoreboard</a></div>
             <div><a href="https://crawl.montres.org.uk/players/${lowerUsername}.html" target="_blank">Stoat Soup Scoreboard</a></div>
             <div><a href="https://gooncrawl.montres.org.uk/players/${lowerUsername}.html" target="_blank">GoonCrawl Scoreboard</a></div>
             <div><a href="https://bcadrencrawl.montres.org.uk/players/${lowerUsername}.html" target="_blank">BcadrenCrawl Scoreboard</a></div>
             <div><a href="https://bcrawl.montres.org.uk/players/${lowerUsername}.html" target="_blank">B-Crawl Scoreboard</a></div>
+            <div><a onclick="DWEM.Modules.CNCUserinfo.openTournamentPage('${lowerUsername}');" target="_blank">Latest Tournament</a></div>
+            <div><a href="https://dcss-stats.vercel.app/players/${realUsername}" target="_blank"">DCSS Stats</a></div>
             <div><a href="https://archive.nemelex.cards/morgue/${realUsername}" target="_blank"">CNC - morgue</a></div>
             <div><a href="https://archive.nemelex.cards/ttyrec/${realUsername}" target="_blank"">CNC - ttyrec</a></div>
         `;
