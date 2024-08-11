@@ -167,8 +167,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         $('#latency').css('color', color);
     }
 
-    #getTimeRemaining(endTime) {
-        const total = Date.parse(endTime) - Date.parse(new Date());
+    #getTimeRemaining(endTime, currentTime) {
+        const total = Date.parse(endTime) - Date.parse(currentTime);
         const seconds = Math.floor((total / 1000) % 60);
         const minutes = Math.floor((total / 1000 / 60) % 60);
         const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
@@ -194,8 +194,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     }
 
     getTournamentInfo() {
-        const startUTC = new Date(Date.UTC(2024, 7, 16, 8, 0, 0));
-        const endUTC = new Date(Date.UTC(2024, 7, 30, 8, 0, 0));
+        const startUTC = new Date(Date.UTC(2024, 7, 30, 8, 0, 0));
+        const endUTC = new Date(Date.UTC(2024, 8, 15, 8, 0, 0));
         const now = new Date();
         const sevenDays = 7 * 24 * 60 * 60 * 1000;
 
@@ -213,15 +213,15 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         const endLocal = endUTC.toLocaleString(locales, options);
         let message = '';
 
-        const startTimeRemaining = this.#getTimeRemaining(startUTC).total;
-        const endTimeRemaining = this.#getTimeRemaining(endUTC).total;
+        const startTimeRemaining = this.#getTimeRemaining(startUTC, now).total;
+        const endTimeRemaining = this.#getTimeRemaining(endUTC, now).total;
         if (isKorean) {
             message += `🏆 <a href="${url}">${version} 토너먼트</a>가 ${startLocal}부터 ${endLocal}까지 진행됩니다! `;
             if (startTimeRemaining > 0 && startTimeRemaining <= sevenDays) {
-                const timeToStart = this.#getTimeRemaining(startUTC);
+                const timeToStart = this.#getTimeRemaining(startUTC, now);
                 message += `(시작까지 ${timeToStart.days}일 ${timeToStart.hours}시간 ${timeToStart.minutes}분 남음)`;
             } else if (now >= startUTC && now < endUTC) {
-                const timeToEnd = this.#getTimeRemaining(endUTC);
+                const timeToEnd = this.#getTimeRemaining(endUTC, now);
                 message += `(종료까지 ${timeToEnd.days}일 ${timeToEnd.hours}시간 ${timeToEnd.minutes}분 남음)`;
             } else if (Math.abs(endTimeRemaining) <= sevenDays && endTimeRemaining < 0) {
                 message = `🏆 <a href="${url}">${version} 토너먼트</a>가 종료되었습니다. 모두 고생하셨습니다!`;
@@ -231,10 +231,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         } else {
             message += `🏆 <a href="${url}">${version} Tournament</a> runs from ${startLocal} to ${endLocal}. `;
             if (startTimeRemaining > 0 && startTimeRemaining <= sevenDays) {
-                const timeToStart = this.#getTimeRemaining(startUTC);
+                const timeToStart = this.#getTimeRemaining(startUTC, now);
                 message += `(Starts in ${timeToStart.days} days ${timeToStart.hours} hours ${timeToStart.minutes} minutes)`;
             } else if (now >= startUTC && now < endUTC) {
-                const timeToEnd = this.#getTimeRemaining(endUTC);
+                const timeToEnd = this.#getTimeRemaining(endUTC, now);
                 message += `(Ends in ${timeToEnd.days} days ${timeToEnd.hours} hours ${timeToEnd.minutes} minutes)`;
             } else if (Math.abs(endTimeRemaining) <= sevenDays && endTimeRemaining < 0) {
                 message = `🏆 <a href="${url}">${version} Tournament</a> has ended. Thank you for participating.`;
