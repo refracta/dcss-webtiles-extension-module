@@ -109,6 +109,13 @@ export default class CNCPublicChat {
             reset_visibility(true);
             reset_visibility = function (in_game) {
             }
+
+            const originalClear = clear;
+            clear = function () {
+                if (DWEM.Modules.SiteInformation.current_hash !== '#lobby') {
+                    originalClear();
+                }
+            }
             DWEM.Modules.CNCPublicChat.focus = focus;
             DWEM.Modules.CNCPublicChat.toggle = toggle;
             DWEM.Modules.CNCPublicChat.toggle_entire_chat = toggle_entire_chat;
@@ -155,6 +162,18 @@ export default class CNCPublicChat {
                     CNCUserinfo.patchUpdateSpectators(data);
                     this.lastSpectatorsData = data;
                     CNCPublicChat.update_spectators(data);
+                } else if (data.msg === 'watching_started') {
+                    CNCPublicChat.receive_message({
+                        msg: 'chat',
+                        content: `<span class="chat_sender">[Connected to ${this.botName}]</span> <span class="chat_msg">When you chat in the lobby or enter a message after a space character, it will be sent to the public chat.</span>`
+                    });
+                } else if (data.msg === 'go_lobby') {
+                    CNCPublicChat.receive_message({
+                        msg: 'chat',
+                        content: `<span class="chat_sender">[Disconnected from ${this.botName}]</span> <span class="chat_msg">Reconnecting automatically when possible.</span>`
+                    });
+                } else if (data.msg === 'lobby_entry' && data.username === this.botName) {
+                    this.socket.send(JSON.stringify({msg: 'watch', username: this.botName}));
                 }
             });
             this.socket.onopen = (event) => {

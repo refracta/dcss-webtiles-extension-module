@@ -102,9 +102,12 @@ while (true) {
                 console.log(new Date(), 'login_success!');
                 socket.play('dcss-0.31-sprint');
                 while (socket.readyState === WebSocket.OPEN) {
-                    socket.key(-99999);
-                    console.log(new Date(), 'send key: -99999');
-                    await new Promise(resolve => setTimeout(resolve, 1000 * 60));
+                    socket.key('?'.charCodeAt(0));
+                    console.log(new Date(), 'send key: ?');
+                    await new Promise(resolve => setTimeout(resolve, 1000 * 30));
+                    socket.key(27);
+                    console.log(new Date(), 'send key: ESC');
+                    await new Promise(resolve => setTimeout(resolve, 1000 * 30));
                 }
             }
 
