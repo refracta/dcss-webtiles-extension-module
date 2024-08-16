@@ -1,0 +1,25 @@
+{
+  "name": "cnc-public-chat-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/refracta/dcss-webtiles-extension-module.git"
+  },
+  "author": "refracta",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/refracta/dcss-webtiles-extension-module/issues"
+  },
+  "homepage": "https://github.com/refracta/dcss-webtiles-extension-module#readme",
+  "type": "module",
+  "dependencies": {
+    "discord.js": "^14.15.3",
+    "jsdom": "^24.1.1",
+    "websocket": "^1.0.35"
+  }
+}

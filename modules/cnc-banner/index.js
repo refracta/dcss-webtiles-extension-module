@@ -126,14 +126,14 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         const {before, after} = IOHook.handle_message;
         this.sarangbang = !this.sarangbang;
         if (this.sarangbang) {
-            before.push(this.ignoreGameEnded);
-            after.push(this.handleGoLobby);
+            before.addHandler('cnc-banner-sarangbang', this.ignoreGameEnded);
+            after.addHandler('cnc-banner-sarangbang', this.handleGoLobby);
             await this.goSarangbang();
         } else {
             $('#sarangbang').css('color', '');
             $('#sarangbang-second').text('');
-            before.splice(before.indexOf(this.ignoreGameEnded), 1);
-            after.splice(before.indexOf(this.handleGoLobby), 1);
+            before.removeHandler('cnc-banner-sarangbang');
+            after.removeHandler('cnc-banner-sarangbang');
         }
     }
 
@@ -347,7 +347,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     onLoad() {
         const {IOHook, SiteInformation} = DWEM.Modules;
         const userLang = navigator.language || navigator.userLanguage;
-        IOHook.handle_message.before.push((data) => {
+        IOHook.handle_message.before.addHandler('cnc-banner', (data) => {
             if (data.msg === 'html' && data.id === 'banner') {
                 const {current_user} = SiteInformation;
                 if (userLang.startsWith('ko')) {

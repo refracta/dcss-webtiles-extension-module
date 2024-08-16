@@ -74,6 +74,9 @@ export default class WebSocketFactory {
         return socket;
     }
 
+    ready = new Promise(resolve => {
+        this.readyResolver = resolve;
+    });
     onLoad() {
         const {SourceMapperRegistry: SMR, MatcherRegistry: MR} = DWEM;
 
@@ -83,6 +86,7 @@ export default class WebSocketFactory {
             WebSocketFactory.get_login_cookie = get_login_cookie;
             WebSocketFactory.set_login_cookie = set_login_cookie;
             WebSocketFactory.decode_utf8 = decode_utf8;
+            DWEM.Modules.WebSocketFactory.readyResolver();
         }
 
         const clientMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${clientInjectSource.toString()}()`);

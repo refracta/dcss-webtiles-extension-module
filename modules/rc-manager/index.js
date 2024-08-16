@@ -3,7 +3,20 @@ export default class RCManager {
     static version = '1.0'
     static dependencies = ['IOHook', 'WebSocketFactory']
     static description = '(Library) This module provides features for creating custom RC trigger logic.'
-    watchers = []
+    handlers = []
+
+    addHandler(identifier, handler, priority = 0) {
+        this.handlers.push({identifier, handler, priority});
+        this.handlers.sort((h1, h2) => h1.priority - h2.priority);
+    }
+
+    removeHandler(identifier) {
+        for (let i = this.handlers.length - 1; i >= 0; i--) {
+            if (this.handlers[i].identifier === identifier) {
+                this.handlers.splice(i, 1);
+            }
+        }
+    }
 
     get_rc(game_id) {
         const {WebSocketFactory} = DWEM.Modules;
@@ -25,23 +38,23 @@ export default class RCManager {
 
     onLoad() {
         const {IOHook} = DWEM.Modules;
-        IOHook.send_message.after.push(async (msg, data) => {
+        IOHook.send_message.after.addHandler('rc-manager', async (msg, data) => {
             if (msg === 'play') {
                 const rc = await this.get_rc(data.game_id);
-                for (const watcher of this.watchers) {
+                for (const {handler} of this.handlers) {
                     try {
-                        watcher(msg, rc);
+                        handler(msg, rc);
                     } catch (e) {
                         console.error(e);
                     }
                 }
             }
         });
-        IOHook.handle_message.after.push(async (data) => {
+        IOHook.handle_message.after.addHandler('rc-manager', async (data) => {
             if (data.msg === 'go_lobby') {
-                for (const watcher of this.watchers) {
+                for (const {handler} of this.handlers) {
                     try {
-                        watcher(data.msg);
+                        handler(data.msg);
                     } catch (e) {
                         console.error(e);
                     }

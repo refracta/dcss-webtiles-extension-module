@@ -125,24 +125,28 @@ export default class CNCUserinfo {
         window.open(`https://crawl.develz.org/tournament/${localStorage.LATE_TOURNAMENT_VERSION}/players/${username}.html`, '_blank');
     }
 
+    patchUpdateSpectators(data) {
+        if (data.msg === 'update_spectators') {
+            const container = document.createElement('div');
+            container.innerHTML = data.names;
+            const anchors = container.querySelectorAll('a');
+            for (const anchor of anchors) {
+                anchor.href = 'javascript:void(0);'
+                anchor.setAttribute('onclick', `DWEM.Modules.CNCUserinfo.open('${anchor.textContent}', event);`);
+                anchor.textContent = anchor.textContent.replaceAll(' (admin)', '');
+                anchor.removeAttribute('target');
+            }
+            data.names = container.innerHTML;
+        }
+    }
+
     onLoad() {
         this.userDropdown = new UserDropdown();
         document.body.appendChild(this.userDropdown);
 
         const {IOHook} = DWEM.Modules;
-        IOHook.handle_message.before.push((data) => {
-            if (data.msg === 'update_spectators') {
-                const container = document.createElement('div');
-                container.innerHTML = data.names;
-                const anchors = container.querySelectorAll('a');
-                for (const anchor of anchors) {
-                    anchor.href = 'javascript:void(0);'
-                    anchor.setAttribute('onclick', `DWEM.Modules.CNCUserinfo.open('${anchor.textContent}', event);`);
-                    anchor.textContent = anchor.textContent.replaceAll(' (admin)', '');
-                    anchor.removeAttribute('target');
-                }
-                data.names = container.innerHTML;
-            }
+        IOHook.handle_message.before.addHandler('cnc-userinfo', (data) => {
+            this.patchUpdateSpectators(data);
         });
 
         CNCUserinfo.open = this.open.bind(this);

@@ -105,11 +105,11 @@ export default class SoundSupport {
         return new Promise(resolve => {
             const initMatch = (data) => {
                 if (data.msg === 'input_mode') {
-                    IOHook.handle_message.after.splice(IOHook.handle_message.after.indexOf(initMatch), 1);
+                    IOHook.handle_message.after.removeHandler('sound-support-init-match');
                     resolve();
                 }
             }
-            IOHook.handle_message.after.push(initMatch);
+            IOHook.handle_message.after.addHandler('sound-support-init-match', initMatch);
         });
     }
 
@@ -186,7 +186,7 @@ export default class SoundSupport {
         const {RCManager, IOHook, SiteInformation} = DWEM.Modules;
 
         // TODO: Migrate to CommandManager
-        IOHook.send_message.before.push((msg, data) => {
+        IOHook.send_message.before.addHandler('sound-support-commander', (msg, data) => {
             if (msg === 'chat_msg') {
                 const {text} = data;
                 if (text.startsWith('/SoundSupport')) {
@@ -243,10 +243,10 @@ export default class SoundSupport {
                 }
             }
         });
-        RCManager.watchers.push(async (msg, data) => {
+        RCManager.addHandler('sound-support-rc-handler', async (msg, data) => {
             if (msg === 'play') {
                 const queue = [];
-                IOHook.handle_message.after.push(this.saveBeforeLoadingMsgs = (data) => {
+                IOHook.handle_message.after.addHandler('sound-support-save-msgs', (data) => {
                     if (data.msg === 'msgs') {
                         queue.push(data);
                     }
@@ -332,11 +332,10 @@ export default class SoundSupport {
                         }
                     }
                 }
-                const index = IOHook.handle_message.after.indexOf(this.saveBeforeLoadingMsgs);
-                IOHook.handle_message.after.splice(index, 1);
+                IOHook.handle_message.after.removeHandler('sound-support-save-msgs');
 
                 if (SiteInformation.current_hash !== '#lobby') {
-                    IOHook.handle_message.after.push(this.soundHandler = async (data) => {
+                    IOHook.handle_message.after.addHandler('sound-support-sound-handler', async (data) => {
                         if (data.msg === 'msgs' && data.messages) {
                             handleSoundMessage(data);
                         }
@@ -346,10 +345,7 @@ export default class SoundSupport {
                     }
                 }
             } else if (msg === 'go_lobby') {
-                const index = IOHook.handle_message.after.indexOf(this.soundHandler);
-                if (index > -1) {
-                    IOHook.handle_message.after.splice(index, 1);
-                }
+                IOHook.handle_message.after.removeHandler('sound-support-sound-handler');
             }
         });
     }
