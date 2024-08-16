@@ -22,7 +22,7 @@ client.once(Events.ClientReady, async readyClient => {
     }
 });
 client.on('messageCreate', (message) => {
-    if (message.author.bot) return;
+    if (message.author.id === client.user.id) return;
 
     if (socket && message.channel.name === config.discordChannel) {
         const sender = message.member.displayName;
