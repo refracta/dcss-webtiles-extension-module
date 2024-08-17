@@ -17,7 +17,7 @@ dcss-webtiles-extension-module (DWEM)은 던전 크롤 스톤 수프 웹 타일�
 ```js
 // localStorage.DWEM_MODULES = JSON.stringify(['https://example.org/module.js', ...]);
 ```
-별도의 수정이 없는 경우, CNC 서버에 특수 적용된 모듈을 제외한 유틸리티 모듈들이 기본으로 로딩됩니다.
+별도의 수정이 없는 경우, CNC 서버 전용 모듈들을 제외한 본 리포지토리에 게시된 유틸리티 모듈들이 기본으로 로딩됩니다.
 
 경고: CNC 서버에는 이미 DWEM이 적용되어 있으며(따라서 이미 적용된 모듈들을 그냥 바로 이용할 수 있습니다), 이것은 DWEM이 미적용된 서버에서 DWEM을 사용하기 위해서 해야하는 일입니다.
 
