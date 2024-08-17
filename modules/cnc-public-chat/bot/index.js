@@ -42,7 +42,7 @@ client.on('messageCreate', (message) => {
 while (true) {
     try {
         await new Promise(async (resolve, reject) => {
-            socket = WebsocketFactory.create('wss://crawl.nemelex.cards/socket', {
+            socket = WebsocketFactory.create(config.websocket, {
                 handle_message: function (data) {
                     if (data.msg === 'login_success') {
                         socket.login_resolver();
@@ -100,7 +100,7 @@ while (true) {
                     socket.login_resolver = resolve;
                 });
                 console.log(new Date(), 'login_success!');
-                socket.play('dcss-0.31-sprint');
+                socket.play(config.gameId);
                 while (socket.readyState === WebSocket.OPEN) {
                     socket.key('?'.charCodeAt(0));
                     console.log(new Date(), 'send key: ?');

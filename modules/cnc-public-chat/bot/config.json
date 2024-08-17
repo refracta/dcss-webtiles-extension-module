@@ -1,6 +1,8 @@
 {
+  "websocket": "wss://crawl.nemelex.cards/socket",
   "username": "CNCPublicChat",
   "password": "",
+  "gameId": "dcss-0.31-sprint",
   "discordGuild": "NetHack Live & Crawl Nemelex Cards",
   "discordChannel": "general",
   "discordToken": ""
