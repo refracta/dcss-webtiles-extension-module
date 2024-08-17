@@ -9,7 +9,7 @@ export default class ConvenienceModule {
         showGoldStatus = showGoldStatus.pop()?.[1];
         showGoldStatus = showGoldStatus === 'true';
 
-        let disableChatClear = Array.from(rcfile.matchAll(/^(?!\s*#).*disable_chat_clear\s*=\s*(\S+)\s*/gm));
+        let disableChatClear = Array.from(rcfile.matchAll(/^(?!\s*#).*disable_clear_chat\s*=\s*(\S+)\s*/gm));
         disableChatClear = disableChatClear.pop()?.[1];
         disableChatClear = disableChatClear === 'true';
 
