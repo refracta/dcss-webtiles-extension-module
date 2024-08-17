@@ -154,7 +154,7 @@ export default class CNCPublicChat {
                         if (jsonMessage.msg === 'discord') {
                             senderTag.innerHTML = `<span style="color: #5865f2">ⓓ</span>${jsonMessage.sender}`
                             messageTag.textContent = jsonMessage.text;
-                            messageTag.style.whiteSpace = 'pre';
+                            messageTag.style.whiteSpace = 'pre-line';
                         }
                     }
                     data.content = container.innerHTML;
