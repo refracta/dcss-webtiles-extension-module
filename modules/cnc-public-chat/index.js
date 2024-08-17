@@ -174,6 +174,8 @@ export default class CNCPublicChat {
                     });
                 } else if (data.msg === 'lobby_entry' && data.username === this.botName) {
                     this.socket.send(JSON.stringify({msg: 'watch', username: this.botName}));
+                } else if (data.msg === 'ping') {
+                    this.socket.send(JSON.stringify({msg: 'pong'}));
                 }
             });
             this.socket.onopen = (event) => {
