@@ -51,6 +51,7 @@ export default class ConvenienceModule {
                             IOHook.handle_message({msg: 'player', status: this.player.status});
                         }
                     });
+                    IOHook.handle_message({msg: 'player', status: this.player.status || []});
                 }
                 if (this.chatRedirection) {
                     IOHook.handle_message.after.addHandler('convenience-module-chat-redirect', (data) => {
