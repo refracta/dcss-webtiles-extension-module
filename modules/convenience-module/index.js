@@ -9,16 +9,16 @@ export default class ConvenienceModule {
         showGoldStatus = showGoldStatus.pop()?.[1];
         showGoldStatus = showGoldStatus === 'true';
 
-        let disableChatClear = Array.from(rcfile.matchAll(/^(?!\s*#).*disable_clear_chat\s*=\s*(\S+)\s*/gm));
-        disableChatClear = disableChatClear.pop()?.[1];
-        disableChatClear = disableChatClear === 'true';
+        let disableClearChat = Array.from(rcfile.matchAll(/^(?!\s*#).*disable_clear_chat\s*=\s*(\S+)\s*/gm));
+        disableClearChat = disableClearChat.pop()?.[1];
+        disableClearChat = disableClearChat === 'true';
 
-        let chatRedirection = Array.from(rcfile.matchAll(/^(?!\s*#).*redirect_chat\s*=\s*(\S+)\s*/gm));
-        chatRedirection = chatRedirection.pop()?.[1];
-        chatRedirection = chatRedirection === 'true';
+        let redirectChat = Array.from(rcfile.matchAll(/^(?!\s*#).*redirect_chat\s*=\s*(\S+)\s*/gm));
+        redirectChat = redirectChat.pop()?.[1];
+        redirectChat = redirectChat === 'true';
 
         return {
-            showGoldStatus, disableChatClear, chatRedirection
+            showGoldStatus, disableClearChat, redirectChat
         };
     }
 
@@ -27,11 +27,11 @@ export default class ConvenienceModule {
         RCManager.addHandler('convenience-module', async (msg, data) => {
             if (msg === 'play') {
                 let {
-                    showGoldStatus, disableChatClear, chatRedirection
+                    showGoldStatus, disableClearChat, redirectChat
                 } = this.getRCConfig(data.contents);
-                this.disableChatClear = disableChatClear;
+                this.disableClearChat = disableClearChat;
                 this.showGoldStatus = showGoldStatus;
-                this.chatRedirection = chatRedirection;
+                this.redirectChat = redirectChat;
                 if (this.showGoldStatus) {
                     IOHook.handle_message.before.addHandler('convenience-module-show-gold-status', (data) => {
                         if (data.msg === 'player') {
@@ -53,7 +53,7 @@ export default class ConvenienceModule {
                     });
                     IOHook.handle_message({msg: 'player', status: this.player.status || []});
                 }
-                if (this.chatRedirection) {
+                if (this.redirectChat) {
                     IOHook.handle_message.after.addHandler('convenience-module-chat-redirect', (data) => {
                         if (data.msg === 'chat') {
                             const container = document.createElement('div');
@@ -69,7 +69,7 @@ export default class ConvenienceModule {
                     });
                 }
             } else if (msg === 'go_lobby') {
-                this.disableChatClear = this.showGoldStatus = this.chatRedirection = false;
+                this.disableClearChat = this.showGoldStatus = this.redirectChat = false;
                 IOHook.handle_message.before.removeHandler('convenience-module-show-gold-status');
                 IOHook.handle_message.after.removeHandler('convenience-module-show-gold-status');
                 IOHook.handle_message.after.removeHandler('convenience-module-chat-redirect');
@@ -82,14 +82,14 @@ export default class ConvenienceModule {
             originalClear = clear
             const {ConvenienceModule} = DWEM.Modules;
             clear = function () {
-                if (!ConvenienceModule.disableChatClear) {
+                if (!ConvenienceModule.disableClearChat) {
                     originalClear();
                 }
             }
         }
 
-        const disableChatClearMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${injectDisableChatClear.toString()}()`);
-        SMR.add('chat', disableChatClearMapper, -1);
+        const disableClearChatMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${injectDisableChatClear.toString()}()`);
+        SMR.add('chat', disableClearChatMapper, -1);
 
         function injectShowGoldStatus() {
             DWEM.Modules.ConvenienceModule.player = player;
