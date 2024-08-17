@@ -47,11 +47,11 @@ export default class ConvenienceModule {
                         }
                     });
                     IOHook.handle_message.after.addHandler('convenience-module-show-gold-status', (data) => {
-                        if (data.gold !== undefined && this.player.status) {
+                        if (data.gold !== undefined && this?.player?.status) {
                             IOHook.handle_message({msg: 'player', status: this.player.status});
                         }
                     });
-                    IOHook.handle_message({msg: 'player', status: this.player.status || []});
+                    IOHook.handle_message({msg: 'player', status: this?.player?.status || []});
                 }
                 if (this.redirectChat) {
                     IOHook.handle_message.after.addHandler('convenience-module-chat-redirect', (data) => {
