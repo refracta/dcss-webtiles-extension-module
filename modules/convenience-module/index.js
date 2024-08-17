@@ -13,7 +13,7 @@ export default class ConvenienceModule {
         disableChatClear = disableChatClear.pop()?.[1];
         disableChatClear = disableChatClear === 'true';
 
-        let chatRedirection = Array.from(rcfile.matchAll(/^(?!\s*#).*chat_redirection\s*=\s*(\S+)\s*/gm));
+        let chatRedirection = Array.from(rcfile.matchAll(/^(?!\s*#).*redirect_chat\s*=\s*(\S+)\s*/gm));
         chatRedirection = chatRedirection.pop()?.[1];
         chatRedirection = chatRedirection === 'true';
 
