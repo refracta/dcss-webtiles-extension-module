@@ -51,6 +51,7 @@ export default class ConvenienceModule {
                             IOHook.handle_message({msg: 'player', status: this.player.status});
                         }
                     });
+                    // TODO: Unknown message type: player
                     IOHook.handle_message({msg: 'player', status: this?.player?.status || []});
                 }
                 if (this.redirectChat) {
