@@ -84,8 +84,11 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         });
     }
 
+    blackList = ['CNCPublicChat'];
+
     async goSarangbang() {
         let list = await this.#getLobbyList();
+        list = list.filter(e => !this.blackList.includes(e.username));
         if (list.length > 0) {
             list.sort((a, b) => a.spectator_count - b.spectator_count);
             const count = list[list.length - 1].spectator_count
