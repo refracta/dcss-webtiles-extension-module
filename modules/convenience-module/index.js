@@ -35,7 +35,7 @@ export default class ConvenienceModule {
                 if (this.showGoldStatus) {
                     IOHook.handle_message.before.addHandler('convenience-module-show-gold-status', (data) => {
                         if (data.msg === 'player') {
-                            if (this.player.god !== 'Gozag' && data.status) {
+                            if (this?.player?.god !== 'Gozag' && data.status) {
                                 data.status = [...data.status.filter(s => !s.isCustomStatus), {
                                     light: `Gold (${this.player.gold})`,
                                     text: 'gold',
