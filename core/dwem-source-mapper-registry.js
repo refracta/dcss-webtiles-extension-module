@@ -5,7 +5,7 @@ import escodegen from 'https://cdn.skypack.dev/escodegen';
 export default class DWEMSourceMapperRegistry {
     sourceMappers = {};
 
-    add(matcherIdentifier, sourceMapper) {
+    add(matcherIdentifier, sourceMapper, priority = 0) {
         if (!Array.isArray(matcherIdentifier)) {
             matcherIdentifier = [matcherIdentifier]
         }
@@ -14,7 +14,7 @@ export default class DWEMSourceMapperRegistry {
             return `${name}:${version}`
         }))).sort().join(',');
         this.sourceMappers[matcherIdentifier] = this.sourceMappers[matcherIdentifier] || [];
-        this.sourceMappers[matcherIdentifier].push(sourceMapper);
+        this.sourceMappers[matcherIdentifier].push({sourceMapper, priority});
     }
 
     predefinedSourceMappers = {

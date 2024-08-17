@@ -156,6 +156,8 @@ export default class DWEM {
 
         for (const identifier in this.SourceMapperRegistry.sourceMappers) {
             const mappers = this.SourceMapperRegistry.sourceMappers[identifier];
+            mappers.sort((sm1, sm2) => sm2.priority - sm1.priority);
+
             const matchers = Array.from(new Set(identifier.split(',').map(i => i.trim()).map(i => {
                 const [name, version] = [...i.split(':'), 'all'];
                 return version === 'all' ? Object.values(this.MatcherRegistry.matchers[name]) : [this.MatcherRegistry.matchers[name][version]]
@@ -167,8 +169,8 @@ export default class DWEM {
                 matcher, mapper: (argumentsList) => {
                     const index = argumentsList.findLastIndex(arg => typeof arg === 'function');
                     let source = argumentsList[index].toString();
-                    for (const mapper of mappers) {
-                        source = mapper(source);
+                    for (const {sourceMapper} of mappers) {
+                        source = sourceMapper(source);
                     }
                     argumentsList[index] = window.eval(`(${source})`);
                     return argumentsList;

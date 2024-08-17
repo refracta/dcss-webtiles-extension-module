@@ -11,7 +11,7 @@ export default class IOHook {
     constructor() {
         function addHandler(identifier, handler, priority = 0) {
             this.handlers.push({identifier, handler, priority});
-            this.handlers.sort((h1, h2) => h1.priority - h2.priority);
+            this.handlers.sort((h1, h2) => h2.priority - h1.priority);
         }
 
         function removeHandler(identifier) {
