@@ -115,7 +115,23 @@ export default class CNCPublicChat {
             DWEM.Modules.CNCPublicChat.focus = focus;
             DWEM.Modules.CNCPublicChat.toggle = toggle;
             DWEM.Modules.CNCPublicChat.toggle_entire_chat = toggle_entire_chat;
-            DWEM.Modules.CNCPublicChat.receive_message = receive_message;
+            DWEM.Modules.CNCPublicChat.receive_message = receive_message = function (data, is_raw_message) {
+                var msg = $("<div>").append(data.content);
+                var histcon = $('#chat_history_container')[0];
+                var atBottom = Math.abs(histcon.scrollHeight - histcon.scrollTop
+                    - histcon.clientHeight) < 1.0;
+                if (!is_raw_message) {
+                    msg.find(".chat_msg").html(linkify(msg.find(".chat_msg").text()));
+                }
+                $("#chat_history").append(msg.html() + "<br>");
+                if (atBottom)
+                    histcon.scrollTop = histcon.scrollHeight;
+                if ($("#chat_body").css("display") === "none" && !data.meta) {
+                    new_message_count++;
+                    update_message_count();
+                }
+                $(document).trigger("chat_message", [data.content]);
+            };
             DWEM.Modules.CNCPublicChat.update_spectators = update_spectators;
         }
 
@@ -126,7 +142,7 @@ export default class CNCPublicChat {
 
         (async () => {
             await WebSocketFactory.ready;
-            this.socket = WebSocketFactory.create((data) => {
+            this.socket = WebSocketFactory.create(async (data) => {
                 WebSocketFactory.handle_login_cookie(data);
                 if (data.msg === 'chat') {
                     const container = document.createElement('div');
@@ -145,17 +161,36 @@ export default class CNCPublicChat {
 
                         }
                     })();
+                    let isRawMessage = false;
                     if (jsonMessage) {
                         if (jsonMessage.msg === 'discord') {
                             senderTag.innerHTML = `<span style="color: #5865f2">ⓓ</span>${jsonMessage.sender}`
                             messageTag.textContent = jsonMessage.text;
                             messageTag.style.whiteSpace = 'pre-line';
+                        } else if (jsonMessage.msg === 'discord-attachment') {
+                            senderTag.innerHTML = `<span style="color: #5865f2">ⓓ</span>${jsonMessage.sender}`;
+                            isRawMessage = true;
+                            if (jsonMessage.contentType && jsonMessage.contentType.startsWith('image/')) {
+                                const image = new Image();
+                                image.src = jsonMessage.url;
+                                const histcon = $('#chat_history_container')[0];
+                                const atBottom = Math.abs(histcon.scrollHeight - histcon.scrollTop - histcon.clientHeight) < 1.0;
+                                if (atBottom) {
+                                    image.onload = () => {
+                                        histcon.scrollTop = histcon.scrollHeight;
+                                    };
+                                }
+                                messageTag.innerHTML = `<br>`;
+                                messageTag.append(image);
+                            } else {
+                                messageTag.innerHTML = `<a href="${jsonMessage.url}">[FILE URL]</a>`;
+                            }
                         }
                     } else {
                         senderTag.innerHTML = `<a style="text-decoration: none" href="${location.origin}#watch-${sender}">${senderTag.textContent}</a>`
                     }
                     data.content = container.innerHTML;
-                    CNCPublicChat.receive_message(data);
+                    CNCPublicChat.receive_message(data, isRawMessage);
                 } else if (data.msg === 'update_spectators' && DWEM.Modules.SiteInformation.current_hash === '#lobby') {
                     CNCUserinfo.patchUpdateSpectators(data);
                     this.lastSpectatorsData = data;

@@ -26,13 +26,26 @@ client.on('messageCreate', (message) => {
 
     if (socket && message.channel.name === config.discordChannel) {
         const sender = message.member.displayName;
+        let text = message.content;
+        message.mentions.members.forEach((member) => {
+            const mentionTag = `<@${member.id}>`;
+            text = text.replaceAll(mentionTag, `@${member.displayName}`);
+        });
+
         if (message.content !== '') {
-            socket.chat_msg(JSON.stringify({msg: 'discord', sender, text: message.content}));
-            console.log(new Date(), `[DISCORD] ${sender}: ${message.content}`);
+            socket.chat_msg(JSON.stringify({msg: 'discord', sender, text}));
+            console.log(new Date(), `[DISCORD] ${sender}: ${text}`);
         }
+
         if (message.attachments.size > 0) {
             message.attachments.forEach(attachment => {
-                socket.chat_msg(JSON.stringify({msg: 'discord', sender, text: attachment.url}));
+                socket.chat_msg(JSON.stringify({
+                    msg: 'discord-attachment',
+                    sender,
+                    url: attachment.url,
+                    contentType: attachment.contentType
+                }));
+                console.log({msg: 'discord', sender, url: attachment.url, contentType: attachment.contentType});
                 console.log(new Date(), `[DISCORD-ATTACHMENT] ${sender}: ${message.url}`);
             });
         }
