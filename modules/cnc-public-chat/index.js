@@ -173,6 +173,7 @@ export default class CNCPublicChat {
                             if (jsonMessage.contentType && jsonMessage.contentType.startsWith('image/')) {
                                 const image = new Image();
                                 image.src = jsonMessage.url;
+                                image.setAttribute('style', 'margin-left:1%; margin-right:1%; max-width:98%; max-height:180px')
                                 const histcon = $('#chat_history_container')[0];
                                 const atBottom = Math.abs(histcon.scrollHeight - histcon.scrollTop - histcon.clientHeight) < 1.0;
                                 if (atBottom) {
