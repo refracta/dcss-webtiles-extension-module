@@ -151,6 +151,8 @@ export default class CNCPublicChat {
                             messageTag.textContent = jsonMessage.text;
                             messageTag.style.whiteSpace = 'pre-line';
                         }
+                    } else {
+                        senderTag.innerHTML = `<a style="text-decoration: none" href="${location.origin}#watch-${sender}">${senderTag.textContent}</a>`
                     }
                     data.content = container.innerHTML;
                     CNCPublicChat.receive_message(data);
