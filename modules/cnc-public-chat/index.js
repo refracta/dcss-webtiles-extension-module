@@ -9,6 +9,7 @@ export default class CNCPublicChat {
         const {SourceMapperRegistry: SMR} = DWEM;
 
         function chatInjector() {
+            const {SiteInformation} = DWEM.Modules;
             $("#chat_input").unbind("keydown", chat_message_send);
 
             function new_chat_message_send(e) {
@@ -18,7 +19,7 @@ export default class CNCPublicChat {
                     e.preventDefault();
                     e.stopPropagation();
                     if (content != "") {
-                        const current_hash = DWEM.Modules.SiteInformation.current_hash;
+                        const current_hash = SiteInformation.current_hash;
                         if (current_hash === '#lobby' || content.startsWith(' ')) {
                             DWEM.Modules.CNCPublicChat.socket.send(JSON.stringify({msg: 'chat_msg', text: content}));
                         } else {
@@ -75,10 +76,12 @@ export default class CNCPublicChat {
             }
 
             clear = function () {
+                if (SiteInformation.current_hash === '#lobby') {
+                    return;
+                }
                 $("#spectator_list").html("&nbsp;");
                 $("#chat_history").html("");
-                const current_hash = DWEM.Modules.SiteInformation.current_hash;
-                if (current_hash === '#lobby') {
+                if (SiteInformation.current_hash === '#lobby') {
                     $("#spectator_count").html("0 users");
                 } else {
                     $("#spectator_count").html("0 spectators");
@@ -90,8 +93,7 @@ export default class CNCPublicChat {
             update_spectators = function (data) {
                 delete data["msg"];
                 $.extend(spectators, data);
-                const current_hash = DWEM.Modules.SiteInformation.current_hash;
-                if (current_hash === '#lobby') {
+                if (SiteInformation.current_hash === '#lobby') {
                     $("#spectator_count").html(data.count + " users");
                 } else {
                     $("#spectator_count").html(data.count + " spectators");
@@ -110,12 +112,6 @@ export default class CNCPublicChat {
             reset_visibility = function (in_game) {
             }
 
-            const originalClear = clear;
-            clear = function () {
-                if (DWEM.Modules.SiteInformation.current_hash !== '#lobby') {
-                    originalClear();
-                }
-            }
             DWEM.Modules.CNCPublicChat.focus = focus;
             DWEM.Modules.CNCPublicChat.toggle = toggle;
             DWEM.Modules.CNCPublicChat.toggle_entire_chat = toggle_entire_chat;
@@ -148,7 +144,6 @@ export default class CNCPublicChat {
                         } catch (e) {
 
                         }
-                        return null;
                     })();
                     if (jsonMessage) {
                         if (jsonMessage.msg === 'discord') {
