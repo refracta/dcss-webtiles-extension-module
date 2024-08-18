@@ -3,7 +3,8 @@ class UserDropdown extends HTMLDivElement {
         super();
         this.attachShadow({mode: 'open'});
 
-        this.style.position = 'absolute';
+        this.style.position = 'fixed';
+        this.style.zIndex = '99999';
         this.style.top = '0';
         this.style.left = '0';
 
@@ -100,8 +101,8 @@ class UserDropdown extends HTMLDivElement {
             <div><a href="https://archive.nemelex.cards/rcfiles/rcfinder.html?user=${realUsername}" target="_blank"">CNC - rcfiles</a></div>
         `;
         const rect = this.dropdownContent.getBoundingClientRect();
-        this.style.left = `${x - rect.width}px`;
-        this.style.top = `${y - rect.height}px`;
+        this.style.left = `${x - rect.width - window.scrollX}px`;
+        this.style.top = `${y - rect.height - window.scrollY}px`;
     }
 }
 
@@ -113,7 +114,7 @@ export default class CNCUserinfo {
     static description = '(Beta) This module provides advanced CNC user information.';
 
     open(username, event) {
-        this.userDropdown.open(username, event.clientX, event.clientY);
+        this.userDropdown.open(username, event.pageX, event.pageY);
         event.preventDefault();
         event.stopPropagation();
     }
