@@ -1,6 +1,4 @@
-# dcss-webtiles-extension-module (Korean)
-
-> This document will soon be available in English.
+# dcss-webtiles-extension-module
 
 dcss-webtiles-extension-module (DWEM) is a framework designed to extend the functionality of Dungeon Crawl Stone Soup
 Webtiles.
