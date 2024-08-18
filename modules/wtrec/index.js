@@ -25,7 +25,6 @@ export default class WTRec {
 
     playWTRec() {
         const {IOHook} = DWEM.Modules;
-        location.hash = 'wtrec';
         const sleep = async (ms) => new Promise(resolve => setTimeout(resolve, ms));
         const input = document.createElement('input');
         input.type = 'file';
@@ -38,11 +37,9 @@ export default class WTRec {
                 .filter(file => !file.dir && file.name !== 'wtrec.json');
             const blobs = await Promise.all(files.map(file => file.async('blob')));
             const blobURLs = blobs.map(blob => URL.createObjectURL(blob));
-            const fileMap = files.map((file, index) => ({[file.name]: blobURLs[index]})).reduce((a, e) => ({...a, ...e}));
-            const config = files
-                .map((file, i) => file.name.endsWith('.js') ?
-                    {[`${file.name.split(/[\/.]/)[3]}`]: blobURLs[i] + '#'} : {})
-                .reduce((a, r) => ({...a, ...r}), {});
+            const fileMap = files.map((file, index) => ({[file.name]: blobURLs[index]}))
+                .reduce((a, e) => ({...a, ...e}));
+
             const wtrec = JSON.parse(await zip.files['wtrec.json'].async('string'));
             const {data} = wtrec;
             for (let i = 0; i < data.length; i++) {
@@ -50,29 +47,32 @@ export default class WTRec {
                 if (current.wtrec.type === 'receive') {
                     try {
                         if (current.msg === 'game_client') {
+                            // if safe_mode == true
+                            this.safeMode = false;
+                            this.gitVersion = data[i + 1].text.split('-g').pop();
+                            this.safeResourcePath = `https://cdn.jsdelivr.net/gh/crawl/crawl@${this.gitVersion}/crawl-ref/source/webserver/game_data/static/`;
+                            // await fetch(this.safeResourcePath + 'game.js');
+
                             let content = current.content;
+                            let config = files.map((file, i) => {
+                                if (file.name.endsWith('.js')) {
+                                    const name = file.name.split(/[\/.]/)[3];
+                                    return {[name]: this.safeMode ? this.safeResourcePath + name : blobURLs[i] + '#'};
+                                } else {
+                                    return {};
+                                }
+                            }).reduce((a, r) => ({...a, ...r}), {});
+                            console.log(config);
+
                             content = content.replace('require.config', `require.config({paths: ${JSON.stringify(config)}});\n`);
                             content = content.replace(`game-${current.version}/game`, `./game`);
-                            const container = document.createElement('div');
-                            container.innerHTML = content;
-                            const links = Array.from(container.querySelectorAll('link'));
-                            links.map(link => {
-                                const href = link.getAttribute('href');
-                                const url = fileMap[href];
-                                if (url) {
-                                    link.setAttribute('href', url);
-                                }
-                            });
-                            const images = Array.from(container.querySelectorAll('img'));
-                            images.map(image => {
-                                const src = image.getAttribute('src');
-                                const url = fileMap[src];
-                                if (url) {
-                                    image.setAttribute('src', url);
-                                }
-                            });
-                            current.content = container.innerHTML;
-                            console.log(current.content)
+                            const matches = content.match(/\/gamedata\/[a-f0-9]{40}\/[^\s"']+/g);
+                            for (const match of matches) {
+                                const url = fileMap[match];
+                                content = content.replace(match, url);
+                            }
+                            current.content = content;
+                            console.log(content);
                         } else {
                             console.log(current);
                         }
@@ -93,13 +93,16 @@ export default class WTRec {
     onLoad() {
         const {IOHook} = DWEM.Modules;
         IOHook.send_message.before.addHandler('wtrec', (msg, data) => {
+            console.log(msg)
             if (msg === 'play') {
                 this.data = [];
                 this.isRecording = true;
                 this.startTime = new Date().getTime();
             }
             if (this.isRecording && data) {
-                // filter ping / pong / login_cookie
+                if (['go_lobby', 'login', 'token_login', 'change_password', 'forget_login_cookie', 'start_change_email', 'change_email', 'set_login_cookie', 'pong'].includes(data.msg)) {
+                    return;
+                }
                 const currentTime = new Date().getTime();
                 const timing = currentTime - this.startTime;
                 this.data.push({...JSON.parse(JSON.stringify(data)), wtrec: {type: 'send', timing}});
@@ -107,6 +110,9 @@ export default class WTRec {
         })
         IOHook.handle_message.before.addHandler('wtrec', (data) => {
             if (this.isRecording && data) {
+                if (['login_cookie', 'html', 'ping'].includes(data.msg)) {
+                    return;
+                }
                 const currentTime = new Date().getTime();
                 const timing = currentTime - this.startTime;
                 this.data.push({...JSON.parse(JSON.stringify(data)), wtrec: {type: 'receive', timing}});
@@ -131,34 +137,6 @@ export default class WTRec {
                 (async () => {
                     this.blobs = await Promise.all(this.resources.map(r => fetch(r).then(r => r.blob())));
                 })();
-
-                // this.blobURLs = this.blobs.map(b => URL.createObjectURL(b));
-                //
-                // URL.createObjectURL(this.blobs[i])
-                // this.config = this.sources
-                //     .map((r, i) => ({[`${r.split(/[\/.]/)[3]}`]: this.blobURLs[i] + '#'}))
-                //     .reduce((a, r) => ({...a, ...r}), {});
-                /*
-                require.config({
-    paths: DWEM.Modules.WTRec.config
-});
-{
-    version: '0.1'
-    resources:
-    data: []
-}
-
-wtrec.json
-{
-    version: '0.1',
-    data:
-}
-resources/*
-resources/tiles.json // compatibility mode
-record_wtrec = true
-
-playWTRec();
-                 */
             }
         }, 999);
     }
