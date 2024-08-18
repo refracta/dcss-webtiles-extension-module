@@ -12,7 +12,8 @@ loaded.
 
 1. Install a script manager such as [Tampermonkey](https://www.tampermonkey.net)
    or [Greasemonkey](https://www.greasespot.net).
-2. Install [Greasy Fork (loader/dwem-base-loader.js)](https://greasyfork.org/ko/scripts/493267-dcss-webtiles-extension-module-loader).
+2.
+Install [Greasy Fork (loader/dwem-base-loader.js)](https://greasyfork.org/ko/scripts/493267-dcss-webtiles-extension-module-loader).
 
 Warning: DWEM is already applied to the CNC server (so you can use the already applied modules directly), and these
 steps are for using DWEM on servers where it is not yet applied.
@@ -75,8 +76,37 @@ export default class BasicModule {
 
 # Module list
 
-- `ModuleManager:1.0`: View the list of modules with Ctrl + F12 (in development)
-- `IOHook:1.0`: A module that assists with input/output hooking
+- [`SoundSupport:0.1`](modules/sound-support)
+    - Description: (Beta) This module implements sound features in the webtiles environment. You can use it by adding a
+      sound pack to the RC configuration.
+
+- [`ConvenienceModule:0.1`](modules/convenience-module)
+    - Description: (Beta) This module provides convenience features.
+
+- [`IOHook:1.0`](modules/io-hook)
+    - Description: (Library) This module allows users to add hooks before and after sending and receiving WebSocket
+      data.
+
+- [`SiteInformation:1.0`](modules/site-information)
+    - Description: (Library) This module returns site information to other modules.
+
+- [`WebSocketFactory:1.0`](modules/websocket-factory)
+    - Description: (Library) This module simulates a WebSocket that replicates the user's session.
+
+- [`ModuleManager:1.0`](modules/module-manager)
+    - Description: This module helps to check and control the loading status of multiple modules.
+
+- [`CNCUserinfo:0.1`](modules/cnc-userinfo)
+    - Description: (Beta) This module provides advanced CNC user information.
+
+- [`RCManager:1.0`](modules/rc-manager)
+    - Description: (Library) This module provides features for creating custom RC trigger logic.
+
+- [`CNCBanner:1.0`](modules/cnc-banner)
+    - Description: This module sets the banner for the CNC server.
+
+- [`CNCPublicChat:0.1`](modules/cnc-public-chat)
+    - Description: (Beta) This module provides CNC server public chat.
 
 # Notes
 
