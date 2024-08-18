@@ -96,9 +96,9 @@ class UserDropdown extends HTMLDivElement {
             <div><a href="https://bcrawl.montres.org.uk/players/${lowerUsername}.html" target="_blank">B-Crawl Scoreboard</a></div>
             <div><a onclick="DWEM.Modules.CNCUserinfo.openTournamentPage('${lowerUsername}');" target="_blank">Latest Tournament</a></div>
             <div><a href="https://dcss-stats.vercel.app/players/${realUsername}" target="_blank"">DCSS Stats</a></div>
-            <div><a href="https://archive.nemelex.cards/morgue/${realUsername}" target="_blank"">CNC - morgue</a></div>
-            <div><a href="https://archive.nemelex.cards/ttyrec/${realUsername}" target="_blank"">CNC - ttyrec</a></div>
-            <div><a href="https://archive.nemelex.cards/rcfiles/rcfinder.html?user=${realUsername}" target="_blank"">CNC - rcfiles</a></div>
+            <div><a href="https://archive.nemelex.cards/morgue/${realUsername}?C=M&O=D" target="_blank"">morgue</a></div>
+            <div><a href="https://archive.nemelex.cards/ttyrec/${realUsername}?C=M&O=D" target="_blank"">ttyrec</a></div>
+            <div><a href="https://archive.nemelex.cards/rcfiles/rcfinder.html?user=${realUsername}" target="_blank"">rcfiles</a></div>
         `;
         const rect = this.dropdownContent.getBoundingClientRect();
         this.style.left = `${x - rect.width - window.scrollX}px`;
