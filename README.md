@@ -14,7 +14,9 @@ loaded.
 
 Warning: DWEM is already applied to the CNC server (so you can use the already applied modules directly), and these
 steps are for using DWEM on servers where it is not yet applied.
+![image](https://github.com/user-attachments/assets/9d408e9d-5ccd-4382-a227-91fa5272b9b5)
 
+The default loading modules include ModuleManager. To check if DWEM has loaded correctly, you can press Ctrl + F12 (toggle) to view the Module Manager UI.
 ## Custom module loading
 
 After installation, you can uncomment the following section of the script and enter the URLs of the desired module
@@ -72,6 +74,8 @@ export default class BasicModule {
 - You can refer to the examples in `modules/io-hook/index.js` and `modules/test-module1/index.js`.
 
 # Module list
+- [`ModuleManager:1.0`](modules/module-manager)
+  - Description: This module helps to check and control the loading status of multiple modules.
 
 - [`SoundSupport:0.1`](modules/sound-support)
     - Description: (Beta) This module implements sound features in the webtiles environment. You can use it by adding a
@@ -89,9 +93,6 @@ export default class BasicModule {
 
 - [`WebSocketFactory:1.0`](modules/websocket-factory)
     - Description: (Library) This module simulates a WebSocket that replicates the user's session.
-
-- [`ModuleManager:1.0`](modules/module-manager)
-    - Description: This module helps to check and control the loading status of multiple modules.
 
 - [`CNCUserinfo:0.1`](modules/cnc-userinfo)
     - Description: (Beta) This module provides advanced CNC user information.
