@@ -12,8 +12,7 @@ loaded.
 
 1. Install a script manager such as [Tampermonkey](https://www.tampermonkey.net)
    or [Greasemonkey](https://www.greasespot.net).
-2.
-Install [Greasy Fork (loader/dwem-base-loader.js)](https://greasyfork.org/ko/scripts/493267-dcss-webtiles-extension-module-loader).
+2. Install [Greasy Fork (loader/dwem-base-loader.js)](https://greasyfork.org/ko/scripts/493267-dcss-webtiles-extension-module-loader).
 
 Warning: DWEM is already applied to the CNC server (so you can use the already applied modules directly), and these
 steps are for using DWEM on servers where it is not yet applied.
