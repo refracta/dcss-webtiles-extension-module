@@ -25,7 +25,7 @@ scripts to load the modules you want.
 ```
 
 If no additional modifications are made, the utility modules posted in this repository, excluding the CNC
-server-specific modules, will be loaded by default.
+server-specific modules, will be loaded by [default](https://github.com/refracta/dcss-webtiles-extension-module/blob/main/loader/dwem-base-loader.js#L81).
 
 # Installation (Webtiles Server)
 
