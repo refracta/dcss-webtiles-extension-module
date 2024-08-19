@@ -203,7 +203,6 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         const sevenDays = 7 * 24 * 60 * 60 * 1000;
 
         const version = '0.32';
-        const url = `https://crawl.develz.org/tournament/${version}/`;
         const options = {
             month: 'long', day: 'numeric',
             hour: 'numeric', minute: 'numeric'
@@ -215,6 +214,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         const startLocal = startUTC.toLocaleString(locales, options);
         const endLocal = endUTC.toLocaleString(locales, options);
         let message = '';
+
+        const url = isKorean ? `https://tournament.nemelex.cards/${version}.html` : `https://crawl.develz.org/tournament/${version}/`;
 
         const startTimeRemaining = this.#getTimeRemaining(startUTC, now).total;
         const endTimeRemaining = this.#getTimeRemaining(endUTC, now).total;
