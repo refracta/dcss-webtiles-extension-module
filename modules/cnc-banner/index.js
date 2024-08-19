@@ -197,8 +197,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     }
 
     getTournamentInfo() {
-        const startUTC = new Date(Date.UTC(2024, 7, 30, 8, 0, 0));
-        const endUTC = new Date(Date.UTC(2024, 8, 15, 8, 0, 0));
+        const startUTC = new Date(Date.UTC(2024, 7, 30, 20, 0, 0));
+        const endUTC = new Date(Date.UTC(2024, 8, 15, 20, 0, 0));
         const now = new Date();
         const sevenDays = 7 * 24 * 60 * 60 * 1000;
 
