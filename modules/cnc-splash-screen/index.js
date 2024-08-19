@@ -9,7 +9,7 @@ export default class CNCSplashScreen {
         const imagePath = import.meta.url.substring(0, import.meta.url.lastIndexOf('/')) + '/images/';
         const images = [
             'title_abyss.png',
-            'title_animated_status_by_igooo.gif',
+            'title_animated_minimap_by_igooo.gif',
             'title_assassination_by_spdhatsan.png',
             'title_battle.png',
             'title_cerebov1.jpg',
