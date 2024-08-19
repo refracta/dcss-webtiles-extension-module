@@ -47,12 +47,15 @@ export default class CNCSplashScreen {
         for (const name of images) {
             const image = new Image();
             image.style.display = 'none';
-            image.style.maxWidth = '80vw';
-            image.style.maxHeight = '80vh';
             image.alt = '';
             image.loading = 'lazy'
             image.src = imagePath + name;
             loaderCenter.append(image);
+        }
+        const imageTags = Array.from(document.querySelectorAll('#loader_center img'));
+        for (const tag of imageTags) {
+            tag.style.maxWidth = '80vw';
+            tag.style.maxHeight = '80vh';
         }
     }
 }
