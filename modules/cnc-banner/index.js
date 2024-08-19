@@ -213,8 +213,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         const locales = isKorean ? 'ko' : 'en';
         const startLocal = startUTC.toLocaleString(locales, options);
         const endLocal = endUTC.toLocaleString(locales, options);
-        let message = '';
 
+        let message = '';
         const url = isKorean ? `https://tournament.nemelex.cards/${version}.html` : `https://crawl.develz.org/tournament/${version}/`;
 
         const startTimeRemaining = this.#getTimeRemaining(startUTC, now).total;
