@@ -35,20 +35,20 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         newWindow.document.write("<!DOCTYPE html><html><head><title>RC Links</title></head><body><pre>" + textContent + "</pre></body></html>");
     }
 
-    #getRandomColor() {
+    getRandomColor() {
         const colors = ['#ff4000', '#008cc0', '#cad700', '#009800', '#8000ff'];
         return colors[Math.floor(Math.random() * colors.length)];
     }
 
     colorizeText() {
-        const text = $('#coloredText').text();
+        const text = document.getElementById('coloredText').textContent
         const words = text.split(" ");
-        this.colors = this.colors || words.map(_ => this.#getRandomColor());
+        this.colors = this.colors || words.map(_ => this.getRandomColor());
         const coloredWords = words.map((word, index) => `<span style="color:${this.colors[index]};">${word}</span>`);
         document.getElementById('coloredText').innerHTML = coloredWords.join(" ");
     }
 
-    #getLatency() {
+    getLatency() {
         const {WebSocketFactory} = DWEM.Modules;
         return new Promise(resolve => {
             let startTime, endTime;
@@ -69,7 +69,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         });
     }
 
-    #getLobbyList() {
+    getLobbyList() {
         const {WebSocketFactory} = DWEM.Modules;
         return new Promise(resolve => {
             const lobbyList = [];
@@ -87,7 +87,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     blackList = ['CNCPublicChat'];
 
     async goSarangbang() {
-        let list = await this.#getLobbyList();
+        let list = await this.getLobbyList();
         list = list.filter(e => !this.blackList.includes(e.username));
         if (list.length > 0) {
             list.sort((a, b) => a.spectator_count - b.spectator_count);
@@ -100,22 +100,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         }
     }
 
-    ignoreGameEnded(data) {
-        if (data.msg === 'game_ended') {
-            return true;
-        }
-    }
-
-    handleGoLobby(data) {
-        if (data.msg === 'go_lobby') {
-            this.#enterSarangbang();
-        }
-    }
-
-    async #enterSarangbang() {
+    async enterSarangbang() {
         for (let i = 10; i > 0; i--) {
-            $('#sarangbang').css('color', 'blue');
-            $('#sarangbang-second').text(` (${i}s)`);
+            document.getElementById('sarangbang').style.color = 'blue';
+            document.getElementById('sarangbang').textContent = ` (${i}s)`;
             await new Promise(resolve => setTimeout(resolve, 1000));
             if (!this.sarangbang) {
                 return;
@@ -129,12 +117,20 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         const {before, after} = IOHook.handle_message;
         this.sarangbang = !this.sarangbang;
         if (this.sarangbang) {
-            before.addHandler('cnc-banner-sarangbang', this.ignoreGameEnded);
-            after.addHandler('cnc-banner-sarangbang', this.handleGoLobby);
+            before.addHandler('cnc-banner-sarangbang', (data) => {
+                if (data.msg === 'game_ended') {
+                    return true;
+                }
+            });
+            after.addHandler('cnc-banner-sarangbang', (data) => {
+                if (data.msg === 'go_lobby') {
+                    this.enterSarangbang();
+                }
+            });
             await this.goSarangbang();
         } else {
-            $('#sarangbang').css('color', '');
-            $('#sarangbang-second').text('');
+            document.getElementById('sarangbang').style.color = '';
+            document.getElementById('sarangbang').textContent = '';
             before.removeHandler('cnc-banner-sarangbang');
             after.removeHandler('cnc-banner-sarangbang');
         }
@@ -143,9 +139,9 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
 
     async updateLatencyText(force = false) {
         if (!this.latency || force) {
-            this.latency = await this.#getLatency();
+            this.latency = await this.getLatency();
         }
-        $('#latency').text(this.latency);
+        document.getElementById('latency').textContent = this.latency;
 
         function interpolateColor(color1, color2, factor) {
             const result = color1.slice(1).match(/.{2}/g)
@@ -166,8 +162,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         } else {
             color = '#808080'; // Grey
         }
-
-        $('#latency').css('color', color);
+        document.getElementById('latency').style.color = color;
     }
 
     #getTimeRemaining(endTime, currentTime) {
@@ -177,11 +172,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
         const days = Math.floor(total / (1000 * 60 * 60 * 24));
         return {
-            total,
-            days,
-            hours,
-            minutes,
-            seconds
+            total, days, hours, minutes, seconds
         };
     }
 
@@ -204,8 +195,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
 
         const version = '0.32';
         const options = {
-            month: 'long', day: 'numeric',
-            hour: 'numeric', minute: 'numeric'
+            month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric'
         };
 
         const userLang = navigator.language || navigator.userLanguage;
@@ -361,8 +351,5 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 }
             }
         });
-
-        this.ignoreGameEnded = this.ignoreGameEnded.bind(this);
-        this.handleGoLobby = this.handleGoLobby.bind(this);
     }
 }

@@ -173,8 +173,8 @@ export default class CNCPublicChat {
                             if (jsonMessage.contentType && jsonMessage.contentType.startsWith('image/')) {
                                 const image = new Image();
                                 image.src = jsonMessage.url;
-                                image.setAttribute('style', 'margin-left:1%; margin-right:1%; max-width:98%; max-height:180px')
-                                const histcon = $('#chat_history_container')[0];
+                                image.setAttribute('style', 'margin-left:1%; margin-right:1%; max-width:98%; max-height:180px');
+                                const histcon = document.getElementById('chat_history_container');
                                 const atBottom = Math.abs(histcon.scrollHeight - histcon.scrollTop - histcon.clientHeight) < 1.0;
                                 if (atBottom) {
                                     image.onload = () => {
@@ -188,7 +188,7 @@ export default class CNCPublicChat {
                             }
                         }
                     } else {
-                        senderTag.innerHTML = `<a style="text-decoration: none" href="${location.origin}#watch-${sender}">${senderTag.textContent}</a>`
+                        senderTag.innerHTML = `<a style="text-decoration: none" href="javascript:void(0);" onclick="DWEM.Modules.CNCUserinfo.open('${sender}', event);">${senderTag.textContent}</a>`
                     }
                     data.content = container.innerHTML;
                     CNCPublicChat.receive_message(data, isRawMessage);

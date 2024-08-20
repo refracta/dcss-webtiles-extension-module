@@ -69,7 +69,7 @@ export default class IOHook {
             const {IOHook} = DWEM.Modules;
             send_message = function (msg, data) {
                 let cancel = false;
-                for (const {handler} of DWEM.Modules.IOHook.send_message.before.handlers) {
+                for (const {handler} of IOHook.send_message.before.handlers) {
                     try {
                         cancel = cancel || handler(msg, data);
                     } catch (e) {
@@ -80,7 +80,7 @@ export default class IOHook {
                     return;
                 }
                 original_send_message(msg, data);
-                for (const {handler} of DWEM.Modules.IOHook.send_message.after.handlers) {
+                for (const {handler} of IOHook.send_message.after.handlers) {
                     try {
                         handler(msg, data);
                     } catch (e) {

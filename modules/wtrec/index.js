@@ -62,7 +62,6 @@ export default class WTRec {
                                     return {};
                                 }
                             }).reduce((a, r) => ({...a, ...r}), {});
-                            console.log(config);
 
                             content = content.replace('require.config', `require.config({paths: ${JSON.stringify(config)}});\n`);
                             content = content.replace(`game-${current.version}/game`, `./game`);
