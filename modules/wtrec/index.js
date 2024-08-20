@@ -92,7 +92,6 @@ export default class WTRec {
     onLoad() {
         const {IOHook} = DWEM.Modules;
         IOHook.send_message.before.addHandler('wtrec', (msg, data) => {
-            console.log(msg)
             if (msg === 'play') {
                 this.data = [];
                 this.isRecording = true;
