@@ -192,10 +192,12 @@ export default class CNCPublicChat {
                     }
                     data.content = container.innerHTML;
                     CNCPublicChat.receive_message(data, isRawMessage);
-                } else if (data.msg === 'update_spectators' && DWEM.Modules.SiteInformation.current_hash === '#lobby') {
+                } else if (data.msg === 'update_spectators') {
                     CNCUserinfo.patchUpdateSpectators(data);
                     this.lastSpectatorsData = data;
-                    CNCPublicChat.update_spectators(data);
+                    if (DWEM.Modules.SiteInformation.current_hash === '#lobby') {
+                        CNCPublicChat.update_spectators(data);
+                    }
                 } else if (data.msg === 'watching_started') {
                     CNCPublicChat.receive_message({
                         msg: 'chat',
