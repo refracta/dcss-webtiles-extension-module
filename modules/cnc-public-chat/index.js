@@ -225,6 +225,7 @@ export default class CNCPublicChat {
             } else if (data.msg === 'go_lobby' && this.lastSpectatorsData) {
                 CNCPublicChat.update_spectators(this.lastSpectatorsData);
                 CNCPublicChat.focus();
+                document.querySelector('#chat')?.focus_trap?.deactivate();
             }
         });
 
