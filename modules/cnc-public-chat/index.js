@@ -138,7 +138,7 @@ export default class CNCPublicChat {
                         const data = await fetch(message).then(r => r.json());
                         if (data.type === 'game' || data.type === 'menu') {
                             const anchor = document.createElement('a');
-                            anchor.textContent = `${sender}'s ${data.type} image`;
+                            anchor.textContent = `§${sender}'s ${data.type} image`;
                             anchor.style.textDecoration = "none";
                             anchor.href = "javascript:void(0);";
                             anchor.onclick = (event) => {
