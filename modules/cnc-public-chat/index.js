@@ -169,7 +169,7 @@ export default class CNCPublicChat {
                 } else if (data.msg === 'watching_started') {
                     const content = CNCChat.htmlify({
                         sender: `[Connected to ${this.botName}]`,
-                        separator: '',
+                        separator: ' ',
                         message: 'When you chat in the lobby or enter a message after a space character, it will be sent to the public chat.'
                     });
                     CNCChat.receive_message({
@@ -179,7 +179,7 @@ export default class CNCPublicChat {
                 } else if (data.msg === 'go_lobby') {
                     const content = CNCChat.htmlify({
                         sender: `[Disconnected from ${this.botName}]`,
-                        separator: '',
+                        separator: ' ',
                         message: 'Reconnecting automatically when possible.'
                     });
                     CNCChat.receive_message({
