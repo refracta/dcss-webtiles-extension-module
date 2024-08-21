@@ -5,56 +5,169 @@ export default class CNCChat {
     static description = '(Beta) This module provides extended chat features.';
     botName = 'CNCChat'
 
-    parse(content) {
-        const container = document.createElement('div');
-        container.innerHTML = content;
-        const sender = container.querySelector('.chat_sender')?.textContent;
-        const message = container.querySelector('.chat_msg')?.textContent;
-        let json;
-        try {
-            json = JSON.parse(message);
-        } catch (e) {
-
+    ChatHistory = {
+        isBottom: () => {
+            const chatContainer = document.getElementById('chat_history_container');
+            return Math.abs(chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight) < 1.0;
+        },
+        scrollToBottom: () => {
+            const chatContainer = document.getElementById('chat_history_container');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
         }
-        return {sender, message, json};
     }
 
-    htmlify(chat) {
-        const container = document.createElement('div');
-        if (chat.rawSender !== undefined) {
-            container.innerHTML = chat.rawSender;
-        } else if (chat.sender !== undefined) {
-            const sender = document.createElement('span');
-            sender.classList.add('chat_sender');
-            sender.textContent = chat.sender;
-            container.append(sender);
+    Parser = {
+        parse: (content) => {
+            const container = document.createElement('div');
+            container.innerHTML = content;
+            const sender = container.querySelector('.chat_sender')?.textContent;
+            const message = container.querySelector('.chat_msg')?.textContent;
+            let json;
+            try {
+                json = JSON.parse(message);
+            } catch (e) {
+
+            }
+            return {sender, message, json};
+        },
+        htmlify: (chat) => {
+            const container = document.createElement('div');
+            if (chat.sender !== undefined) {
+                const sender = document.createElement('span');
+                sender.classList.add('chat_sender');
+                sender.textContent = chat.sender;
+                container.append(sender);
+            }
+            const seperator = document.createTextNode(chat.separator === undefined ? ': ' : chat.separator);
+            container.append(seperator);
+            if (chat.message !== undefined) {
+                const message = document.createElement('span');
+                message.classList.add('chat_msg');
+                message.textContent = chat.message;
+                container.append(message);
+            }
+            return container.innerHTML;
         }
-        const seperator = document.createTextNode(chat.separator === undefined ? ': ' : chat.separator);
-        container.append(seperator);
-        if (chat.rawMessage !== undefined) {
-            container.innerHTML += chat.rawMessage;
-        } else if (chat.message !== undefined) {
-            const message = document.createElement('span');
-            message.classList.add('chat_msg');
-            message.textContent = chat.message;
-            container.append(message);
-        }
-        return container.innerHTML;
     }
+
+    Animation = {
+        add: (element, duration) => {
+            duration = duration || 500;
+
+            element.style.transition = `opacity ${duration}ms, max-height ${duration}ms`;
+            element.style.opacity = 0;
+            element.style.maxHeight = element.scrollHeight + 'px';
+
+            setTimeout(() => {
+                element.style.maxHeight = '0px';
+            }, 10);
+
+            setTimeout(() => {
+                element.style.opacity = 1;
+                element.style.maxHeight = element.scrollHeight + 'px';
+            }, duration);
+        }
+    }
+
+    Image = {
+        create: (url) => {
+            const isBottom = this.ChatHistory.isBottom();
+
+            const container = document.createElement('div');
+            const image = new Image();
+            image.src = url;
+            image.setAttribute('style', 'margin-left:1%; margin-right:1%; max-width:98%; max-height:180px; cursor: pointer;');
+
+            const loadingSpan = document.createElement('span');
+            loadingSpan.style.marginLeft = '2%';
+            let loadingText = 'ℹ️ Loading image.';
+            loadingSpan.textContent = loadingText;
+            let dot = 0;
+            const loadingInterval = setInterval(() => {
+                loadingSpan.textContent = loadingText + '.'.repeat(dot++);
+                dot = dot < 15 ? dot : 0;
+            }, 1000);
+            this.Animation.add(loadingSpan);
+            container.append(loadingSpan);
+            image.onclick = () => {
+                this.Image.openImage(image.src);
+            };
+            image.onload = () => {
+                if (isBottom) {
+                    this.ChatHistory.scrollToBottom();
+                }
+                loadingSpan.remove();
+                clearInterval(loadingInterval);
+            };
+            image.onerror = () => {
+                loadingSpan.textContent = 'ℹ️ Failed to load the image.';
+                clearInterval(loadingInterval);
+            };
+            container.append(image);
+            return container;
+        }
+        , openImage: (url) => {
+            const img = new Image();
+            img.src = url;
+
+            img.onload = function () {
+                const {width, height} = img;
+                const left = (screen.width - width) / 2;
+                const top = (screen.height - height) / 2;
+                const imagePopup = window.open("", "_blank", `width=${width},height=${height},left=${left},top=${top},resizable=yes`);
+                imagePopup.document.write(`
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Image viewer</title>
+                    <style>
+                        body {
+                            margin: 0;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            height: 100vh;
+                            background-color: #000;
+                        }
+                        img {
+                            max-width: 100%;
+                            max-height: 100%;
+                            cursor: pointer;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <img src="${url}" alt="Image" onclick="window.close();" />
+                </body>
+                </html>
+                `);
+
+                imagePopup.document.close();
+            };
+
+            img.onerror = function () {
+                alert("Failed to load the image.");
+            };
+        }
+    }
+
 
     onLoad() {
         const {SourceMapperRegistry: SMR} = DWEM;
 
         function chatInjector() {
-            receive_message = function (data, is_raw_message) {
-                var msg = $("<div>").append(data.content);
+            receive_message = function (data) {
                 var histcon = $('#chat_history_container')[0];
                 var atBottom = Math.abs(histcon.scrollHeight - histcon.scrollTop
                     - histcon.clientHeight) < 1.0;
-                if (!is_raw_message) {
+                if (!data.rawContent) {
+                    var msg = $("<div>").append(data.content);
                     msg.find(".chat_msg").html(linkify(msg.find(".chat_msg").text()));
+                    $("#chat_history").append(msg.html() + "<br>");
+                } else {
+                    $("#chat_history").append(data.rawContent);
                 }
-                $("#chat_history").append(msg.html() + "<br>");
                 if (atBottom)
                     histcon.scrollTop = histcon.scrollHeight;
                 if ($("#chat_body").css("display") === "none" && !data.meta) {

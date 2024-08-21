@@ -127,39 +127,34 @@ export default class CNCPublicChat {
             this.socket = WebSocketFactory.create(async (data) => {
                 WebSocketFactory.handle_login_cookie(data);
                 if (data.msg === 'chat') {
-                    const {sender, message, json} = CNCChat.parse(data.content);
+                    const {sender, message, json} = CNCChat.Parser.parse(data.content);
+                    const container = document.createElement('div');
+                    const senderSpan = document.createElement('span');
+                    senderSpan.classList.add('chat_sender');
+                    let messageSpan = document.createElement('span');
+                    messageSpan.classList.add('chat_msg');
                     if (json && json.sender) {
-                        const rawSender = `<span style="color: #5865f2">ⓓ</span>${json.sender}`;
-                        let rawMessage = document.createElement('span');
-                        rawMessage.classList.add('chat_msg');
+                        senderSpan.innerHTML = `<span style="color: #5865f2">ⓓ</span>${json.sender}`;
                         if (json.msg === 'discord') {
-                            rawMessage.textContent = json.text;
-                            rawMessage.style.whiteSpace = 'pre-line';
+                            messageSpan.textContent = json.text;
+                            messageSpan.style.whiteSpace = 'pre-line';
                         } else if (json.msg === 'discord-attachment') {
                             if (json.contentType && json.contentType.startsWith('image/')) {
-                                const image = new Image();
-                                image.src = json.url;
-                                image.setAttribute('style', 'margin-left:1%; margin-right:1%; max-width:98%; max-height:180px');
-                                const chatContainer = document.getElementById('chat_history_container');
-                                const atBottom = Math.abs(chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight) < 1.0;
-                                if (atBottom) {
-                                    image.onload = () => {
-                                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                                    };
-                                }
-                                rawMessage.innerHTML = `<br>`;
-                                rawMessage.append(image);
+                                const image = CNCChat.Image.create(json.url);
+                                messageSpan.append(image);
                             } else {
-                                rawMessage.innerHTML = `<a href="${json.url}">[FILE URL]</a>`;
+                                messageSpan.innerHTML = `<a href="${json.url}">[FILE URL]</a>`;
                             }
                         }
-                        data.content = CNCChat.htmlify({rawSender, rawMessage: rawMessage.outerHTML});
-                        CNCChat.receive_message(data, true);
                     } else {
-                        const rawSender = `<a style="text-decoration: none" href="javascript:void(0);" onclick="DWEM.Modules.CNCUserinfo.open('${sender}', event);">§${sender}</a>`;
-                        data.content = CNCChat.htmlify({rawSender, message});
-                        CNCChat.receive_message(data, true);
+                        senderSpan.innerHTML = `<a style="text-decoration: none" href="javascript:void(0);" onclick="DWEM.Modules.CNCUserinfo.open('${sender}', event);">§${sender}</a>`;
+                        messageSpan.textContent = message;
                     }
+                    container.append(senderSpan);
+                    container.append(document.createTextNode(': '));
+                    container.append(messageSpan);
+                    CNCChat.receive_message({rawContent: container});
+
                 } else if (data.msg === 'update_spectators') {
                     CNCUserinfo.patchUpdateSpectators(data);
                     this.lastSpectatorsData = data;
@@ -167,7 +162,7 @@ export default class CNCPublicChat {
                         CNCPublicChat.update_spectators(data);
                     }
                 } else if (data.msg === 'watching_started') {
-                    const content = CNCChat.htmlify({
+                    const content = CNCChat.Parser.htmlify({
                         sender: `[Connected to ${this.botName}]`,
                         separator: ' ',
                         message: 'When you chat in the lobby or enter a message after a space character, it will be sent to the public chat.'
@@ -177,7 +172,7 @@ export default class CNCPublicChat {
                         content
                     });
                 } else if (data.msg === 'go_lobby') {
-                    const content = CNCChat.htmlify({
+                    const content = CNCChat.Parser.htmlify({
                         sender: `[Disconnected from ${this.botName}]`,
                         separator: ' ',
                         message: 'Reconnecting automatically when possible.'
