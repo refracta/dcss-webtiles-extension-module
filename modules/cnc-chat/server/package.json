@@ -1,0 +1,27 @@
+{
+  "name": "cnc-chat",
+  "version": "1.0.0",
+  "description": "",
+  "main": "../index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/refracta/dcss-webtiles-extension-module.git"
+  },
+  "author": "refracta",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/refracta/dcss-webtiles-extension-module/issues"
+  },
+  "homepage": "https://github.com/refracta/dcss-webtiles-extension-module#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "lowdb": "^7.0.1",
+    "multer": "^1.4.5-lts.1",
+    "nanoid": "^5.0.7"
+  },
+  "type": "module"
+}
