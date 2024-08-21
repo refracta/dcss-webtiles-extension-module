@@ -1,9 +1,11 @@
+import html2canvas from './html2canvas.min.js';
+
 export default class CNCChat {
     static name = 'CNCChat';
     static version = '0.1';
     static dependencies = ['IOHook', 'WebSocketFactory', 'CNCUserinfo', 'SiteInformation'];
     static description = '(Beta) This module provides extended chat features.';
-    botName = 'CNCChat'
+    entrypoint = 'https://chat.nemelex.cards'
 
     ChatHistory = {
         isBottom: () => {
@@ -151,7 +153,41 @@ export default class CNCChat {
             };
         }
     }
-
+    Snapshot = {
+        Menu: {
+            POPUP: '.ui-popup-inner:last',
+            STATS: '#stats',
+            MINIMAP: '#minimap_block'
+        },
+        captureMenu: async (selector) => {
+            const target = document.querySelector(selector);
+            const scrollerShade = document.querySelector('.scroller-shade');
+            scrollerShade.setAttribute('data-html2canvas-ignore', true);
+            const backgroundColor = target.style.backgroundColor;
+            target.style.backgroundColor = 'black';
+            const canvas = await html2canvas(target);
+            target.style.backgroundColor = backgroundColor;
+            return canvas;
+        },
+        captureGame: (lineOfSight = 7) => {
+            const {cell_width, cell_height, cols, rows, ctx} = this.dungeon_renderer;
+            const widthAdjustment = cols % 2 === 0 ? 1 : 0;
+            const heightAdjustment = rows % 2 === 1 ? -1 : 0;
+            const halfCols = (cols - 1 + widthAdjustment) / 2;
+            const halfRows = (rows + heightAdjustment) / 2;
+            const startWidthRange = (((halfCols - lineOfSight) * cell_width));
+            const startHeightRange = (((halfRows - lineOfSight) * cell_height));
+            const widthArea = ((lineOfSight * 2) + 1) * cell_width;
+            const heightArea = ((lineOfSight * 2) + 1) * cell_height;
+            const imageData = ctx.getImageData(startWidthRange, startHeightRange, widthArea, heightArea);
+            const canvas = document.createElement('canvas');
+            canvas.width = widthArea;
+            canvas.height = heightArea;
+            const context = canvas.getContext("2d");
+            context.putImageData(imageData, 0, 0);
+            return canvas;
+        }
+    }
 
     onLoad() {
         const {SourceMapperRegistry: SMR} = DWEM;
@@ -181,5 +217,12 @@ export default class CNCChat {
 
         const receiveMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${chatInjector.toString()}()`);
         SMR.add('chat', receiveMapper);
+
+        function rendererInjector() {
+            DWEM.Modules.CNCChat.dungeon_renderer = renderer;
+        }
+
+        const rendererMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${rendererInjector.toString()}()`);
+        SMR.add('./dungeon_renderer', rendererMapper);
     }
 }

@@ -131,6 +131,7 @@ export default class ModuleManager {
 
     onLoad() {
         this.content = document.createElement('div');
+        this.content.setAttribute('data-html2canvas-ignore', true);
         this.shadow = this.content.attachShadow({mode: 'open'});
 
         this.style = new ModuleContainerStyle();
