@@ -38,8 +38,12 @@ export default class RCManager {
 
     onLoad() {
         const {IOHook} = DWEM.Modules;
+        this.loginReady = new Promise(resolve => {
+            this.loginReadyResolver = resolve;
+        })
         IOHook.send_message.after.addHandler('rc-manager', async (msg, data) => {
             if (msg === 'play') {
+                await this.loginReady;
                 const rc = await this.get_rc(data.game_id);
                 for (const {handler} of this.handlers) {
                     try {
@@ -59,6 +63,8 @@ export default class RCManager {
                         console.error(e);
                     }
                 }
+            } else if (data.msg === 'login_cookie') {
+                this.loginReadyResolver();
             }
         });
     }

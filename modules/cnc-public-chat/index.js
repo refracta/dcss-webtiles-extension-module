@@ -190,13 +190,18 @@ export default class CNCPublicChat {
                     this.socket.send(JSON.stringify({msg: 'pong'}));
                 }
             });
+            this.socket.ready = new Promise(resolve => {
+                this.socket.readyResolver = resolve;
+            });
             this.socket.onopen = (event) => {
+                this.socket.readyResolver();
                 this.socket.send(JSON.stringify({msg: 'watch', username: this.botName}));
             }
         })();
 
-        IOHook.handle_message.after.addHandler('cnc-public-chat', (data) => {
+        IOHook.handle_message.after.addHandler('cnc-public-chat', async (data) => {
             if (data.msg === 'login_cookie') {
+                await this.socket.ready;
                 WebSocketFactory.login(this.socket);
             } else if (data.msg === 'go_lobby' && this.lastSpectatorsData) {
                 CNCPublicChat.update_spectators(this.lastSpectatorsData);

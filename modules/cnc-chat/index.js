@@ -3,7 +3,7 @@ import html2canvas from './html2canvas.min.js';
 export default class CNCChat {
     static name = 'CNCChat';
     static version = '0.1';
-    static dependencies = ['IOHook', 'WebSocketFactory', 'CNCUserinfo', 'SiteInformation'];
+    static dependencies = ['IOHook', 'RCManager', 'SiteInformation', 'CNCUserinfo', 'SiteInformation'];
     static description = '(Beta) This module provides extended chat features.';
     entrypoint = 'https://chat.nemelex.cards'
 
@@ -155,12 +155,14 @@ export default class CNCChat {
     }
     Snapshot = {
         Menu: {
-            POPUP: '.ui-popup-inner:last',
+            POPUP: '.ui-popup-inner',
             STATS: '#stats',
             MINIMAP: '#minimap_block'
         },
         captureMenu: async (selector) => {
-            const target = document.querySelector(selector);
+            let target = document.querySelectorAll(selector);
+            target = target[target.length - 1];
+            console.log(target);
             const scrollerShade = document.querySelector('.scroller-shade');
             scrollerShade.setAttribute('data-html2canvas-ignore', true);
             const backgroundColor = target.style.backgroundColor;
@@ -186,7 +188,25 @@ export default class CNCChat {
             const context = canvas.getContext("2d");
             context.putImageData(imageData, 0, 0);
             return canvas;
+        },
+        download: (url, filename = 'snapshot.png') => {
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
+    }
+
+    getRCConfig(rcfile) {
+        let useClickToSendChat = Array.from(rcfile.matchAll(/^(?!\s*#).*use_click_to_send_chat\s*=\s*(\S+)\s*/gm));
+        useClickToSendChat = useClickToSendChat.pop()?.[1];
+        useClickToSendChat = useClickToSendChat === 'true';
+
+        return {
+            useClickToSendChat
+        };
     }
 
     onLoad() {
@@ -224,5 +244,36 @@ export default class CNCChat {
 
         const rendererMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${rendererInjector.toString()}()`);
         SMR.add('./dungeon_renderer', rendererMapper);
+
+        const {IOHook, RCManager} = DWEM.Modules;
+        RCManager.addHandler('cnc-chat', async (msg, data) => {
+            if (msg === 'play') {
+                const {useClickToSendChat} = this.getRCConfig(data.contents);
+                // console.log(useClickToSendChat);
+                this.useClickToSendChat = useClickToSendChat;
+            } else if (msg === 'go_lobby') {
+                this.useClickToSendChat = false;
+            }
+        });
+
+        IOHook.handle_message.after.addHandler('cnc-chat', (data) => {
+            if (data.msg === 'menu') {
+                this.items = Array.from(data.items);
+                if (this.useClickToSendChat) {
+                    for (const item of this.items) {
+                        const element = item.elem.get(0);
+                        /*element.addEventListener('mousedown', (event) => {
+                            if (event.button === 1) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                            } else if (event.button === 2) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                            }
+                        });*/
+                    }
+                }
+            }
+        }, 999);
     }
 }

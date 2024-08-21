@@ -77,6 +77,7 @@ export default class WebSocketFactory {
     ready = new Promise(resolve => {
         this.readyResolver = resolve;
     });
+
     onLoad() {
         const {SourceMapperRegistry: SMR, MatcherRegistry: MR} = DWEM;
 
