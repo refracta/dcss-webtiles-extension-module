@@ -2,6 +2,8 @@ version: '3'
 services:
   node:
     image: node:22.4.0
+    ports:
+      - "43036:3000"
     volumes:
       - .:/usr/src
     working_dir: /usr/src
