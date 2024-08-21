@@ -9,7 +9,7 @@ export default class CNCPublicChat {
         const {SourceMapperRegistry: SMR} = DWEM;
 
         function chatInjector() {
-            const {SiteInformation} = DWEM.Modules;
+            const {SiteInformation, CNCPublicChat} = DWEM.Modules;
             $("#chat_input").unbind("keydown", chat_message_send);
 
             function new_chat_message_send(e) {
@@ -82,6 +82,9 @@ export default class CNCPublicChat {
                 $("#chat_history").html("");
                 if (SiteInformation.current_hash === '#lobby') {
                     $("#spectator_count").html("0 users");
+                    if (CNCPublicChat.lastSpectatorsData) {
+                        CNCPublicChat.update_spectators(CNCPublicChat.lastSpectatorsData);
+                    }
                 } else {
                     $("#spectator_count").html("0 spectators");
                 }
