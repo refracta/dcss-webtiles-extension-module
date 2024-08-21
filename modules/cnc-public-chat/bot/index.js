@@ -3,8 +3,13 @@ import * as fs from 'fs';
 import WebSocket from "websocket/lib/W3CWebSocket.js";
 import {JSDOM} from "jsdom";
 import {Client, Events, GatewayIntentBits} from 'discord.js';
+import fetch from 'node-fetch';
+import {pipeline} from 'stream';
+import {promisify} from 'util';
 
+const streamPipeline = promisify(pipeline);
 
+fs.mkdirSync('tmp', {recursive: true});
 const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]});
 await client.login(config.discordToken);
@@ -56,7 +61,7 @@ while (true) {
     try {
         await new Promise(async (resolve, reject) => {
             socket = WebsocketFactory.create(config.websocket, {
-                handle_message: function (data) {
+                handle_message: async function (data) {
                     if (data.msg === 'login_success') {
                         socket.login_resolver();
                     } else if (data.msg === 'chat') {
@@ -65,7 +70,23 @@ while (true) {
                             const sender = document.querySelector('.chat_sender').textContent;
                             const message = document.querySelector('.chat_msg').textContent;
                             if (channel && sender !== config.username) {
-                                channel.send(`${sender}: ${message}`);
+                                if (message && message.match(new RegExp(`${config.entrypoint}/entities/\\d{1,}`))) {
+                                    try {
+                                        const {file, type, user} = await fetch(message).then(r => r.json());
+                                        if (type === 'game' || type === 'menu') {
+                                            await fetch(file).then(r => streamPipeline(r.body, fs.createWriteStream(`tmp/${file.split('/').pop()}`)));
+                                            const messageContent = `${user}'s ${type} image:`;
+                                            await channel.send({
+                                                content: messageContent,
+                                                files: [file]
+                                            });
+                                        }
+                                    } catch (e) {
+                                        console.error(new Date(), e);
+                                    }
+                                } else {
+                                    channel.send(`${sender}: ${message}`);
+                                }
                                 console.log(new Date(), `[WEBSOCKET] ${sender}: ${message}`);
                             }
                         } catch (e) {

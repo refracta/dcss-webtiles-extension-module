@@ -20,6 +20,7 @@
   "dependencies": {
     "discord.js": "^14.15.3",
     "jsdom": "^24.1.1",
+    "node-fetch": "^3.3.2",
     "websocket": "^1.0.35"
   }
 }

@@ -40,6 +40,10 @@ export default class DWEMSourceMapperRegistry {
                         topLevelFunction.body.body.splice(lastIndex, 0, {
                             type: 'ExpressionStatement', expression: newExpression
                         });
+                    } else {
+                        topLevelFunction.body.body.push({
+                            type: 'ExpressionStatement', expression: newExpression
+                        });
                     }
                 }
 

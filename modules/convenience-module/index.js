@@ -56,7 +56,7 @@ export default class ConvenienceModule {
                 }
                 if (this.redirectChat) {
                     IOHook.handle_message.after.addHandler('convenience-module-chat-redirect', (data) => {
-                        if (data.msg === 'chat') {
+                        if (data.msg === 'chat' && data.content) {
                             const container = document.createElement('div');
                             container.innerHTML = data.content;
                             const sender = container.querySelector('.chat_sender').textContent;

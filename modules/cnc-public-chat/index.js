@@ -29,8 +29,7 @@ export default class CNCPublicChat {
                         $("#chat_input").val("");
                         $('#chat_history_container').scrollTop($('#chat_history_container')[0].scrollHeight);
                         message_history.unshift(content)
-                        if (message_history.length > history_limit)
-                            message_history.length = history_limit;
+                        if (message_history.length > history_limit) message_history.length = history_limit;
                         history_pos = -1;
                         unsent_message = ""
                     }
@@ -46,8 +45,7 @@ export default class CNCPublicChat {
                          * be reloaded after going past the beginning of message
                          * history with down arrow. */
                         var cur_line = $("#chat_input").val()
-                        if (history_pos == -1)
-                            unsent_message = cur_line;
+                        if (history_pos == -1) unsent_message = cur_line;
                         $("#chat_input").val(message_history[++history_pos]);
                     }
                 }
@@ -59,8 +57,7 @@ export default class CNCPublicChat {
                         if (history_pos == 0) {
                             message = unsent_message;
                             history_pos--;
-                        } else
-                            message = message_history[--history_pos];
+                        } else message = message_history[--history_pos];
                         $("#chat_input").val(message);
                     }
                 }
@@ -136,7 +133,23 @@ export default class CNCPublicChat {
                     senderSpan.classList.add('chat_sender');
                     let messageSpan = document.createElement('span');
                     messageSpan.classList.add('chat_msg');
-                    if (json && json.sender) {
+
+                    if (message && message.match(new RegExp(`${CNCChat.API.Entrypoint}/entities/\\d{1,}`))) {
+                        const data = await fetch(message).then(r => r.json());
+                        if (data.type === 'game' || data.type === 'menu') {
+                            const anchor = document.createElement('a');
+                            anchor.textContent = `${sender}'s ${data.type} image`;
+                            anchor.style.textDecoration = "none";
+                            anchor.href = "javascript:void(0);";
+                            anchor.onclick = (event) => {
+                                DWEM.Modules.CNCUserinfo.open(sender, event);
+                            };
+                            senderSpan.append(anchor);
+                            const image = CNCChat.Image.create(data.file);
+                            messageSpan.append(image);
+                            CNCChat.receive_message({msg: 'chat', rawContent: container});
+                        }
+                    } else if (json && json.sender) {
                         senderSpan.innerHTML = `<span style="color: #5865f2">ⓓ</span>${json.sender}`;
                         if (json.msg === 'discord') {
                             messageSpan.textContent = json.text;
@@ -153,6 +166,7 @@ export default class CNCPublicChat {
                         senderSpan.innerHTML = `<a style="text-decoration: none" href="javascript:void(0);" onclick="DWEM.Modules.CNCUserinfo.open('${sender}', event);">§${sender}</a>`;
                         messageSpan.textContent = message;
                     }
+
                     container.append(senderSpan);
                     container.append(document.createTextNode(': '));
                     container.append(messageSpan);
@@ -171,8 +185,7 @@ export default class CNCPublicChat {
                         message: 'When you chat in the lobby or enter a message after a space character, it will be sent to the public chat.'
                     });
                     CNCChat.receive_message({
-                        msg: 'chat',
-                        content
+                        msg: 'chat', content
                     });
                 } else if (data.msg === 'go_lobby') {
                     const content = CNCChat.Parser.htmlify({
@@ -181,8 +194,7 @@ export default class CNCPublicChat {
                         message: 'Reconnecting automatically when possible.'
                     });
                     CNCChat.receive_message({
-                        msg: 'chat',
-                        content
+                        msg: 'chat', content
                     });
                 } else if (data.msg === 'lobby_entry' && data.username === this.botName) {
                     this.socket.send(JSON.stringify({msg: 'watch', username: this.botName}));
@@ -213,6 +225,31 @@ export default class CNCPublicChat {
         IOHook.handle_message.before.addHandler('cnc-public-chat', (data) => {
             if (data.msg === 'lobby_entry' && data.username === this.botName) {
                 return true;
+            }
+        });
+
+        // Migrate to CommandManager
+        IOHook.send_message.before.addHandler('cnc-public-chat-commander', (msg, data) => {
+            if (msg === 'chat_msg') {
+                const {text} = data;
+                if (text.startsWith('/game') || text.startsWith('/g')) {
+                    (async () => {
+                        const los = parseInt(text.split(' ').pop()) || 7;
+                        const canvas = await CNCChat.Snapshot.captureGame(los);
+                        const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+                        const {url} = await CNCChat.API.upload({file, type: 'game'}).then(r => r.json());
+                        this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
+                    })();
+                    return true;
+                } else if (text.startsWith('/menu') || text.startsWith('/m')) {
+                    (async () => {
+                        const canvas = await CNCChat.Snapshot.captureMenu(CNCChat.Snapshot.Menu.POPUP);
+                        const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+                        const {url} = await CNCChat.API.upload({file, type: 'menu'}).then(r => r.json());
+                        this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
+                    })();
+                    return true;
+                }
             }
         });
     }
