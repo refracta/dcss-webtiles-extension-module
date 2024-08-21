@@ -91,6 +91,7 @@ app.get('/entities/:entityNumber', async (req, res) => {
         let entity = db.data.entities[entityNumber - 1];
         entity = {...entity};
         delete entity['ip'];
+        entity.image = `${config.entrypoint}/${entity.image}`;
         if (!entity) {
             return res.status(404).json({error: 'Entity not found'});
         }
