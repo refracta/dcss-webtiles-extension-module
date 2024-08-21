@@ -8,6 +8,7 @@ import * as fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
 const app = express();
 const port = 3000;
@@ -76,7 +77,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
         });
 
         console.log('Uploaded data:', entityNumber, data);
-        const url = `https://chat.nemelex.cards/entities/${entityNumber}`;
+        const url = `${config.entrypoint}/entities/${entityNumber}`;
         res.status(200).json({url});
     } catch (error) {
         console.error(error);
