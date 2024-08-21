@@ -1,7 +1,7 @@
 export default class CNCPublicChat {
     static name = 'CNCPublicChat';
     static version = '0.1';
-    static dependencies = ['IOHook', 'WebSocketFactory', 'CNCUserinfo', 'SiteInformation'];
+    static dependencies = ['IOHook', 'WebSocketFactory', 'CNCUserinfo', 'CNCChat', 'SiteInformation'];
     static description = '(Beta) This module provides CNC server public chat.';
     botName = 'CNCPublicChat'
 
@@ -19,8 +19,7 @@ export default class CNCPublicChat {
                     e.preventDefault();
                     e.stopPropagation();
                     if (content != "") {
-                        const current_hash = SiteInformation.current_hash;
-                        if (current_hash === '#lobby' || content.startsWith(' ')) {
+                        if (SiteInformation.current_hash === '#lobby' || content.startsWith(' ')) {
                             DWEM.Modules.CNCPublicChat.socket.send(JSON.stringify({msg: 'chat_msg', text: content}));
                         } else {
                             comm.send_message("chat_msg", {
@@ -115,83 +114,52 @@ export default class CNCPublicChat {
             DWEM.Modules.CNCPublicChat.focus = focus;
             DWEM.Modules.CNCPublicChat.toggle = toggle;
             DWEM.Modules.CNCPublicChat.toggle_entire_chat = toggle_entire_chat;
-            DWEM.Modules.CNCPublicChat.receive_message = receive_message = function (data, is_raw_message) {
-                var msg = $("<div>").append(data.content);
-                var histcon = $('#chat_history_container')[0];
-                var atBottom = Math.abs(histcon.scrollHeight - histcon.scrollTop
-                    - histcon.clientHeight) < 1.0;
-                if (!is_raw_message) {
-                    msg.find(".chat_msg").html(linkify(msg.find(".chat_msg").text()));
-                }
-                $("#chat_history").append(msg.html() + "<br>");
-                if (atBottom)
-                    histcon.scrollTop = histcon.scrollHeight;
-                if ($("#chat_body").css("display") === "none" && !data.meta) {
-                    new_message_count++;
-                    update_message_count();
-                }
-                $(document).trigger("chat_message", [data.content]);
-            };
             DWEM.Modules.CNCPublicChat.update_spectators = update_spectators;
         }
 
         const receiveMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${chatInjector.toString()}()`);
         SMR.add('chat', receiveMapper);
 
-        const {IOHook, WebSocketFactory, CNCUserinfo, CNCPublicChat} = DWEM.Modules;
+        const {IOHook, WebSocketFactory, CNCUserinfo, CNCChat, CNCPublicChat} = DWEM.Modules;
 
         (async () => {
             await WebSocketFactory.ready;
             this.socket = WebSocketFactory.create(async (data) => {
                 WebSocketFactory.handle_login_cookie(data);
                 if (data.msg === 'chat') {
-                    const container = document.createElement('div');
-                    container.innerHTML = data.content;
-                    const senderTag = container.querySelector('.chat_sender');
-                    const sender = senderTag.textContent;
-                    senderTag.textContent = '§' + senderTag.textContent;
-                    const messageTag = container.querySelector('.chat_msg');
-                    const message = messageTag.textContent;
-                    const jsonMessage = (() => {
-                        try {
-                            if (sender === this.botName) {
-                                return JSON.parse(message);
-                            }
-                        } catch (e) {
-
-                        }
-                    })();
-                    let isRawMessage = false;
-                    if (jsonMessage) {
-                        if (jsonMessage.msg === 'discord') {
-                            senderTag.innerHTML = `<span style="color: #5865f2">ⓓ</span>${jsonMessage.sender}`
-                            messageTag.textContent = jsonMessage.text;
-                            messageTag.style.whiteSpace = 'pre-line';
-                        } else if (jsonMessage.msg === 'discord-attachment') {
-                            senderTag.innerHTML = `<span style="color: #5865f2">ⓓ</span>${jsonMessage.sender}`;
-                            isRawMessage = true;
-                            if (jsonMessage.contentType && jsonMessage.contentType.startsWith('image/')) {
+                    const {sender, message, json} = CNCChat.parse(data.content);
+                    if (json && json.sender) {
+                        const rawSender = `<span style="color: #5865f2">ⓓ</span>${json.sender}`;
+                        let rawMessage = document.createElement('span');
+                        rawMessage.classList.add('chat_msg');
+                        if (json.msg === 'discord') {
+                            rawMessage.textContent = json.text;
+                            rawMessage.style.whiteSpace = 'pre-line';
+                        } else if (json.msg === 'discord-attachment') {
+                            if (json.contentType && json.contentType.startsWith('image/')) {
                                 const image = new Image();
-                                image.src = jsonMessage.url;
+                                image.src = json.url;
                                 image.setAttribute('style', 'margin-left:1%; margin-right:1%; max-width:98%; max-height:180px');
-                                const histcon = document.getElementById('chat_history_container');
-                                const atBottom = Math.abs(histcon.scrollHeight - histcon.scrollTop - histcon.clientHeight) < 1.0;
+                                const chatContainer = document.getElementById('chat_history_container');
+                                const atBottom = Math.abs(chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight) < 1.0;
                                 if (atBottom) {
                                     image.onload = () => {
-                                        histcon.scrollTop = histcon.scrollHeight;
+                                        chatContainer.scrollTop = chatContainer.scrollHeight;
                                     };
                                 }
-                                messageTag.innerHTML = `<br>`;
-                                messageTag.append(image);
+                                rawMessage.innerHTML = `<br>`;
+                                rawMessage.append(image);
                             } else {
-                                messageTag.innerHTML = `<a href="${jsonMessage.url}">[FILE URL]</a>`;
+                                rawMessage.innerHTML = `<a href="${json.url}">[FILE URL]</a>`;
                             }
                         }
+                        data.content = CNCChat.htmlify({rawSender, rawMessage: rawMessage.outerHTML});
+                        CNCChat.receive_message(data, true);
                     } else {
-                        senderTag.innerHTML = `<a style="text-decoration: none" href="javascript:void(0);" onclick="DWEM.Modules.CNCUserinfo.open('${sender}', event);">${senderTag.textContent}</a>`
+                        const rawSender = `<a style="text-decoration: none" href="javascript:void(0);" onclick="DWEM.Modules.CNCUserinfo.open('${sender}', event);">§${sender}</a>`;
+                        data.content = CNCChat.htmlify({rawSender, message});
+                        CNCChat.receive_message(data, true);
                     }
-                    data.content = container.innerHTML;
-                    CNCPublicChat.receive_message(data, isRawMessage);
                 } else if (data.msg === 'update_spectators') {
                     CNCUserinfo.patchUpdateSpectators(data);
                     this.lastSpectatorsData = data;
@@ -199,14 +167,24 @@ export default class CNCPublicChat {
                         CNCPublicChat.update_spectators(data);
                     }
                 } else if (data.msg === 'watching_started') {
-                    CNCPublicChat.receive_message({
+                    const content = CNCChat.htmlify({
+                        sender: `[Connected to ${this.botName}]`,
+                        separator: '',
+                        message: 'When you chat in the lobby or enter a message after a space character, it will be sent to the public chat.'
+                    });
+                    CNCChat.receive_message({
                         msg: 'chat',
-                        content: `<span class="chat_sender">[Connected to ${this.botName}]</span> <span class="chat_msg">When you chat in the lobby or enter a message after a space character, it will be sent to the public chat.</span>`
+                        content
                     });
                 } else if (data.msg === 'go_lobby') {
-                    CNCPublicChat.receive_message({
+                    const content = CNCChat.htmlify({
+                        sender: `[Disconnected from ${this.botName}]`,
+                        separator: '',
+                        message: 'Reconnecting automatically when possible.'
+                    });
+                    CNCChat.receive_message({
                         msg: 'chat',
-                        content: `<span class="chat_sender">[Disconnected from ${this.botName}]</span> <span class="chat_msg">Reconnecting automatically when possible.</span>`
+                        content
                     });
                 } else if (data.msg === 'lobby_entry' && data.username === this.botName) {
                     this.socket.send(JSON.stringify({msg: 'watch', username: this.botName}));
