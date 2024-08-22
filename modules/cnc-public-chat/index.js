@@ -138,7 +138,7 @@ export default class CNCPublicChat {
                         const data = await fetch(message).then(r => r.json());
                         if (data.type === 'game' || data.type === 'menu') {
                             const anchor = document.createElement('a');
-                            anchor.textContent = `§${sender}'s ${data.type} image`;
+                            anchor.textContent = `§${sender}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
                             anchor.style.textDecoration = "none";
                             anchor.href = "javascript:void(0);";
                             anchor.onclick = (event) => {
@@ -149,8 +149,15 @@ export default class CNCPublicChat {
                             messageSpan.append(image);
                             CNCChat.receive_message({msg: 'chat', rawContent: container});
                         } else if (data.type === 'item') {
-                            senderSpan.textContent = `§${sender}'s item`;
-                            const imageContainer = this.Image.create(data.file);
+                            const anchor = document.createElement('a');
+                            anchor.textContent = `§${sender}'s Item`;
+                            anchor.style.textDecoration = "none";
+                            anchor.href = "javascript:void(0);";
+                            anchor.onclick = (event) => {
+                                DWEM.Modules.CNCUserinfo.open(sender, event);
+                            };
+                            senderSpan.append(anchor);
+                            const imageContainer = CNCChat.Image.create(data.file);
                             imageContainer.style.display = 'flex';
                             imageContainer.style.alignItems = 'center';
                             const image = imageContainer.querySelector('img');
@@ -267,5 +274,8 @@ export default class CNCPublicChat {
                 }
             }
         });
+        CNCChat.handleRightClickItem = (url) => {
+            this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
+        }
     }
 }

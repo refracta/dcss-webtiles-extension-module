@@ -217,7 +217,7 @@ export default class CNCChat {
     }
 
     getRCConfig(rcfile) {
-        let useClickToSendChat = Array.from(rcfile.matchAll(/^(?!\s*#).*use_click_to_send_chat\s*=\s*(\S+)\s*/gm));
+        let useClickToSendChat = Array.from(rcfile.matchAll(/^(?!\s*#).*lab_use_click_to_send_chat\s*=\s*(\S+)\s*/gm));
         useClickToSendChat = useClickToSendChat.pop()?.[1];
         useClickToSendChat = useClickToSendChat === 'true';
 
@@ -293,25 +293,25 @@ export default class CNCChat {
                     for (const item of this.items) {
                         const element = item.elem.get(0);
                         element.addEventListener('mousedown', async (event) => {
-                            console.log(event);
                             const canvas = element.querySelector('canvas');
                             const item = element.textContent;
                             const rgbColor = window.getComputedStyle(element).color;
                             const rgbValues = rgbColor.match(/\d+/g).map(Number);
                             const color = '#' + rgbValues.map((value) => {
                                 const hex = value.toString(16);
-                                return hex.length === 1 ? '0' + hex : hex; // 한 자리 숫자는 0을 붙입니다.
+                                return hex.length === 1 ? '0' + hex : hex;
                             }).join('');
+                            const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+                            const {url} = await this.API.upload({
+                                file,
+                                type: 'item',
+                                item,
+                                color
+                            }).then(r => r.json());
                             if (event.which === 2) {
-                                const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-                                const {url} = await this.API.upload({
-                                    file,
-                                    type: 'item',
-                                    item,
-                                    color
-                                }).then(r => r.json());
                                 socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
                             } else if (event.which === 3) {
+                                this?.handleRightClickItem?.(url);
                             }
                         });
                     }
@@ -340,6 +340,11 @@ export default class CNCChat {
                         socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
                     })();
                     return true;
+                }else if (text.startsWith('/eentity') || text.startsWith('/ee')) {
+                    (async () => {
+                        // socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
+                    })();
+                    return true;
                 }
             }
         });
@@ -353,7 +358,7 @@ export default class CNCChat {
                         if (data.type === 'game' || data.type === 'menu') {
                             const container = document.createElement('div');
                             const senderSpan = document.createElement('span');
-                            senderSpan.textContent = `${sender}'s ${data.type} image`;
+                            senderSpan.textContent = `${sender}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
                             senderSpan.classList.add('chat_sender');
                             let messageSpan = document.createElement('span');
                             messageSpan.classList.add('chat_msg');
@@ -366,7 +371,7 @@ export default class CNCChat {
                         } else if (data.type === 'item') {
                             const container = document.createElement('div');
                             const senderSpan = document.createElement('span');
-                            senderSpan.textContent = `${sender}'s item`;
+                            senderSpan.textContent = `${sender}'s Item`;
                             senderSpan.classList.add('chat_sender');
                             let messageSpan = document.createElement('span');
                             messageSpan.classList.add('chat_msg');

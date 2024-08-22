@@ -2,12 +2,7 @@ import WebsocketFactory from "./websocket-factory.js";
 import * as fs from 'fs';
 import WebSocket from "websocket/lib/W3CWebSocket.js";
 import {JSDOM} from "jsdom";
-import {Client, Events, GatewayIntentBits} from 'discord.js';
-import fetch from 'node-fetch';
-import {pipeline} from 'stream';
-import {promisify} from 'util';
-
-const streamPipeline = promisify(pipeline);
+import {Client, Events, GatewayIntentBits, EmbedBuilder} from 'discord.js';
 
 fs.mkdirSync('tmp', {recursive: true});
 const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
@@ -72,14 +67,20 @@ while (true) {
                             if (channel && sender !== config.username) {
                                 if (message && message.match(new RegExp(`${config.entrypoint}/entities/\\d{1,}`))) {
                                     try {
-                                        const {file, type, user} = await fetch(message).then(r => r.json());
+                                        let {file, type, user, item, color} = await fetch(message).then(r => r.json());
                                         if (type === 'game' || type === 'menu') {
-                                            await fetch(file).then(r => streamPipeline(r.body, fs.createWriteStream(`tmp/${file.split('/').pop()}`)));
-                                            const messageContent = `${user}'s ${type} image:`;
-                                            await channel.send({
-                                                content: messageContent,
-                                                files: [file]
-                                            });
+                                            const imageEmbed = new EmbedBuilder()
+                                                .setTitle(`${user}'s ${type.charAt(0).toUpperCase() + type.slice(1)}:`)
+                                                .setImage(file);
+                                            channel.send({embeds: [imageEmbed]});
+                                        } else if (type === 'item') {
+                                            color = parseInt(color.slice(1), 16);
+                                            const itemEmbed = new EmbedBuilder()
+                                                .setColor(color)
+                                                .setTitle(`${user}'s Item`)
+                                                .setDescription(item)
+                                                .setThumbnail(file);
+                                            channel.send({embeds: [itemEmbed]});
                                         }
                                     } catch (e) {
                                         console.error(new Date(), e);
