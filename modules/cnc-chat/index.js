@@ -267,7 +267,7 @@ export default class CNCChat {
             const {CNCChat} = DWEM.Modules;
             const original_item_click_handler = item_click_handler;
             item_click_handler = function (event) {
-                if (CNCChat.useClickToSendChat && event.which !== 0) {
+                if (CNCChat.useClickToSendChat && event.which !== 1) {
                     return;
                 }
                 original_item_click_handler.apply(this, [event]);
@@ -286,22 +286,34 @@ export default class CNCChat {
             }
         });
 
-
         IOHook.handle_message.after.addHandler('cnc-chat', (data) => {
             if (data.msg === 'menu') {
                 this.items = Array.from(data.items);
-                if (this.useClickToSendChat) {
+                if (this.useClickToSendChat && this.items) {
                     for (const item of this.items) {
                         const element = item.elem.get(0);
-                        /*element.addEventListener('mousedown', (event) => {
-                            if (event.button === 1) {
-                                event.preventDefault();
-                                event.stopPropagation();
-                            } else if (event.button === 2) {
-                                event.preventDefault();
-                                event.stopPropagation();
+                        element.addEventListener('mousedown', async (event) => {
+                            console.log(event);
+                            const canvas = element.querySelector('canvas');
+                            const item = element.textContent;
+                            const rgbColor = window.getComputedStyle(element).color;
+                            const rgbValues = rgbColor.match(/\d+/g).map(Number);
+                            const color = '#' + rgbValues.map((value) => {
+                                const hex = value.toString(16);
+                                return hex.length === 1 ? '0' + hex : hex; // 한 자리 숫자는 0을 붙입니다.
+                            }).join('');
+                            if (event.which === 2) {
+                                const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+                                const {url} = await this.API.upload({
+                                    file,
+                                    type: 'item',
+                                    item,
+                                    color
+                                }).then(r => r.json());
+                                socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
+                            } else if (event.which === 3) {
                             }
-                        });*/
+                        });
                     }
                 }
             }
@@ -347,6 +359,29 @@ export default class CNCChat {
                             messageSpan.classList.add('chat_msg');
                             const image = this.Image.create(data.file);
                             messageSpan.append(image);
+                            container.append(senderSpan);
+                            container.append(document.createTextNode(': '));
+                            container.append(messageSpan);
+                            this.receive_message({msg: 'chat', rawContent: container});
+                        } else if (data.type === 'item') {
+                            const container = document.createElement('div');
+                            const senderSpan = document.createElement('span');
+                            senderSpan.textContent = `${sender}'s item`;
+                            senderSpan.classList.add('chat_sender');
+                            let messageSpan = document.createElement('span');
+                            messageSpan.classList.add('chat_msg');
+                            const imageContainer = this.Image.create(data.file);
+                            imageContainer.style.display = 'flex';
+                            imageContainer.style.alignItems = 'center';
+                            const image = imageContainer.querySelector('img');
+                            image.style.maxWidth = '32px';
+                            image.style.maxHeight = '32px';
+                            const itemSpan = document.createElement('span');
+                            itemSpan.style.color = data.color;
+                            itemSpan.style.marginLeft = '0.5em';
+                            itemSpan.textContent = data.item;
+                            imageContainer.append(itemSpan);
+                            messageSpan.append(imageContainer);
                             container.append(senderSpan);
                             container.append(document.createTextNode(': '));
                             container.append(messageSpan);

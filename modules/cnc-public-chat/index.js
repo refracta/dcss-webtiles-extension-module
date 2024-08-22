@@ -148,6 +148,21 @@ export default class CNCPublicChat {
                             const image = CNCChat.Image.create(data.file);
                             messageSpan.append(image);
                             CNCChat.receive_message({msg: 'chat', rawContent: container});
+                        } else if (data.type === 'item') {
+                            senderSpan.textContent = `§${sender}'s item`;
+                            const imageContainer = this.Image.create(data.file);
+                            imageContainer.style.display = 'flex';
+                            imageContainer.style.alignItems = 'center';
+                            const image = imageContainer.querySelector('img');
+                            image.style.maxWidth = '32px';
+                            image.style.maxHeight = '32px';
+                            const itemSpan = document.createElement('span');
+                            itemSpan.style.color = data.color;
+                            itemSpan.style.marginLeft = '0.5em';
+                            itemSpan.textContent = data.item;
+                            imageContainer.append(itemSpan);
+                            messageSpan.append(imageContainer);
+                            CNCChat.receive_message({msg: 'chat', rawContent: container});
                         }
                     } else if (json && json.sender) {
                         senderSpan.innerHTML = `<span style="color: #5865f2">ⓓ</span>${json.sender}`;
