@@ -174,8 +174,8 @@ export default class CNCPublicChat {
                     } else if (json && json.sender) {
                         senderSpan.innerHTML = `<span style="color: #5865f2">ⓓ</span>${json.sender}`;
                         if (json.msg === 'discord') {
-                            messageSpan.textContent = json.text;
                             messageSpan.style.whiteSpace = 'pre-line';
+                            messageSpan.innerHTML = CNCChat.linkify(json.text);
                         } else if (json.msg === 'discord-attachment') {
                             if (json.contentType && json.contentType.startsWith('image/')) {
                                 const image = CNCChat.Image.create(json.url);
@@ -186,7 +186,7 @@ export default class CNCPublicChat {
                         }
                     } else {
                         senderSpan.innerHTML = `<a style="text-decoration: none" href="javascript:void(0);" onclick="DWEM.Modules.CNCUserinfo.open('${sender}', event);">§${sender}</a>`;
-                        messageSpan.textContent = message;
+                        messageSpan.innerHTML = CNCChat.linkify(message);
                     }
 
                     container.append(senderSpan);

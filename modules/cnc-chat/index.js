@@ -251,6 +251,7 @@ export default class CNCChat {
                 $(document).trigger("chat_message", [data.content]);
             };
             DWEM.Modules.CNCChat.receive_message = receive_message;
+            DWEM.Modules.CNCChat.linkify = linkify;
         }
 
         const receiveMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${chatInjector.toString()}()`);
