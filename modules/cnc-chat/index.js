@@ -250,6 +250,9 @@ export default class CNCChat {
                 }
                 $(document).trigger("chat_message", [data.content]);
             };
+            comm.register_handlers({
+                "chat": receive_message
+            });
             DWEM.Modules.CNCChat.receive_message = receive_message;
             DWEM.Modules.CNCChat.linkify = linkify;
         }
@@ -341,7 +344,7 @@ export default class CNCChat {
                         socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
                     })();
                     return true;
-                }else if (text.startsWith('/eentity') || text.startsWith('/ee')) {
+                } else if (text.startsWith('/eentity') || text.startsWith('/ee')) {
                     (async () => {
                         // socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
                     })();
