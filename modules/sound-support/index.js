@@ -310,8 +310,8 @@ export default class SoundSupport {
                                 /SoundSupport register: Register local sound pack<br>
                                 /SoundSupport remove [URL]: Remove local sound pack<br>
                                 /SoundSupport clear: Clear all local sound packs<br>
-                                /SoundSupport volume [0-1]: Set sound volume
-                                /SoundSupport reload: Force reload sound pack
+                                /SoundSupport volume [0-1]: Set sound volume<br>
+                                /SoundSupport reload: Force reload sound pack<br>
                                 /SoundSupport test [message]: Output a message for sound testing
                             `);
                         }
