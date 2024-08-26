@@ -69,8 +69,13 @@ export default class SoundSupport {
                 soundPackConfigList.push({url, matchFiles});
             }
         }
+
+        let soundDebug = Array.from(rcfile.matchAll(/^(?!\s*#).*sound_debug\s*=\s*(\S+)\s*/gm));
+        soundDebug = soundDebug.pop()?.[1];
+        soundDebug = soundDebug === 'true';
+
         return {
-            soundOn, soundVolume, soundFadeTime, oneSDLSoundChannel, soundPackConfigList
+            soundOn, soundVolume, soundFadeTime, oneSDLSoundChannel, soundPackConfigList, soundDebug
         };
     }
 
@@ -182,6 +187,64 @@ export default class SoundSupport {
         });
     }
 
+    async loadSoundPacks() {
+        let {
+            soundOn, soundVolume, soundFadeTime, oneSDLSoundChannel, soundPackConfigList
+        } = this.soundConfig;
+        if (!soundOn) {
+            return;
+        }
+        this.soundManager.volume = soundVolume;
+        this.soundManager.fadeTime = soundFadeTime;
+        let totalBytes = 0;
+        let totalMatchData = 0;
+        for (let config of soundPackConfigList) {
+            let localSoundPack;
+            try {
+                localSoundPack = await this.getSoundPack(config.url);
+            } catch (e) {
+                this.sendMessage(`<cyan>[SoundSupport]</cyan> Download sound pack: ${config.url}`);
+                try {
+                    await this.downloadSoundPack(config.url, function (data) {
+                        console.log(data);
+                    });
+                    localSoundPack = await this.getSoundPack(config.url);
+                } catch (e) {
+                    this.sendMessage(`<cyan>[SoundSupport]</cyan> <red>${e.message}</red>`);
+                    continue;
+                }
+            }
+            config.files = localSoundPack.files;
+            config.soundPack = localSoundPack.soundPack;
+            totalBytes += config.soundPack.size;
+            const blobToText = blob => new Promise(resolve => {
+                let reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsText(blob);
+            });
+            let txtFiles = Object.keys(config.files);
+            if (config.matchFiles.length === 0) {
+                txtFiles = txtFiles.filter(e => e.endsWith('.txt'));
+            } else {
+                txtFiles = config.matchFiles.filter(e => txtFiles.includes(e));
+            }
+            txtFiles = await Promise.all(txtFiles.map(key => blobToText(config.files[key])));
+            let allMatchData = [];
+            let soundFilePath = '';
+            for (const txt of txtFiles) {
+                const matchResult = this.#getMatchResult(txt, soundFilePath);
+                soundFilePath = matchResult.soundFilePath;
+                const {matchData} = matchResult;
+                allMatchData = [...allMatchData, ...matchData];
+            }
+            totalMatchData += allMatchData.length;
+            config.matchData = allMatchData;
+        }
+        soundPackConfigList = soundPackConfigList.filter(config => config.soundPack);
+        let totalMegaBytes = totalBytes / (1024 * 1024);
+        this.sendMessage(`<cyan>[SoundSupport]</cyan> ${soundPackConfigList.length} sound pack (${Math.floor(totalMegaBytes * 10) / 10} MB), ${totalMatchData} match data loaded successfully.`);
+    }
+
     onLoad() {
         const {RCManager, IOHook, SiteInformation} = DWEM.Modules;
 
@@ -229,6 +292,16 @@ export default class SoundSupport {
                             } else {
                                 this.sendChatMessage(`<b>[SoundSupport]</b> Invalid volume value. Please provide a number between 0 and 1.`);
                             }
+                        } else if (args[1] === 'reload') {
+                            await this.clearSoundPacks();
+                            await this.loadSoundPacks();
+                        } else if (args[1] === 'test') {
+                            const text = args.slice(2).join(' ');
+                            IOHook.handle_message({
+                                msg: 'msgs', messages: [{
+                                    text
+                                }]
+                            });
                         } else {
                             this.sendChatMessage(`<b>[SoundSupport v${SoundSupport.version}]</b><br>
                                 /SoundSupport list: List all local sound packs<br>
@@ -236,6 +309,8 @@ export default class SoundSupport {
                                 /SoundSupport remove [URL]: Remove local sound pack<br>
                                 /SoundSupport clear: Clear all local sound packs<br>
                                 /SoundSupport volume [0-1]: Set sound volume
+                                /SoundSupport reload: Force reload sound pack
+                                /SoundSupport test [message]: Output a message for sound testing
                             `);
                         }
                     })();
@@ -252,82 +327,37 @@ export default class SoundSupport {
                     }
                 });
                 await this.waitInputMode();
-                let {
-                    soundOn, soundVolume, soundFadeTime, oneSDLSoundChannel, soundPackConfigList
-                } = this.#getSoundConfig(data.contents);
-                if (!soundOn) {
-                    return;
-                }
-                this.soundManager.volume = soundVolume;
-                this.soundManager.fadeTime = soundFadeTime;
-                let totalBytes = 0;
-                let totalMatchData = 0;
-                for (let config of soundPackConfigList) {
-                    let localSoundPack;
-                    try {
-                        localSoundPack = await this.getSoundPack(config.url);
-                    } catch (e) {
-                        this.sendMessage(`<cyan>[SoundSupport]</cyan> Download sound pack: ${config.url}`);
-                        try {
-                            await this.downloadSoundPack(config.url, function (data) {
-                                console.log(data);
-                            });
-                            localSoundPack = await this.getSoundPack(config.url);
-                        } catch (e) {
-                            this.sendMessage(`<cyan>[SoundSupport]</cyan> <red>${e.message}</red>`);
-                            continue;
-                        }
-                    }
-                    config.files = localSoundPack.files;
-                    config.soundPack = localSoundPack.soundPack;
-                    totalBytes += config.soundPack.size;
-                    const blobToText = blob => new Promise(resolve => {
-                        let reader = new FileReader();
-                        reader.onload = () => resolve(reader.result);
-                        reader.readAsText(blob);
-                    });
-                    let txtFiles = Object.keys(config.files);
-                    if (config.matchFiles.length === 0) {
-                        txtFiles = txtFiles.filter(e => e.endsWith('.txt'));
-                    } else {
-                        txtFiles = config.matchFiles.filter(e => txtFiles.includes(e));
-                    }
-                    txtFiles = await Promise.all(txtFiles.map(key => blobToText(config.files[key])));
-                    let allMatchData = [];
-                    let soundFilePath = '';
-                    for (const txt of txtFiles) {
-                        const matchResult = this.#getMatchResult(txt, soundFilePath);
-                        soundFilePath = matchResult.soundFilePath;
-                        const {matchData} = matchResult;
-                        allMatchData = [...allMatchData, ...matchData];
-                    }
-                    totalMatchData += allMatchData.length;
-                    config.matchData = allMatchData;
-                }
-                soundPackConfigList = soundPackConfigList.filter(config => config.soundPack);
-                let totalMegaBytes = totalBytes / (1024 * 1024);
-                this.sendMessage(`<cyan>[SoundSupport]</cyan> ${soundPackConfigList.length} sound pack (${Math.floor(totalMegaBytes * 10) / 10} MB), ${totalMatchData} match data loaded successfully.`);
+                this.soundConfig = this.#getSoundConfig(data.contents);
+                await this.loadSoundPacks();
                 const handleSoundMessage = async (data) => {
                     const {messages} = data;
                     for (const message of messages.filter(m => m.text)) {
                         const rawText = message.text.replace(/<.+?>/g, '');
-                        for (const config of soundPackConfigList) {
+                        for (const config of this.soundConfig.soundPackConfigList) {
                             const {files, matchData} = config;
-                            const {path} = matchData.find(data => rawText.match(data.regex)) || {};
-                            if (files[path]) {
+                            const {path, regex} = matchData.find(data => rawText.match(data.regex)) || {};
+                            const file = files[path];
+                            if (file) {
+                                if (this.soundConfig.soundDebug) {
+                                    console.log(`${rawText}\n\tregex: ${regex}\n\tpath: ${path} (${file.size} bytes)`);
+                                }
                                 let audioBuffer;
-                                if (files[path].audioBuffer) {
+                                if (file.audioBuffer) {
                                     audioBuffer = files[path].audioBuffer;
                                 } else {
-                                    files[path].audioBuffer = audioBuffer = await this.soundManager.blobToAudioBuffer(files[path]);
+                                    file.audioBuffer = audioBuffer = await this.soundManager.blobToAudioBuffer(file);
                                 }
-                                if (oneSDLSoundChannel) {
+                                if (this.soundConfig.oneSDLSoundChannel) {
                                     this.soundManager.stop();
                                 }
                                 this.soundManager.play(audioBuffer);
                                 break;
                             } else if (path) {
                                 console.error('No match file:', data);
+                            } else {
+                                if (this.soundConfig.soundDebug) {
+                                    console.log(`${rawText}`);
+                                }
                             }
                         }
                     }

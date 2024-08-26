@@ -66,6 +66,13 @@ sound-related settings that can be used in the RC configuration:
     - **Explanation:** After the URL, the match file configuration is in JSON array format, specifying specific match
       files within the sound pack. If no match files are specified, all text files within the sound pack are used.
 
+- **sound_debug**
+  - **Description:** Prints sound debugging information to the browser developer tools console window.
+  - **Value:** true or false
+  - **Default:** false
+  - **Example:** `sound_debug = true`
+
+
 A sound pack is a compressed format that includes configuration settings in the form of an init.txt file and the associated sound files used in the downloaded version of Crawl. For example:
 ```plaintext
 init.txt
@@ -109,6 +116,8 @@ Various functions can be accessed in the game chat window using the /SoundSuppor
 /SoundSupport remove [URL]: Removes the local sound pack from the specified URL.
 /SoundSupport clear: Removes all local sound packs.
 /SoundSupport volume [0-1]: Set sound volume
+/SoundSupport reload: Force reload sound pack
+/SoundSupport test [message]: Output a message for sound testing
 ```
 
 # CNC Open Sound Pack
