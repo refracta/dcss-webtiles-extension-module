@@ -293,7 +293,9 @@ export default class SoundSupport {
                                 this.sendChatMessage(`<b>[SoundSupport]</b> Invalid volume value. Please provide a number between 0 and 1.`);
                             }
                         } else if (args[1] === 'reload') {
-                            await this.clearSoundPacks();
+                            for (const config of this.soundConfig.soundPackConfigList) {
+                                await this.removeSoundPack(config.url);
+                            }
                             await this.loadSoundPacks();
                         } else if (args[1] === 'test') {
                             const text = args.slice(2).join(' ');
