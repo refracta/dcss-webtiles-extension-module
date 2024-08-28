@@ -239,6 +239,10 @@ export default class SoundSupport {
             }
             totalMatchData += allMatchData.length;
             config.matchData = allMatchData;
+            if (config.files['sound-pack-info']) {
+                const soundPackInfo = await blobToText(config.files['sound-pack-info']);
+                this.sendMessage(`<cyan>[SoundSupport]</cyan> ${soundPackInfo.trim()}`);
+            }
         }
         soundPackConfigList = soundPackConfigList.filter(config => config.soundPack);
         let totalMegaBytes = totalBytes / (1024 * 1024);
