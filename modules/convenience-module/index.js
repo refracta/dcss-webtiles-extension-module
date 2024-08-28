@@ -98,5 +98,47 @@ export default class ConvenienceModule {
 
         const showGoldStatusMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${injectShowGoldStatus.toString()}()`);
         SMR.add('./player', showGoldStatusMapper);
+
+        IOHook.handle_message.after.addHandler('convenience-module', (data) => {
+            if (!(this.autoReconnect && this.lastSessionData)) {
+                return;
+            }
+            if (data.msg === 'go_lobby') {
+                if (this.lastSessionData.msg === 'play') {
+                    location.hash = `play-${this.lastSessionData.game_id}`;
+                }
+            } else if (data.msg === 'lobby_entry' && data.username === this.lastSessionData.username) {
+                location.hash = `watch-${this.lastSessionData.username}`;
+            }
+        });
+
+        IOHook.handle_message.before.addHandler('convenience-module', (data) => {
+            if (data.msg === 'game_ended' && this.autoReconnect && this.lastSessionData) {
+                return true;
+            }
+        });
+
+        IOHook.send_message.after.addHandler('convenience-module', (msg, data) => {
+            if (msg === 'play') {
+                this.lastSessionData = data;
+            } else if (msg === 'watch') {
+                this.lastSessionData = data;
+            }
+        });
+
+        IOHook.send_message.before.addHandler('convenience-module', (msg, data) => {
+            if (msg === 'chat_msg') {
+                const {text} = data;
+                if (text.startsWith('/arc')) {
+                    this.autoReconnect = !this.autoReconnect;
+                    IOHook.handle_message({
+                        msg: 'chat',
+                        content: `Auto reconnect mode is ${this.autoReconnect ? 'enabled' : 'disabled'}.`
+                    });
+                    return true;
+                }
+            }
+        });
+
     }
 }
