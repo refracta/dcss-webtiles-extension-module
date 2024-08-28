@@ -73,7 +73,9 @@ sound-related settings that can be used in the RC configuration:
   - **Example:** `sound_debug = true`
 
 
-A sound pack is a compressed format that includes configuration settings in the form of an init.txt file and the associated sound files used in the downloaded version of Crawl. For example:
+A sound pack is a compressed format that includes configuration settings in the form of an init.txt file and the associated sound files used in the downloaded version of Crawl. 
+
+For example:
 ```plaintext
 init.txt
 sound/quit.mp3
@@ -87,6 +89,8 @@ sound ^= hit:hit.mp3
 ```
 Refer to the [options_guide](https://raw.githubusercontent.com/crawl/crawl/master/crawl-ref/docs/options_guide.txt)
 
+ - The contents of the `sound-pack-info` file are displayed in the message.
+ - Match file is prioritized according to the order in which the user loads it in RC, and if it's the same file, the sound of the match clause (`sound ^= ...`) positioned earlier has a higher match priority.
 ### Example Configuration
 
 ```plaintext
