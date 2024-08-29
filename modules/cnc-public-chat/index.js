@@ -20,7 +20,7 @@ export default class CNCPublicChat {
                     e.stopPropagation();
                     if (content != "") {
                         if (SiteInformation.current_hash === '#lobby' || content.startsWith(' ')) {
-                            DWEM.Modules.CNCPublicChat.socket.send(JSON.stringify({msg: 'chat_msg', text: content}));
+                            DWEM.Modules.CNCPublicChat.socket.send(JSON.stringify({msg: 'chat_msg', text: content.trim()}));
                         } else {
                             comm.send_message("chat_msg", {
                                 text: content
