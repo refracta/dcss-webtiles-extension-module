@@ -1,3 +1,7 @@
+import {Chart, registerables} from 'https://cdn.skypack.dev/chart.js';
+
+Chart.register(...registerables);
+
 export default class CNCBanner {
     static name = 'CNCBanner';
     static version = '1.0';
@@ -136,7 +140,6 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         }
     }
 
-
     async updateLatencyText(force = false) {
         if (!this.latency || force) {
             this.latency = await this.getLatency();
@@ -239,10 +242,62 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         return message;
     }
 
+    toggleLatencyIndicator(event) {
+        this.showLatencyIndicator = !this.showLatencyIndicator;
+        const indicator = document.getElementById('latency-indicator');
+        if (this.showLatencyIndicator) {
+            this.chartData = {
+                labels: [], datasets: [{
+                    label: 'Latency',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    data: [],
+                    fill: false,
+                }]
+            };
+            indicator.innerHTML = '';
+            const canvas = document.createElement('canvas');
+            indicator.appendChild(canvas);
+            const span = document.createElement('span');
+            indicator.appendChild(span);
+            const ctx = canvas.getContext('2d');
+            this.chart = new Chart(ctx, {
+                type: 'line', data: this.chartData, options: {
+                    scales: {
+                        x: {
+                            type: 'category', position: 'bottom'
+                        }, y: {
+                            beginAtZero: true
+                        }
+                    }, animation: {
+                        duration: 0
+                    }, maintainAspectRatio: true
+                }
+            });
+            this.count = 1;
+            this.latencyIndicatorInterval = setInterval(async _ => {
+                const latency = await this.getLatency();
+                this.chartData.labels.push(`${this.count++}t`);
+                const data = this.chartData.datasets[0].data;
+                data.push(latency);
+                this.chart.update();
+                const sum = data.reduce((a, v) => a + v, 0);
+                const min = data.reduce((a, v) => Math.min(a, v), Number.MAX_SAFE_INTEGER);
+                const max = data.reduce((a, v) => Math.max(a, v), Number.MIN_SAFE_INTEGER);
+                const avg = Math.floor(sum / data.length * 100) / 100;
+                span.textContent = `${data.length}t=${latency} MS, AVG=${avg}MS, MAX=${max}MS, MIN=${min}MS`;
+            }, 500);
+        } else {
+            clearInterval(this.latencyIndicatorInterval);
+        }
+        indicator.style.display = this.showLatencyIndicator ? '' : 'none';
+        event.preventDefault();
+    }
 
     getKoreanBanner(current_user) {
         return `
-        <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a> <a title="서버 지연 시간입니다. 다시 측정하려면 클릭하세요." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)">(<span id="latency">?</span> MS)</a>
+        <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a> <a title="서버 지연 시간입니다. 다시 측정하려면 클릭, 지연 시간 측정기를 확인하려면 우클릭하세요" style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)" oncontextmenu="DWEM.Modules.CNCBanner.toggleLatencyIndicator(event)">(<span id="latency">?</span> MS)</a>
+        <div id="latency-indicator" style="display: none; max-width: 500px"></div>
         <br>
         ${current_user ? `
         <a href="https://webtiles.nethack.live" style="font-size: small; margin: 0; padding:0; text-decoration: none"> 넷핵도 웹타일로 플레이 할 수 있다는 것을 아시나요?</a>
@@ -290,7 +345,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     }
 
     getEnglishBanner(current_user) {
-        return `<a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">It's all in the cards!</a> <a title="This is your server latency. Click to remeasure." style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)">(<span id="latency">?</span> MS)</a>
+        return `<a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">It's all in the cards!</a> <a title="This is your server latency. Click to remeasure, Right click to show latency indicator" style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)">(<span id="latency">?</span> MS)</a>
+                    <div id="latency-indicator" style="display: none; max-width: 500px"></div>
                     <br>
                     ${current_user ? `
                     <a href="https://webtiles.nethack.live" style="font-size: small; margin: 0; padding:0; text-decoration: none"> Did you know that NetHack can be played on WebTiles? </a>
