@@ -345,7 +345,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     }
 
     getEnglishBanner(current_user) {
-        return `<a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">It's all in the cards!</a> <a title="This is your server latency. Click to remeasure, Right click to show latency indicator" style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)">(<span id="latency">?</span> MS)</a>
+        return `<a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">It's all in the cards!</a> <a title="This is your server latency. Click to remeasure, Right click to show latency indicator" style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)" oncontextmenu="DWEM.Modules.CNCBanner.toggleLatencyIndicator(event)">(<span id="latency">?</span> MS)</a>
                     <div id="latency-indicator" style="display: none; max-width: 500px"></div>
                     <br>
                     ${current_user ? `
