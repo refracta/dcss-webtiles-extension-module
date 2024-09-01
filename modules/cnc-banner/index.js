@@ -407,5 +407,19 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 }
             }
         });
+        const lobby = {};
+        const lobbySpan = document.querySelector('#lobby_body span');
+        IOHook.handle_message.after.addHandler('cnc-banner', (data) => {
+            if (!(data.msg === 'lobby_entry' || data.msg === 'lobby_remove')) {
+                return;
+            }
+            if (data.msg === 'lobby_entry') {
+                lobby[data.id] = data;
+            } else if (data.msg === 'lobby_remove') {
+                delete lobby[data.id];
+            }
+            const numberOfPlayers = Object.keys(lobby).length;
+            lobbySpan.textContent = `Games currently running (${numberOfPlayers} players):`
+        });
     }
 }
