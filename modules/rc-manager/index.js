@@ -1,4 +1,5 @@
 export default class RCManager {
+    // USE LOCAL_SOCKET?
     static name = 'RCManager'
     static version = '1.0'
     static dependencies = ['IOHook', 'WebSocketFactory']

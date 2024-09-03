@@ -1,0 +1,6 @@
+{
+  "entrypoint": "https://crawl.nemelex.cards",
+  "websocket": "wss://crawl.nemelex.cards/socket",
+  "username": "wtrec",
+  "password": ""
+}

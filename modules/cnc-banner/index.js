@@ -285,7 +285,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 const min = data.reduce((a, v) => Math.min(a, v), Number.MAX_SAFE_INTEGER);
                 const max = data.reduce((a, v) => Math.max(a, v), Number.MIN_SAFE_INTEGER);
                 const avg = Math.floor(sum / data.length * 100) / 100;
-                span.textContent = `${data.length}t=${latency} MS, AVG=${avg}MS, MAX=${max}MS, MIN=${min}MS`;
+                span.textContent = `${data.length}t=${latency}MS, AVG=${avg}MS, MAX=${max}MS, MIN=${min}MS`;
             }, 500);
         } else {
             clearInterval(this.latencyIndicatorInterval);
