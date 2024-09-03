@@ -101,57 +101,60 @@ function launchWTREC(username) {
 
                 socket.watch(username);
             } else if (data.msg === 'game_client') {
-                const currentTime = new Date().getTime();
-                const timing = currentTime - socket.startTime;
-                socket.data.push({...data, wtrec: {type: 'receive', timing}});
-
-                for (let i = 1; i < 3 + 1; i++) {
-                    try {
-                        const {window: {document}} = new JSDOM(data.content);
-                        const version = data.version;
-                        const keyPath = `game-${version}`;
-                        const valuePath = `/gamedata/${version}`;
-                        const styles = Array.from(document.querySelectorAll('link'))
-                            .map(link => link.getAttribute('href'));
-                        const styleBlobs = await Promise.all(styles.map(path => fetch(config.entrypoint + path).then(r => r.blob())));
-                        const styleMap = styles.map((path, index) => ({[path]: styleBlobs[index]})).reduce((a, e) => ({...a, ...e}), {});
-                        const images = Array.from(document.querySelectorAll('img'))
-                            .map(link => link.getAttribute('src'));
-                        const imagesBlobs = await Promise.all(images.map(path => fetch(config.entrypoint + path).then(r => r.blob())));
-                        const imagesMap = images.map((path, index) => ({[path]: imagesBlobs[index]})).reduce((a, e) => ({...a, ...e}), {});
-                        const scriptMap = await getScriptMap(valuePath);
-                        const resourceMap = {...styleMap, ...imagesMap, ...scriptMap};
-                        const resources = Object.keys(resourceMap);
-                        const resourceBuffers = await Promise.all(Object.values(resourceMap).map(b => b.arrayBuffer().then(ab => Buffer.from(ab))));
-                        const hashes = resourceBuffers.map(buffer => {
+                socket.readyPromise = new Promise(async resolve => {
+                    const currentTime = new Date().getTime();
+                    const timing = currentTime - socket.startTime;
+                    socket.data.push({...data, wtrec: {type: 'receive', timing}});
+                    for (let i = 1; i < 3 + 1; i++) {
+                        try {
+                            const {window: {document}} = new JSDOM(data.content);
+                            const version = data.version;
+                            const keyPath = `game-${version}`;
+                            const valuePath = `/gamedata/${version}`;
+                            const styles = Array.from(document.querySelectorAll('link'))
+                                .map(link => link.getAttribute('href'));
+                            const styleBlobs = await Promise.all(styles.map(path => fetch(config.entrypoint + path).then(r => r.blob())));
+                            const styleMap = styles.map((path, index) => ({[path]: styleBlobs[index]})).reduce((a, e) => ({...a, ...e}), {});
+                            const images = Array.from(document.querySelectorAll('img'))
+                                .map(link => link.getAttribute('src'));
+                            const imagesBlobs = await Promise.all(images.map(path => fetch(config.entrypoint + path).then(r => r.blob())));
+                            const imagesMap = images.map((path, index) => ({[path]: imagesBlobs[index]})).reduce((a, e) => ({...a, ...e}), {});
+                            const scriptMap = await getScriptMap(valuePath);
+                            const resourceMap = {...styleMap, ...imagesMap, ...scriptMap};
+                            const resources = Object.keys(resourceMap);
+                            const resourceBuffers = await Promise.all(Object.values(resourceMap).map(b => b.arrayBuffer().then(ab => Buffer.from(ab))));
+                            const hashes = resourceBuffers.map(buffer => {
+                                const hash = crypto.createHash('sha256');
+                                hash.update(buffer);
+                                return hash.digest('hex');
+                            });
+                            hashes.sort();
                             const hash = crypto.createHash('sha256');
-                            hash.update(buffer);
-                            return hash.digest('hex');
-                        });
-                        hashes.sort();
-                        const hash = crypto.createHash('sha256');
-                        hash.update(JSON.stringify(hashes));
-                        socket.resourceHash = hash.digest('hex');
-                        socket.resourcePath = `data/resources/${socket.resourceHash}.zip`;
-                        socket.wtrecName = generateWTRecName();
-                        if (!fs.existsSync(socket.resourcePath)) {
-                            const zip = new JSZip();
-                            for (let i = 0; i < resources.length; i++) {
-                                const resource = resources[i];
-                                const buffer = resourceBuffers[i];
-                                zip.file(resource, buffer);
+                            hash.update(JSON.stringify(hashes));
+                            socket.resourceHash = hash.digest('hex');
+                            socket.resourcePath = `data/resources/${socket.resourceHash}.zip`;
+                            socket.wtrecName = generateWTRecName();
+                            if (!fs.existsSync(socket.resourcePath)) {
+                                const zip = new JSZip();
+                                for (let i = 0; i < resources.length; i++) {
+                                    const resource = resources[i];
+                                    const buffer = resourceBuffers[i];
+                                    zip.file(resource, buffer);
+                                }
+                                const buffer = await zip.generateAsync({type: "nodebuffer"});
+                                fs.writeFileSync(socket.resourcePath, buffer);
                             }
-                            const buffer = await zip.generateAsync({type: "nodebuffer"});
-                            fs.writeFileSync(socket.resourcePath, buffer);
+                            console.log(username, `record started (${socket.resourceHash})`);
+                            resolve();
+                            break;
+                        } catch (e) {
+                            console.log(username, `record start error (${i})`);
                         }
-                        console.log(username, `record started (${socket.resourceHash})`);
-                        break;
-                    } catch (e) {
-                        console.log(username, `record start error (${i})`);
                     }
-                }
+                });
             } else if (socket.isRecording && data.msg === 'go_lobby') {
                 try {
+                    await socket.readyPromise;
                     const currentTime = new Date().getTime();
                     const timing = currentTime - socket.startTime;
                     socket.data.push({...data, wtrec: {type: 'receive', timing}});
