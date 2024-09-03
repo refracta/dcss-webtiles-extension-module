@@ -6,8 +6,8 @@ import {TextDecoder} from 'util';
 import crypto from 'crypto';
 import JSZip from "jszip";
 
-fs.mkdirSync('resources', {recursive: true});
-fs.mkdirSync('wtrec', {recursive: true});
+fs.mkdirSync('data/resources', {recursive: true});
+fs.mkdirSync('data/wtrec', {recursive: true});
 const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
 let lobby = {};
@@ -17,7 +17,7 @@ const socket = extend(WebsocketFactory.create(config.websocket, {
             socket.pong();
         } else if (data.msg === 'lobby_entry') {
             if (!lobby[data.id]) {
-                if (Math.random() > 0.6 || data.username === 'labter') {
+                if (Math.random() > 0.8 && data.username !== 'CNCPublicChat') {
                     socket.launchQueue.push(data.username);
                 }
             }
@@ -86,7 +86,7 @@ function generateWTRecName() {
     const hours = String(now.getUTCHours()).padStart(2, '0');
     const minutes = String(now.getUTCMinutes()).padStart(2, '0');
     const seconds = String(now.getUTCSeconds()).padStart(2, '0');
-    return `${year}-${month}-${day}.${hours}-${minutes}-${seconds}.wtrec`;
+    return `${year}-${month}-${day}.${hours}:${minutes}:${seconds}.wtrec`;
 }
 
 function launchWTREC(username) {
@@ -132,7 +132,7 @@ function launchWTREC(username) {
                         const hash = crypto.createHash('sha256');
                         hash.update(JSON.stringify(hashes));
                         socket.resourceHash = hash.digest('hex');
-                        socket.resourcePath = `resources/${socket.resourceHash}.zip`;
+                        socket.resourcePath = `data/resources/${socket.resourceHash}.zip`;
                         socket.wtrecName = generateWTRecName();
                         if (!fs.existsSync(socket.resourcePath)) {
                             const zip = new JSZip();
@@ -145,6 +145,7 @@ function launchWTREC(username) {
                             fs.writeFileSync(socket.resourcePath, buffer);
                         }
                         console.log(username, `record started (${socket.resourceHash})`);
+                        break;
                     } catch (e) {
                         console.log(username, `record start error (${i})`);
                     }
@@ -155,18 +156,23 @@ function launchWTREC(username) {
                     const timing = currentTime - socket.startTime;
                     socket.data.push({...data, wtrec: {type: 'receive', timing}});
 
-                    fs.mkdirSync(`wtrec/${username}`, {recursive: true});
-                    const zip = new JSZip();
+                    fs.mkdirSync(`data/wtrec/${username}`, {recursive: true});
                     const json = JSON.stringify({
                         version: '0.1',
-                        resource: socket.resourceHash,
+                        resourceHash: socket.resourceHash,
+                        type: 'server',
                         data: socket.data
                     });
+                    // fs.writeFileSync(`wtrec/${username}/${socket.wtrecName}.json`, json, 'utf8');
+                    /* const zip = new JSZip();
                     await zip.loadAsync(fs.readFileSync(socket.resourcePath));
-                    fs.writeFileSync(`wtrec/${username}/${socket.wtrecName}`, json, 'utf8');
                     zip.file('wtrec.json', json);
                     const buffer = await zip.generateAsync({type: "nodebuffer"});
-                    fs.writeFileSync(`wtrec/${username}/${socket.wtrecName}.zip`, buffer);
+                    fs.writeFileSync(`wtrec/${username}/${socket.wtrecName}.zip`, buffer); */
+                    const wtrecZip = new JSZip();
+                    wtrecZip.file('wtrec.json', json, {compression: "DEFLATE", compressionOptions: {level: 9}});
+                    const wtrecBuffer = await wtrecZip.generateAsync({type: "nodebuffer"});
+                    fs.writeFileSync(`data/wtrec/${username}/${socket.wtrecName}`, wtrecBuffer);
                     console.log(username, 'record ended');
                 } catch (e) {
                     console.error(e);
