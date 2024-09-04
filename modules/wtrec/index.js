@@ -31,9 +31,9 @@ export default class WTRec {
         const sleep = async (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         let currentIndex = 0;
-        let currentSpeed = 1;
+        let currentSpeed = 10;
         let isPlaying = true;
-        let stepSize = 1;
+        let stepSize = 100;
         let abortSleep = false;
         let manualStep = false;
 
@@ -103,7 +103,7 @@ export default class WTRec {
 
         const speedInput = document.createElement('input');
         speedInput.type = 'number';
-        speedInput.value = 1;
+        speedInput.value = currentSpeed;
         speedInput.min = '0.1';
         speedInput.step = '0.1';
         speedInput.style.width = '50px';
@@ -116,7 +116,7 @@ export default class WTRec {
 
         const stepInput = document.createElement('input');
         stepInput.type = 'number';
-        stepInput.value = 1;
+        stepInput.value = stepSize;
         stepInput.min = '1';
         stepInput.style.width = '50px';
         stepInput.onchange = () => {
@@ -196,6 +196,8 @@ export default class WTRec {
                             console.log(content);
                         } else if (current.msg === 'options') {
                             this.inited = true;
+                        } else if (current.msg === 'go_lobby') {
+                            location.href = "/";
                         } else {
                             console.log(current);
                         }
@@ -206,7 +208,7 @@ export default class WTRec {
                 }
 
                 const originalSleep = next.wtrec.timing - current.wtrec.timing;
-                const adjustedSleep = originalSleep / currentSpeed;
+                const adjustedSleep = Math.min(originalSleep / currentSpeed, 1000 * 2);
 
                 updateUI(originalSleep, adjustedSleep);
 

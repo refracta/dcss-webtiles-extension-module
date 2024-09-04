@@ -5,7 +5,7 @@ Chart.register(...registerables);
 export default class CNCBanner {
     static name = 'CNCBanner';
     static version = '1.0';
-    static dependencies = ['IOHook', 'SiteInformation', 'ModuleManager', 'WebSocketFactory'];
+    static dependencies = ['IOHook', 'SiteInformation', 'ModuleManager', 'WebSocketFactory', 'WTRec'];
     static description = 'This module sets the banner for the CNC server.';
 
     openRCLinks() {
@@ -317,6 +317,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             <a href="https://github.com/refracta/dcss-server/issues">버그 신고</a> -
             <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="사랑방은 한옥에서 손님을 맞이하는 방을 말합니다. 이 기능이 켜져있으면 자동으로 관전자 수가 제일 많은 플레이어를 관전합니다.">사랑방<span id="sarangbang-second"></span></a> - 
             <a href="https://terminal.nemelex.cards">웹 터미널</a> - 
+            <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">WTRec 재생 (베타)</a> - 
             <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM 모듈 관리자 (Ctrl + F12)</a>
             <br>
             'nemelex' 사용자로 포트 1326에서 SSH 접속이 가능합니다. 비밀번호 'xobeh' 또는 <a href="https://archive.nemelex.cards/cao_key" style="text-decoration:none;">CAO 키</a>를 사용하여 인증할 수 있습니다.
@@ -366,6 +367,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         <a href="https://github.com/refracta/dcss-server/issues">Report a Bug</a> -
                         <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="The 'Sarangbang' refers to the room in traditional Korean houses used to receive guests. When this feature is enabled, it will automatically find and watch the player with the highest number of spectators.">Sarangbang<span id="sarangbang-second"></span></a> - 
                         <a href="https://terminal.nemelex.cards">Web Terminal</a> - 
+                        <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">Play WTRec (Beta)</a> - 
                         <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM Module Manager (Ctrl + F12)</a>
                         <br>
                         SSH is available on port 1326 with the user 'nemelex'. You can use the password 'xobeh' or authenticate using the <a href="https://archive.nemelex.cards/cao_key" style="text-decoration:none;">CAO key</a>.
@@ -392,6 +394,19 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                     </script>
                     ` : ''}
                 `;
+    }
+
+    async playWTRec() {
+        let url = prompt("Please enter a URL in the form of \n\"https://wtrec.nemelex.cards/wtrec/*/*.wtrec\".\n\nIf left blank, a random wtrec will be played.");
+        if (url) {
+            DWEM.Modules.WTRec.playWTRec(await fetch(url).then(r => r.blob()));
+        } else {
+            const list = await fetch('https://wtrec-json.nemelex.cards/wtrec').then(r => r.json());
+            const user = list[Math.floor(Math.random() * list.length)].name;
+            const files = await fetch(`https://wtrec-json.nemelex.cards/wtrec/${user}`).then(r => r.json());
+            const url = `https://wtrec.nemelex.cards/wtrec/${user}/${files[Math.floor(Math.random() * files.length)].name}`;
+            DWEM.Modules.WTRec.playWTRec(await fetch(url).then(r => r.blob()));
+        }
     }
 
     onLoad() {
