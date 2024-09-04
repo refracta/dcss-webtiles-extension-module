@@ -132,9 +132,10 @@ function launchWTREC(username) {
                             const hash = crypto.createHash('sha256');
                             hash.update(JSON.stringify(hashes));
                             socket.resourceHash = hash.digest('hex');
-                            socket.resourcePath = `data/resources/${socket.resourceHash}.zip`;
+                            socket.resourcePath = `resources/${socket.resourceHash}.zip`;
+                            socket.localPath = `data/${socket.resourcePath}`;
                             socket.wtrecName = generateWTRecName();
-                            if (!fs.existsSync(socket.resourcePath)) {
+                            if (!fs.existsSync(socket.localPath)) {
                                 const zip = new JSZip();
                                 for (let i = 0; i < resources.length; i++) {
                                     const resource = resources[i];
@@ -142,7 +143,7 @@ function launchWTREC(username) {
                                     zip.file(resource, buffer);
                                 }
                                 const buffer = await zip.generateAsync({type: "nodebuffer"});
-                                fs.writeFileSync(socket.resourcePath, buffer);
+                                fs.writeFileSync(socket.localPath, buffer);
                             }
                             console.log(username, `record started (${socket.resourceHash})`);
                             resolve();
@@ -163,12 +164,13 @@ function launchWTREC(username) {
                     const json = JSON.stringify({
                         version: '0.1',
                         resourceHash: socket.resourceHash,
+                        resourcePath: `${config.wtrecPath}/${socket.resourcePath}`,
                         type: 'server',
                         data: socket.data
                     });
                     // fs.writeFileSync(`wtrec/${username}/${socket.wtrecName}.json`, json, 'utf8');
                     /* const zip = new JSZip();
-                    await zip.loadAsync(fs.readFileSync(socket.resourcePath));
+                    await zip.loadAsync(fs.readFileSync(socket.localPath));
                     zip.file('wtrec.json', json);
                     const buffer = await zip.generateAsync({type: "nodebuffer"});
                     fs.writeFileSync(`wtrec/${username}/${socket.wtrecName}.zip`, buffer); */

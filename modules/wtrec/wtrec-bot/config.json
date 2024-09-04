@@ -1,4 +1,5 @@
 {
+  "wtrecPath": "https://wtrec.nemelex.cards",
   "entrypoint": "https://crawl.nemelex.cards",
   "websocket": "wss://crawl.nemelex.cards/socket",
   "username": "wtrec",
