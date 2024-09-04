@@ -28,6 +28,7 @@ export default class WTRec {
         await new Promise(resolve => {
             require(['jquery', 'jquery-ui'], resolve);
         })
+        const sleep = async (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         let currentIndex = 0;
         let currentSpeed = 1;
@@ -41,11 +42,12 @@ export default class WTRec {
         const wtrec = JSON.parse(await zip.files['wtrec.json'].async('string'));
 
         let files = Object.values(zip.files);
+
         if (files.length === 1 && wtrec.type === 'server') {
             const resource = await fetch(wtrec.resourcePath).then(r => r.blob());
             zip = new JSZip();
             zip = await zip.loadAsync(resource);
-            files = Object.values(zip.files);
+            files = Object.values(zip.files).filter(file => !file.dir);
         } else {
             files = files.filter(file => !file.dir && file.name !== 'wtrec.json');
         }
@@ -230,12 +232,11 @@ export default class WTRec {
     }
 
     async playWTRecByInput() {
-        const sleep = async (ms) => new Promise(resolve => setTimeout(resolve, ms));
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.zip';
+        input.accept = '.zip,.wtrec';
         input.onchange = async (event) => {
-
+            this.playWTRec(event.target.files[0]);
         };
         input.click();
     }
