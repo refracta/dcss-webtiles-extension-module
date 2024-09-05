@@ -52,6 +52,29 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         document.getElementById('coloredText').innerHTML = coloredWords.join(" ");
     }
 
+    getLatencySocket() {
+        const {WebSocketFactory} = DWEM.Modules;
+        let startTime, endTime;
+        const socket = WebSocketFactory.create((data) => {
+            if (data.msg === 'register_fail') {
+                endTime = Date.now();
+                socket.latencyResolver(endTime - startTime);
+            } else if (data.msg === 'ping') {
+                socket.send(JSON.stringify({msg: 'pong'}));
+            }
+        });
+        socket.getLatency = function () {
+            startTime = Date.now();
+            return new Promise(resolve => {
+                socket.latencyResolver = resolve;
+                this.send(JSON.stringify({
+                    msg: 'register', username: '', password: 'LATENCY_CHECK', email: ''
+                }));
+            })
+        }
+        return socket;
+    }
+
     getLatency() {
         const {WebSocketFactory} = DWEM.Modules;
         return new Promise(resolve => {
@@ -275,20 +298,25 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 }
             });
             this.count = 1;
-            this.latencyIndicatorInterval = setInterval(async _ => {
-                const latency = await this.getLatency();
-                this.chartData.labels.push(`${this.count++}t`);
-                const data = this.chartData.datasets[0].data;
-                data.push(latency);
-                this.chart.update();
-                const sum = data.reduce((a, v) => a + v, 0);
-                const min = data.reduce((a, v) => Math.min(a, v), Number.MAX_SAFE_INTEGER);
-                const max = data.reduce((a, v) => Math.max(a, v), Number.MIN_SAFE_INTEGER);
-                const avg = Math.floor(sum / data.length * 100) / 100;
-                span.textContent = `${data.length}t=${latency}MS, AVG=${avg}MS, MAX=${max}MS, MIN=${min}MS`;
-            }, 500);
+            this.latencySocket = this.getLatencySocket();
+            setTimeout(async _ => {
+                while (this.latencySocket) {
+                    const latency = await this.latencySocket.getLatency();
+                    this.chartData.labels.push(`${this.count++}t`);
+                    const data = this.chartData.datasets[0].data;
+                    data.push(latency);
+                    this.chart.update();
+                    const sum = data.reduce((a, v) => a + v, 0);
+                    const min = data.reduce((a, v) => Math.min(a, v), Number.MAX_SAFE_INTEGER);
+                    const max = data.reduce((a, v) => Math.max(a, v), Number.MIN_SAFE_INTEGER);
+                    const avg = Math.floor(sum / data.length * 100) / 100;
+                    span.textContent = `${data.length}t=${latency}MS, AVG=${avg}MS, MAX=${max}MS, MIN=${min}MS`;
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }, 1000);
         } else {
-            clearInterval(this.latencyIndicatorInterval);
+            this.latencySocket?.close();
+            this.latencySocket = null;
         }
         indicator.style.display = this.showLatencyIndicator ? '' : 'none';
         event.preventDefault();
