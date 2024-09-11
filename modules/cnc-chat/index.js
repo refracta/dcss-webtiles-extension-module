@@ -95,7 +95,7 @@ export default class CNCChat {
             const container = document.createElement('div');
             const image = new Image();
             image.src = url;
-            image.setAttribute('style', 'margin-left:1%; margin-right:1%; max-width:98%; max-height:180px; cursor: pointer;');
+            image.setAttribute('style', 'margin-left:1%; margin-right:1%; max-width:98%; max-height:180px; cursor: pointer; display: none;');
 
             const loadingSpan = document.createElement('span');
             loadingSpan.style.marginLeft = '2%';
@@ -112,6 +112,7 @@ export default class CNCChat {
                 this.Image.openImage(image.src);
             };
             image.onload = () => {
+                image.style.display = '';
                 if (isBottom) {
                     this.ChatHistory.scrollToBottom();
                 }
