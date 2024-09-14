@@ -182,6 +182,7 @@ export default class WTRec {
                             content = content.replace('require.config', `require.config({paths: ${JSON.stringify(config)}});\n`);
                             content = content.replace(/game-[a-f0-9]{40}\/game/, `./game`);
                             const matches = content.match(/\/gamedata\/[a-f0-9]{40}\/[^\s"']+/g);
+
                             const fileKeys = Object.keys(fileMap);
                             for (const match of matches) {
                                 let url = fileMap[match];
@@ -198,10 +199,18 @@ export default class WTRec {
                             this.inited = true;
                         } else if (current.msg === 'go_lobby') {
                             location.href = "/";
+                            currentIndex++;
                         } else {
                             console.log(current);
                         }
                         IOHook.handle_message(current);
+                        if (current.msg === 'game_client') {
+                            require([`game-${current.version}/game`], (game) => {
+                                const images = Array.from(document.querySelectorAll('#game img'));
+                                const imagePromises = images.map(image => image.complete ? Promise.resolve() : new Promise(r => image.onload = r));
+                                Promise.all(imagePromises).then(resolve);
+                            });
+                        }
                     }
                 } catch (e) {
                     console.error(e, current);
