@@ -70,7 +70,13 @@ export default class RCManager {
 
     locations = {
         'crawl.nemelex.cards': 'https://archive.nemelex.cards/rcfiles',
-        'crawl.project357.org': 'https://crawl.project357.org/rc-files'
+        'crawl.dcss.io': 'https://crawl.dcss.io/crawl/rcfiles',
+        'crawl.akrasiac.org:8443': 'https://crawl.akrasiac.org/rcfiles',
+        'underhound.eu:8080': 'https://underhound.eu/crawl/rcfiles',
+        'cbro.berotato.org': 'https://cbro.berotato.org/rcfiles',
+        'crawl.xtahua.com': 'https://crawl.xtahua.com/crawl/rcfiles',
+        'lazy-life.ddo.jp:8080': 'http://lazy-life.ddo.jp/mirror/meta',
+        'lazy-life.ddo.jp:8000': 'http://lazy-life.ddo.jp/mirror/meta'
     };
     cncGenerator = (version, username) => {
         const baseURL = this.locations[location.host];
@@ -87,9 +93,24 @@ export default class RCManager {
             return `${baseURL}/${identifier}/${username}.rc`;
         }
     };
+
+    lldGenerator = (version, username) => {
+        const baseURL = this.locations[location.host];
+        let identifier = this.getIdentifier(version);
+        identifier = identifier === 'git' ? 'trunk' : identifier;
+        if (baseURL && identifier) {
+            return `${identifier}/rcfiles/${username}.rc`;
+        }
+    };
     generators = {
         'crawl.nemelex.cards': this.cncGenerator,
-        'crawl.project357.org': this.cpoGenerator
+        'crawl.dcss.io': this.cncGenerator,
+        'crawl.akrasiac.org:8443': this.cncGenerator,
+        'underhound.eu:8080': this.cncGenerator,
+        'cbro.berotato.org': this.cncGenerator,
+        'crawl.xtahua.com': this.cncGenerator,
+        'lazy-life.ddo.jp:8080': this.lldGenerator,
+        'lazy-life.ddo.jp:8000': this.lldGenerator
     }
 
     getRCURL(version, username) {
