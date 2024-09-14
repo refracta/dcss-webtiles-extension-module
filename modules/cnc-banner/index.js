@@ -299,6 +299,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             });
             this.count = 1;
             this.latencySocket = this.getLatencySocket();
+            // TODO onopen promise
             setTimeout(async _ => {
                 while (this.latencySocket) {
                     const latency = await this.latencySocket.getLatency();
