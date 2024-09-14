@@ -35,12 +35,29 @@ export default class SoundSupport {
     }
 
     #getSoundConfig(rcfile) {
-        const {RCManager} = DWEM.Modules;
-        const soundOn = RCManager.getRCOption(rcfile, 'sound_on', 'boolean');
-        const soundFadeTime = RCManager.getRCOption(rcfile, 'sound_fade_time', 'float', 0.5);
-        const soundVolume = RCManager.getRCOption(rcfile, 'sound_volume', 'float', 1);
-        const oneSDLSoundChannel = RCManager.getRCOption(rcfile, 'one_SDL_sound_channel', 'boolean');
-        const soundDebug = RCManager.getRCOption(rcfile, 'sound_debug', 'boolean');
+        let soundOn = Array.from(rcfile.matchAll(/^(?!\s*#).*sound_on\s*=\s*(\S+)\s*/gm));
+        soundOn = soundOn.pop()?.[1];
+        soundOn = soundOn === 'true';
+
+        let soundFadeTime = Array.from(rcfile.matchAll(/^(?!\s*#).*sound_fade_time\s*=\s*(\S+)\s*/gm));
+        soundFadeTime = soundFadeTime.pop()?.[1];
+        if (soundFadeTime && !isNaN(soundFadeTime)) {
+            soundFadeTime = parseFloat(soundFadeTime);
+        } else {
+            soundFadeTime = 0.5;
+        }
+
+        let soundVolume = Array.from(rcfile.matchAll(/^(?!\s*#).*sound_volume\s*=\s*(\S+)\s*/gm));
+        soundVolume = soundVolume.pop()?.[1];
+        if (soundVolume && !isNaN(soundVolume)) {
+            soundVolume = parseFloat(soundVolume);
+        } else {
+            soundVolume = 1;
+        }
+
+        let oneSDLSoundChannel = Array.from(rcfile.matchAll(/^(?!\s*#).*one_SDL_sound_channel\s*=\s*(\S+)\s*/gm));
+        oneSDLSoundChannel = oneSDLSoundChannel.pop()?.[1];
+        oneSDLSoundChannel = oneSDLSoundChannel === 'true';
 
         const soundPackConfig = rcfile.match(/^(?!\s*#).*sound_pack\s*\+=\s*.+/gm);
         const soundPackConfigList = [];
@@ -52,6 +69,10 @@ export default class SoundSupport {
                 soundPackConfigList.push({url, matchFiles});
             }
         }
+
+        let soundDebug = Array.from(rcfile.matchAll(/^(?!\s*#).*sound_debug\s*=\s*(\S+)\s*/gm));
+        soundDebug = soundDebug.pop()?.[1];
+        soundDebug = soundDebug === 'true';
 
         return {
             soundOn, soundVolume, soundFadeTime, oneSDLSoundChannel, soundPackConfigList, soundDebug
@@ -82,6 +103,19 @@ export default class SoundSupport {
             }
         }
         return {matchData, soundFilePath};
+    }
+
+    waitInputMode() {
+        const {IOHook} = DWEM.Modules;
+        return new Promise(resolve => {
+            const initMatch = (data) => {
+                if (data.msg === 'input_mode') {
+                    IOHook.handle_message.after.removeHandler('sound-support-init-match');
+                    resolve();
+                }
+            }
+            IOHook.handle_message.after.addHandler('sound-support-init-match', initMatch);
+        });
     }
 
     sendMessage(text) {
@@ -290,15 +324,17 @@ export default class SoundSupport {
                 }
             }
         });
-        RCManager.addHandlers('sound-support-rc-handler', {
-            onGameInitialize: (rcfile) => {
+        RCManager.addHandler('sound-support-rc-handler', async (msg, data) => {
+            if (msg === 'play') {
                 const queue = [];
                 IOHook.handle_message.after.addHandler('sound-support-save-msgs', (data) => {
                     if (data.msg === 'msgs') {
                         queue.push(data);
                     }
                 });
-                this.soundConfig = this.#getSoundConfig(rcfile);
+                await this.waitInputMode();
+                this.soundConfig = this.#getSoundConfig(data.contents);
+                await this.loadSoundPacks();
                 const handleSoundMessage = async (data) => {
                     const {messages} = data;
                     for (const message of messages.filter(m => m.text)) {
@@ -332,21 +368,19 @@ export default class SoundSupport {
                         }
                     }
                 }
-                this.loadSoundPacks().then(() => {
-                    IOHook.handle_message.after.removeHandler('sound-support-save-msgs');
-                    if (SiteInformation.current_hash !== '#lobby') {
-                        IOHook.handle_message.after.addHandler('sound-support-sound-handler', async (data) => {
-                            if (data.msg === 'msgs' && data.messages) {
-                                handleSoundMessage(data);
-                            }
-                        });
-                        for (const data of queue) {
+                IOHook.handle_message.after.removeHandler('sound-support-save-msgs');
+
+                if (SiteInformation.current_hash !== '#lobby') {
+                    IOHook.handle_message.after.addHandler('sound-support-sound-handler', async (data) => {
+                        if (data.msg === 'msgs' && data.messages) {
                             handleSoundMessage(data);
                         }
+                    });
+                    for (const data of queue) {
+                        handleSoundMessage(data);
                     }
-                });
-            },
-            onGameEnd: () => {
+                }
+            } else if (msg === 'go_lobby') {
                 IOHook.handle_message.after.removeHandler('sound-support-sound-handler');
             }
         });

@@ -24,7 +24,7 @@ export default class ConvenienceModule {
 
     onLoad() {
         const {IOHook, RCManager} = DWEM.Modules;
-        RCManager.addHandlers('convenience-module', async (msg, data) => {
+        RCManager.addHandler('convenience-module', async (msg, data) => {
             if (msg === 'play') {
                 let {
                     showGoldStatus, disableClearChat, redirectChat
@@ -51,6 +51,8 @@ export default class ConvenienceModule {
                             IOHook.handle_message({msg: 'player', status: this.player.status});
                         }
                     });
+                    // TODO: Unknown message type: player
+                    IOHook.handle_message({msg: 'player', status: this?.player?.status || []});
                 }
                 if (this.redirectChat) {
                     IOHook.handle_message.after.addHandler('convenience-module-chat-redirect', (data) => {
