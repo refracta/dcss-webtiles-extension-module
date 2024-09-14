@@ -79,6 +79,7 @@ export default class RCManager {
         'lazy-life.ddo.jp:8080': 'http://lazy-life.ddo.jp/mirror/meta',
         'lazy-life.ddo.jp:8000': 'http://lazy-life.ddo.jp/mirror/meta'
     };
+
     cncGenerator = (version, username) => {
         const baseURL = this.locations[location.host];
         const identifier = this.getIdentifier(version);
@@ -86,6 +87,7 @@ export default class RCManager {
             return `${baseURL}/crawl-${identifier}/${username}.rc`;
         }
     };
+
     cpoGenerator = (version, username) => {
         const baseURL = this.locations[location.host];
         let identifier = this.getIdentifier(version);
