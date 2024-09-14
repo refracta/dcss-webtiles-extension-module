@@ -81,7 +81,8 @@ export default class RCManager {
     };
     cpoGenerator = (version, username) => {
         const baseURL = this.locations[location.host];
-        const identifier = this.getIdentifier(version);
+        let identifier = this.getIdentifier(version);
+        identifier = identifier === 'git' ? 'trunk' : identifier;
         if (baseURL && identifier) {
             return `${baseURL}/${identifier}/${username}.rc`;
         }
