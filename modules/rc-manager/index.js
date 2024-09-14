@@ -99,7 +99,7 @@ export default class RCManager {
         let identifier = this.getIdentifier(version);
         identifier = identifier === 'git' ? 'trunk' : identifier;
         if (baseURL && identifier) {
-            return `${identifier}/rcfiles/${username}.rc`;
+            return `${baseURL}/${identifier}/rcfiles/${username}.rc`;
         }
     };
     generators = {
