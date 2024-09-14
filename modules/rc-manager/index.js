@@ -75,6 +75,7 @@ export default class RCManager {
         'underhound.eu:8080': 'https://underhound.eu/crawl/rcfiles',
         'cbro.berotato.org': 'https://cbro.berotato.org/rcfiles',
         'crawl.xtahua.com': 'https://crawl.xtahua.com/crawl/rcfiles',
+        'crawl.project357.org': 'https://crawl.project357.org/rc-files',
         'lazy-life.ddo.jp:8080': 'http://lazy-life.ddo.jp/mirror/meta',
         'lazy-life.ddo.jp:8000': 'http://lazy-life.ddo.jp/mirror/meta'
     };
@@ -110,6 +111,7 @@ export default class RCManager {
         'underhound.eu:8080': this.cncGenerator,
         'cbro.berotato.org': this.cncGenerator,
         'crawl.xtahua.com': this.cncGenerator,
+        'crawl.project357.org': this.cpoGenerator,
         'lazy-life.ddo.jp:8080': this.lldGenerator,
         'lazy-life.ddo.jp:8000': this.lldGenerator
     }
