@@ -282,7 +282,7 @@ export default class CNCChat {
         const menuMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${menuInjector.toString()}()`);
         SMR.add('./menu', menuMapper);
 
-        RCManager.addHandler('cnc-chat', async (msg, data) => {
+        RCManager.addHandlers('cnc-chat', async (msg, data) => {
             if (msg === 'play') {
                 const {useClickToSendChat} = this.getRCConfig(data.contents);
                 this.useClickToSendChat = useClickToSendChat;

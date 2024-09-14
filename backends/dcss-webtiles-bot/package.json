@@ -1,0 +1,26 @@
+{
+  "name": "wtrec",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/refracta/dcss-webtiles-extension-module.git"
+  },
+  "author": "refracta",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/refracta/dcss-webtiles-extension-module/issues"
+  },
+  "homepage": "https://github.com/refracta/dcss-webtiles-extension-module#readme",
+  "type": "module",
+  "dependencies": {
+    "jsdom": "^24.1.1",
+    "jszip": "^3.10.1",
+    "node-fetch": "^3.3.2",
+    "websocket": "^1.0.35"
+  }
+}
