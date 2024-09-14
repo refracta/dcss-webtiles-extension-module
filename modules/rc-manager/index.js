@@ -102,6 +102,7 @@ export default class RCManager {
             return `${baseURL}/${identifier}/rcfiles/${username}.rc`;
         }
     };
+
     generators = {
         'crawl.nemelex.cards': this.cncGenerator,
         'crawl.dcss.io': this.cncGenerator,
