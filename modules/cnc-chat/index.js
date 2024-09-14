@@ -293,7 +293,7 @@ export default class CNCChat {
 
         IOHook.handle_message.after.addHandler('cnc-chat', (data) => {
             if (data.msg === 'menu') {
-                this.items = Array.from(data.items);
+                this.items = Array.from(data.items || []);
                 if (this.useClickToSendChat && this.items) {
                     for (const item of this.items) {
                         const element = item.elem.get(0);

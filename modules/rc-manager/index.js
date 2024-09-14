@@ -14,8 +14,7 @@ export default class RCManager {
             handlers = {
                 onGameInitialize: (rcfile) => {
                     handler('play', {contents: rcfile});
-                },
-                onGameEnd: () => {
+                }, onGameEnd: () => {
                     handler('go_lobby');
                 }
             }
@@ -99,18 +98,24 @@ export default class RCManager {
                 console.error(e);
             }
         }
-        for (const data of this.queue) {
+        while (this.queue.length > 0) {
+            const data = this.queue.shift();
             IOHook.handle_message({...data, initiator: 'rc-manager'});
             if (data.msg === 'game_client') {
-                await new Promise(resolve => {
+                const initPromise = new Promise(resolve => {
+                    this.initResolver = resolve;
+                });
+                const scriptPromise = new Promise(resolve => {
                     require([`game-${data.version}/game`], (game) => {
                         const images = Array.from(document.querySelectorAll('#game img'));
                         const imagePromises = images.map(image => image.complete ? Promise.resolve() : new Promise(r => image.onload = r));
                         Promise.all(imagePromises).then(resolve);
                     });
                 });
+                await Promise.all([initPromise, scriptPromise]);
             }
         }
+        delete this.queue;
         for (const {handlers} of this.handlersList) {
             try {
                 handlers?.onGameStart?.(data.contents);
@@ -118,7 +123,6 @@ export default class RCManager {
                 console.error(e);
             }
         }
-        delete this.queue;
     }
 
     getRCOption(rcfile, name, type = 'string', defaultValue) {
@@ -142,6 +146,22 @@ export default class RCManager {
     }
 
     onLoad() {
+        const {SourceMapperRegistry: SMR} = DWEM;
+
+        function gameInjector() {
+            const {RCManager} = DWEM.Modules;
+            let originalInit = init;
+            init = function () {
+                originalInit();
+                RCManager?.initResolver();
+            }
+
+            $(document).off("game_preinit game_cleanup").on("game_preinit game_cleanup", init);
+        }
+
+        const clientMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${gameInjector.toString()}()`);
+        SMR.add('./game', clientMapper);
+
         const {IOHook, SiteInformation} = DWEM.Modules;
         IOHook.send_message.before.addHandler('rc-manager', (msg, data) => {
             if (msg === 'play' || msg === 'watch') {
@@ -153,7 +173,6 @@ export default class RCManager {
                 return;
             }
             if (data.msg === 'game_client') {
-                console.log(data.msg);
                 if (this.session.game_id && !this.useURLBasedLoading) {
                     socket.send(JSON.stringify({msg: 'get_rc', game_id: this.session.game_id}));
                 }
