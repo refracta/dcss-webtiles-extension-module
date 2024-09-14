@@ -69,7 +69,8 @@ export default class RCManager {
     }
 
     locations = {
-        'crawl.nemelex.cards': 'https://archive.nemelex.cards/rcfiles'
+        'crawl.nemelex.cards': 'https://archive.nemelex.cards/rcfiles',
+        'crawl.project357.org': 'https://crawl.project357.org/rc-files'
     };
     cncGenerator = (version, username) => {
         const baseURL = this.locations[location.host];
@@ -78,8 +79,16 @@ export default class RCManager {
             return `${baseURL}/crawl-${identifier}/${username}.rc`;
         }
     };
+    cpoGenerator = (version, username) => {
+        const baseURL = this.locations[location.host];
+        const identifier = this.getIdentifier(version);
+        if (baseURL && identifier) {
+            return `${baseURL}/${identifier}/${username}.rc`;
+        }
+    };
     generators = {
-        'crawl.nemelex.cards': this.cncGenerator
+        'crawl.nemelex.cards': this.cncGenerator,
+        'crawl.project357.org': this.cpoGenerator
     }
 
     getRCURL(version, username) {
