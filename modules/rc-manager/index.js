@@ -214,34 +214,33 @@ export default class RCManager {
                 }
                 this.queue = [data];
                 return true;
-            } else if (data.msg === 'version') {
-                if (this.session.username || this.useURLBasedLoading) {
-                    (async () => {
-                        const username = this.session.username || SiteInformation.current_user;
-                        const version = data.text;
-                        const rawURL = this.getRCURL(version, username);
-                        console.log(`RC URL: ${rawURL}`);
-                        const url = `https://corsproxy.io/?${rawURL}?${Date.now()}`;
-                        // TODO: backend needed
-                        let rcfile = '';
-                        if (rawURL && url) {
-                            try {
-                                rcfile = await fetch(url).then(r => r.text());
-                            } catch (e) {
-                                console.error(`Failed to fetch RCURL. ${url}`);
-                            }
-                        }
-                        await this.triggerHandlers(rcfile);
-                    })();
-                }
-                this.queue.push(data);
-                return true;
-            } else if (data.msg === 'rcfile_contents') {
-                if (this.session.game_id && !this.useURLBasedLoading) {
-                    this.triggerHandlers(data.contents);
-                    return true;
-                }
             } else if (this.queue) {
+                if (data.msg === 'version') {
+                    if (this.session.username || this.useURLBasedLoading) {
+                        (async () => {
+                            const username = this.session.username || SiteInformation.current_user;
+                            const version = data.text;
+                            const rawURL = this.getRCURL(version, username);
+                            console.log(`RC URL: ${rawURL}`);
+                            const url = `https://corsproxy.io/?${rawURL}?${Date.now()}`;
+                            // TODO: backend needed
+                            let rcfile = '';
+                            if (rawURL && url) {
+                                try {
+                                    rcfile = await fetch(url).then(r => r.text());
+                                } catch (e) {
+                                    console.error(`Failed to fetch RCURL. ${url}`);
+                                }
+                            }
+                            await this.triggerHandlers(rcfile);
+                        })();
+                    }
+                } else if (data.msg === 'rcfile_contents') {
+                    if (this.session.game_id && !this.useURLBasedLoading) {
+                        this.triggerHandlers(data.contents);
+                        return true;
+                    }
+                }
                 this.queue.push(data);
                 return true;
             } else if (data.msg === 'go_lobby') {
