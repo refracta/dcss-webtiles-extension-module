@@ -13,31 +13,36 @@ const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 while (true) {
     let lobby, socket, interval;
     try {
-        lobby = {};
-        socket = extend(WebsocketFactory.create(config.websocket, {
-            handle_message: async function (data) {
-                if (data.msg === 'ping') {
-                    socket.pong();
-                } else if (data.msg === 'lobby_entry') {
-                    if (!lobby[data.id]) {
-                        if (Math.random() > 0.8 && data.username !== 'CNCPublicChat') {
-                            socket.launchQueue.push(data.username);
+        await new Promise((resolve, reject) => {
+            lobby = {};
+            socket = extend(WebsocketFactory.create(config.websocket, {
+                handle_message: async function (data) {
+                    if (data.msg === 'ping') {
+                        socket.pong();
+                    } else if (data.msg === 'lobby_entry') {
+                        if (!lobby[data.id]) {
+                            if (Math.random() > 0.8 && data.username !== 'CNCPublicChat') {
+                                socket.launchQueue.push(data.username);
+                            }
                         }
+                        lobby[data.id] = data;
+                    } else if (data.msg === 'lobby_remove') {
+                        delete lobby[data.id];
+                    } else if (data.msg === 'lobby_clear') {
+                        lobby = {};
                     }
-                    lobby[data.id] = data;
-                } else if (data.msg === 'lobby_remove') {
-                    delete lobby[data.id];
-                } else if (data.msg === 'lobby_clear') {
-                    lobby = {};
                 }
+            }));
+            socket.launchQueue = [];
+            socket.onclose = socket.onerror = function (event) {
+                reject(event);
             }
-        }));
-        socket.launchQueue = [];
-        interval = setInterval(_ => {
-            if (socket.launchQueue.length > 0) {
-                launchWTREC(socket.launchQueue.shift());
-            }
-        }, 1000);
+            interval = setInterval(_ => {
+                if (socket.launchQueue.length > 0) {
+                    launchWTREC(socket.launchQueue.shift());
+                }
+            }, 1000);
+        })
     } catch (e) {
         console.error(new Date(), e.reason);
     } finally {
