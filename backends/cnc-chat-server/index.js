@@ -61,8 +61,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         entity = JSON.parse(entity);
         entity.timestamp = Date.now();
         entity.ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-        const ext = path.extname(file.originalname).toLowerCase();
-        entity.file = `${entity.user}.${entity.timestamp}${ext}`;
+        const ext = file.mimetype.split('/').pop();
+        entity.file = `${entity.user}.${entity.timestamp}.${ext}`;
         const newFilePath = path.join(__dirname, 'files', entity.file);
         entity.file = `files/${entity.file}`;
         fs.renameSync(file.path, newFilePath);
