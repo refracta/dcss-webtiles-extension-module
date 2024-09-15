@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CNC Open Sound Pack Resources</title>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const authCode = localStorage.getItem('authCode');
+      if (authCode) {
+        document.getElementById('authcode').value = authCode;
+      }
+
+      fetch('/remaining-uploads')
+              .then(response => response.json())
+              .then(data => {
+                const remainingUploadsElement = document.getElementById('remainingUploads');
+                remainingUploadsElement.textContent = `Remaining uploads: ${data.remainingUploads}`;
+              })
+              .catch(error => {
+                console.error('Error:', error);
+              });
+
+      document.getElementById('uploadForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const formData = new FormData(this);
+
+        const authCodeInput = document.getElementById('authcode').value;
+
+        fetch('/upload', {
+          method: 'POST',
+          body: formData
+        })
+                .then(response => response.json())
+                .then(data => {
+                  const results = document.getElementById('results');
+                  results.innerHTML = '';
+
+                  if (data.error) {
+                    results.innerHTML = `<p>Error: ${data.error}</p>`;
+                    return;
+                  }
+
+                  // authcode를 localStorage에 저장
+                  if (authCodeInput) {
+                    localStorage.setItem('authCode', authCodeInput);
+                  }
+
+                  if (data.files && data.files.length > 0) {
+                    const baseURL = window.location.origin;
+                    data.files.forEach(file => {
+                      const link = document.createElement('a');
+                      const fullURL = `${baseURL}${file.url}`;
+                      link.href = fullURL;
+                      link.innerText = fullURL;
+                      results.appendChild(link);
+                      results.appendChild(document.createElement('br'));
+                    });
+                    results.appendChild(document.createTextNode(`Remaining uploads: ${data.remainingUploads}`));
+                  } else {
+                    results.innerHTML = `<p>No files uploaded.</p>`;
+                  }
+
+                  const remainingUploadsElement = document.getElementById('remainingUploads');
+                  remainingUploadsElement.textContent = `Remaining uploads: ${data.remainingUploads}`;
+                })
+                .catch(error => {
+                  const results = document.getElementById('results');
+                  results.innerHTML = `<p>Error: ${error.message}</p>`;
+                  console.error('Error:', error);
+                });
+      });
+    });
+  </script>
+</head>
+<body>
+<h1>Sound Upload</h1>
+<form id="uploadForm">
+  <label for="authcode">Auth Code (optional):</label>
+  <input type="password" id="authcode" name="authcode"><br><br>
+  <input type="file" name="files" multiple><br><br>
+  <button type="submit">Upload</button>
+</form>
+<div id="remainingUploads">Remaining uploads: 20</div>
+<div id="results"></div>
+<br>
+<a href="/list" target="_blank">View Uploaded Files</a>
+<br>
+<a href="/request-build" target="_blank">Request Rebuild</a>
+<br>
+<a href="/build/latest.zip" target="_blank">Download latest (for Webtiles Game)</a>
+<br>
+<a href="/downloader.html" target="_blank">Downloader (for Local Game)</a>
+<br>
+<a href="https://docs.google.com/spreadsheets/d/1ePlT10S0uyhqyBm4bZixnGSkfnHmcfUa8JViuDqE0Ow/edit?gid=155014829#gid=155014829" target="_blank">CNC OSP Sheet</a>
+</body>
+</html>

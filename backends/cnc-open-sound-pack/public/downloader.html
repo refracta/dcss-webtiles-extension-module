@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CNC Open Sound Pack Downloader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        #log-viewer {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: scroll;
+            background-color: #f9f9f9;
+        }
+        button {
+            padding: 10px 20px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        label {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>CNC Open Sound Pack Downloader</h1>
+
+<label>
+    <input type="checkbox" id="replace-separator" checked> Use window separator (\)
+</label>
+<br>
+<button id="start-download">Start Download and Process</button>
+
+<div id="log-viewer"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+
+<script>
+    const {fetchFile} = FFmpeg;
+    let ffmpeg;
+    let currentFileIndex = 0;
+    let mp3Files = [];
+    let zip;
+
+    async function initFFmpeg() {
+        if (!ffmpeg) {
+            ffmpeg = FFmpeg.createFFmpeg({ log: false });
+            await ffmpeg.load();
+        }
+    }
+
+    function appendLog(message) {
+        const logViewer = document.getElementById('log-viewer');
+        logViewer.innerHTML += message + '<br>';
+        logViewer.scrollTop = logViewer.scrollHeight;  // Scroll to bottom
+    }
+
+    async function convertMp3ToWav(mp3Blob) {
+        await initFFmpeg();
+        const mp3Data = await fetchFile(mp3Blob);
+        ffmpeg.FS('writeFile', 'input.mp3', mp3Data);
+        await ffmpeg.run('-i', 'input.mp3', 'output.wav');
+        const wavData = ffmpeg.FS('readFile', 'output.wav');
+        ffmpeg.FS('unlink', 'input.mp3');
+        ffmpeg.FS('unlink', 'output.wav');
+
+        return new Blob([wavData.buffer], { type: 'audio/wav' });
+    }
+
+    async function processFiles() {
+        while (currentFileIndex < mp3Files.length) {
+            const filename = mp3Files[currentFileIndex];
+            appendLog(`Converting ${filename} to WAV... (${mp3Files.length - currentFileIndex} files remaining)`);
+            const mp3Data = await zip.file(filename).async('blob');
+            const wavBlob = await convertMp3ToWav(mp3Data);
+            zip.file(filename.replace('.mp3', '.wav'), wavBlob);
+            zip.remove(filename);
+            appendLog(`${filename} converted to WAV and added to ZIP.`);
+            currentFileIndex++;
+
+            if (currentFileIndex % 50 === 0) {
+                await ffmpeg.exit();
+                ffmpeg = null;
+                await initFFmpeg();
+            }
+        }
+
+        finalizeConversion();
+    }
+
+    async function finalizeConversion() {
+        for (const filename of Object.keys(zip.files)) {
+            if (filename.endsWith('.txt')) {
+                const txtData = await zip.file(filename).async('string');
+                let updatedTxtData = txtData;
+                if (document.getElementById('replace-separator').checked) {
+                    updatedTxtData = updatedTxtData.replace(/\//g, '\\');
+                }
+                updatedTxtData = updatedTxtData.replace(/\.mp3/g, '.wav');
+                zip.file(filename, updatedTxtData);
+                appendLog(`Updated .mp3 references to .wav in ${filename}.`);
+            }
+        }
+
+        finalizeZip(zip);
+    }
+
+    async function handleDownload() {
+        appendLog('Starting download...');
+
+        const response = await fetch('build/latest.zip');
+        const totalSize = parseInt(response.headers.get('content-length'), 10);
+        let loadedSize = 0;
+
+        const reader = response.body.getReader();
+        let chunks = [];
+        let progress = 0;
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            loadedSize += value.length;
+
+            const newProgress = Math.floor((loadedSize / totalSize) * 100);
+            if (newProgress >= progress + 10) {
+                progress = newProgress;
+                appendLog(`Download progress: ${progress}%`);
+            }
+        }
+
+        const blob = new Blob(chunks);
+        appendLog('Download complete. Extracting files...');
+
+        zip = new JSZip();
+        await zip.loadAsync(blob);
+        mp3Files = Object.keys(zip.files).filter(filename => filename.endsWith('.mp3'));
+
+        currentFileIndex = 0; // 초기화 후 파일 처리 시작
+        processFiles();
+    }
+
+    function finalizeZip(zip) {
+        appendLog('Repacking the ZIP file...');
+
+        let repackProgress = 0;
+        zip.generateAsync({
+            type: 'blob',
+            streamFiles: true
+        }, function(metadata) {
+            const newProgress = Math.floor(metadata.percent);
+            if (newProgress >= repackProgress + 10) {
+                repackProgress = newProgress;
+                appendLog(`Repacking progress: ${repackProgress}%`);
+            }
+        }).then(blob => {
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = 'latest.zip';
+            a.click();
+            appendLog('Process complete. Download started as latest.zip.');
+        });
+    }
+
+    document.getElementById('start-download').addEventListener('click', handleDownload);
+</script>
+
+</body>
+</html>
