@@ -365,7 +365,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         </script>
         ${current_user ? `
         <p>
-            안녕하세요, ${current_user}! <br>여기서 기록을 확인할 수 있습니다: <a href="https://archive.nemelex.cards/morgue/${current_user}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${current_user}/">ttyrecs</a>
+            안녕하세요, ${current_user}! <br>여기서 기록을 확인할 수 있습니다: <a href="https://archive.nemelex.cards/morgue/${current_user}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${current_user}/">ttyrecs</a> <a href="https://archive.nemelex.cards/rcfiles/?user=${current_user}">rcfiles</a>
         </p>
         <script>
             DWEM.Modules.CNCBanner.colorizeText();
@@ -415,7 +415,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                     </script>
                     ${current_user ? `
                     <p>
-                        Hello, ${current_user}! View your <a href="https://archive.nemelex.cards/morgue/${current_user}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${current_user}/">ttyrecs</a>.
+                        Hello, ${current_user}! View your <a href="https://archive.nemelex.cards/morgue/${current_user}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${current_user}/">ttyrecs</a> <a href="https://archive.nemelex.cards/rcfiles/?user=${current_user}">rcfiles</a>.
                     </p>
                     <script>
                         DWEM.Modules.CNCBanner.colorizeText();
