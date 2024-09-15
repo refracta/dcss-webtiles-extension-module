@@ -256,17 +256,7 @@ export default class CNCPublicChat {
         });
 
 
-        this.mapQueue = [];
-        this.mapQueueSize = 30;
-        this.prerenderSize = 10;
-        IOHook.handle_message.after.addHandler('cnc-public-chat-gif', (data) => {
-            if (data.msg === 'map') {
-                this.mapQueue.push(JSON.parse(JSON.stringify(data)));
-                if (this.mapQueue.length > this.mapQueueSize) {
-                    this.mapQueue = this.mapQueue.slice(-this.mapQueueSize);
-                }
-            }
-        });
+
         // Migrate to CommandManager
         IOHook.send_message.before.addHandler('cnc-public-chat-commander', (msg, data) => {
             if (msg === 'chat_msg') {
@@ -275,14 +265,14 @@ export default class CNCPublicChat {
                     (async () => {
                         const los = parseInt(text.split(' ').pop()) || 7;
                         const frames = [];
-                        const mapQueueCopy = [...this.mapQueue];
+                        const mapQueueCopy = [...CNCChat.mapQueue];
                         let canvasWidth, canvasHeight;
-                        if (mapQueueCopy.length > this.prerenderSize) {
-                            for (let i = 0; i < this.prerenderSize; i++) {
+                        if (mapQueueCopy.length > CNCChat.prerenderSize) {
+                            for (let i = 0; i < CNCChat.prerenderSize; i++) {
                                 IOHook.handle_message(mapQueueCopy[i]);
                             }
                         }
-                        const start = mapQueueCopy.length > this.prerenderSize ? this.prerenderSize : 0;
+                        const start = mapQueueCopy.length > CNCChat.prerenderSize ? CNCChat.prerenderSize : 0;
                         for (let i = start; i < mapQueueCopy.length; i++) {
                             IOHook.handle_message(mapQueueCopy[i]);
                             const canvas = await CNCChat.Snapshot.captureGame(los);

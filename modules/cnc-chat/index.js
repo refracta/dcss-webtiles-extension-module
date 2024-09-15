@@ -1,4 +1,5 @@
 import html2canvas from './html2canvas.min.js';
+import gifshot from 'https://cdn.skypack.dev/gifshot';
 
 export default class CNCChat {
     static name = 'CNCChat';
@@ -324,11 +325,70 @@ export default class CNCChat {
             }
         }, 999);
 
+        this.mapQueue = [];
+        this.mapQueueSize = 30;
+        this.prerenderSize = 10;
+        IOHook.handle_message.after.addHandler('cnc-chat-gif', (data) => {
+            if (data.msg === 'map') {
+                this.mapQueue.push(JSON.parse(JSON.stringify(data)));
+                if (this.mapQueue.length > this.mapQueueSize) {
+                    this.mapQueue = this.mapQueue.slice(-this.mapQueueSize);
+                }
+            }
+        });
         // Migrate to CommandManager
         IOHook.send_message.before.addHandler('cnc-chat-commander', (msg, data) => {
             if (msg === 'chat_msg') {
                 const {text} = data;
-                if (text.startsWith('/ggame') || text.startsWith('/gg')) {
+                if (text.startsWith('/ggif')) {
+                    (async () => {
+                        const los = parseInt(text.split(' ').pop()) || 7;
+                        const frames = [];
+                        const mapQueueCopy = [...this.mapQueue];
+                        let canvasWidth, canvasHeight;
+                        if (mapQueueCopy.length > this.prerenderSize) {
+                            for (let i = 0; i < this.prerenderSize; i++) {
+                                IOHook.handle_message(mapQueueCopy[i]);
+                            }
+                        }
+                        const start = mapQueueCopy.length > this.prerenderSize ? this.prerenderSize : 0;
+                        for (let i = start; i < mapQueueCopy.length; i++) {
+                            IOHook.handle_message(mapQueueCopy[i]);
+                            const canvas = await CNCChat.Snapshot.captureGame(los);
+                            if (!canvasWidth || !canvasHeight) {
+                                canvasWidth = canvas.width;
+                                canvasHeight = canvas.height;
+                            }
+                            const dataURL = canvas.toDataURL('image/png');
+                            frames.push(dataURL);
+                        }
+                        gifshot.createGIF(
+                            {
+                                images: frames,
+                                interval: 0.2,
+                                gifWidth: canvasWidth,
+                                gifHeight: canvasHeight,
+                                sampleInterval: 1, // Improves quality by reducing skipped pixels
+                                numWorkers: 4,     // Speeds up processing with multiple web workers
+                            },
+                            async (obj) => {
+                                if (!obj.error) {
+                                    const image = obj.image;
+                                    const response = await fetch(image);
+                                    const gifBlob = await response.blob();
+                                    const {url} = await CNCChat.API.upload({
+                                        file: gifBlob,
+                                        type: 'game',
+                                    }).then((r) => r.json());
+                                    socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
+                                } else {
+                                    console.error('Error creating GIF:', obj.error);
+                                }
+                            }
+                        );
+                    })();
+                    return true;
+                } else if (text.startsWith('/ggame') || text.startsWith('/gg')) {
                     (async () => {
                         const los = parseInt(text.split(' ').pop()) || 7;
                         const canvas = await this.Snapshot.captureGame(los);
