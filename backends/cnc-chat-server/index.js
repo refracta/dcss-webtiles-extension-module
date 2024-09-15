@@ -33,6 +33,7 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
     const allowedMimeTypes = [
         'image/png',
+        'image/gif'
     ];
     const mimetype = allowedMimeTypes.includes(file.mimetype.toLowerCase());
     if (mimetype) {
@@ -60,7 +61,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         entity = JSON.parse(entity);
         entity.timestamp = Date.now();
         entity.ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-        entity.file = `${entity.user}.${entity.timestamp}.png`;
+        const ext = path.extname(file.originalname).toLowerCase();
+        entity.file = `${entity.user}.${entity.timestamp}${ext}`;
         const newFilePath = path.join(__dirname, 'files', entity.file);
         entity.file = `files/${entity.file}`;
         fs.renameSync(file.path, newFilePath);

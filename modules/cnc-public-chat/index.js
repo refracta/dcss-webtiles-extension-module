@@ -20,7 +20,10 @@ export default class CNCPublicChat {
                     e.stopPropagation();
                     if (content != "") {
                         if (SiteInformation.current_hash === '#lobby' || content.startsWith(' ')) {
-                            DWEM.Modules.CNCPublicChat.socket.send(JSON.stringify({msg: 'chat_msg', text: content.trim()}));
+                            DWEM.Modules.CNCPublicChat.socket.send(JSON.stringify({
+                                msg: 'chat_msg',
+                                text: content.trim()
+                            }));
                         } else {
                             comm.send_message("chat_msg", {
                                 text: content
@@ -250,6 +253,17 @@ export default class CNCPublicChat {
             }
         });
 
+
+        this.mapQueue = [];
+        this.mapQueueSize = 100;
+        IOHook.handle_message.after.addHandler('cnc-public-chat-gif', (data) => {
+            if (data.msg === 'map') {
+                this.mapQueue.push(data);
+                if (this.mapQueue.length > this.mapQueueSize) {
+                    this.mapQueue = this.mapQueue.slice(-this.mapQueueSize);
+                }
+            }
+        });
         // Migrate to CommandManager
         IOHook.send_message.before.addHandler('cnc-public-chat-commander', (msg, data) => {
             if (msg === 'chat_msg') {
@@ -261,6 +275,52 @@ export default class CNCPublicChat {
                         const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
                         const {url} = await CNCChat.API.upload({file, type: 'game'}).then(r => r.json());
                         this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
+                    })();
+                    return true;
+                } else if (text.startsWith('/gif')) {
+                    (async () => {
+                        const los = parseInt(text.split(' ').pop()) || 7;
+                        const frames = [];
+
+                        // Copy the mapQueue to avoid modification during iteration
+                        const mapQueueCopy = [...this.mapQueue];
+
+                        for (const data of mapQueueCopy) {
+                            // Update the game state by handling the message
+                            IOHook.handle_message(data);
+
+                            // Capture the game canvas
+                            const canvas = await CNCChat.Snapshot.captureGame(los);
+
+                            // Convert the canvas to a data URL and store it
+                            const dataURL = canvas.toDataURL('image/png');
+                            frames.push(dataURL);
+                        }
+
+                        // Use gifshot to create a GIF from the frames
+                        gifshot.createGIF(
+                            {
+                                images: frames,
+                                interval: 0.2, // Adjust frame delay as needed
+                            },
+                            async (obj) => {
+                                if (!obj.error) {
+                                    const image = obj.image; // Data URL of the GIF
+
+                                    // Convert data URL to Blob
+                                    const response = await fetch(image);
+                                    const gifBlob = await response.blob();
+
+                                    // Upload the GIF
+                                    const { url } = await CNCChat.API.upload({ file: gifBlob, type: 'game' }).then((r) => r.json());
+
+                                    // Send the URL to the chat
+                                    this.socket.send(JSON.stringify({ msg: 'chat_msg', text: url }));
+                                } else {
+                                    console.error('Error creating GIF:', obj.error);
+                                }
+                            }
+                        );
                     })();
                     return true;
                 } else if (text.startsWith('/menu') || text.startsWith('/m')) {
