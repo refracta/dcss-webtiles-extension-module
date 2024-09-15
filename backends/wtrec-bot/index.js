@@ -10,31 +10,42 @@ fs.mkdirSync('data/resources', {recursive: true});
 fs.mkdirSync('data/wtrec', {recursive: true});
 const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
-let lobby = {};
-const socket = extend(WebsocketFactory.create(config.websocket, {
-    handle_message: async function (data) {
-        if (data.msg === 'ping') {
-            socket.pong();
-        } else if (data.msg === 'lobby_entry') {
-            if (!lobby[data.id]) {
-                if (Math.random() > 0.8 && data.username !== 'CNCPublicChat') {
-                    socket.launchQueue.push(data.username);
+while (true) {
+    let lobby, socket, interval;
+    try {
+        lobby = {};
+        socket = extend(WebsocketFactory.create(config.websocket, {
+            handle_message: async function (data) {
+                if (data.msg === 'ping') {
+                    socket.pong();
+                } else if (data.msg === 'lobby_entry') {
+                    if (!lobby[data.id]) {
+                        if (Math.random() > 0.8 && data.username !== 'CNCPublicChat') {
+                            socket.launchQueue.push(data.username);
+                        }
+                    }
+                    lobby[data.id] = data;
+                } else if (data.msg === 'lobby_remove') {
+                    delete lobby[data.id];
+                } else if (data.msg === 'lobby_clear') {
+                    lobby = {};
                 }
             }
-            lobby[data.id] = data;
-        } else if (data.msg === 'lobby_remove') {
-            delete lobby[data.id];
-        } else if (data.msg === 'lobby_clear') {
-            lobby = {};
-        }
+        }));
+        socket.launchQueue = [];
+        interval = setInterval(_ => {
+            if (socket.launchQueue.length > 0) {
+                launchWTREC(socket.launchQueue.shift());
+            }
+        }, 1000);
+    } catch (e) {
+        console.error(new Date(), e.reason);
+    } finally {
+        clearInterval(interval);
+        await new Promise(resolve => setTimeout(resolve, 1000 * 10));
     }
-}));
-socket.launchQueue = [];
-setInterval(_ => {
-    if (socket.launchQueue.length > 0) {
-        launchWTREC(socket.launchQueue.shift());
-    }
-}, 1000);
+}
+
 
 async function getScriptMap(valuePath) {
     const scriptMap = {}
