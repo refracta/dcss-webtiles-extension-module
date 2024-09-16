@@ -34,6 +34,7 @@ app.post('/', async (req, res) => {
     }
 
     try {
+        console.log(`PROXY: ${url}`)
         const response = await fetch(url);
         if (!response.ok) {
             return res.status(response.status).json({error: 'Error fetching the URL.'});
