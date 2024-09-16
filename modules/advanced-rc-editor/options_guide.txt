@@ -2712,74 +2712,80 @@ https://sound-packs.nemelex.cards/Autofire/BindTheEarth/BindTheEarth.zip (SOUND 
     BindTheEarth Sound Pack: https://github.com/Autofire/BindTheEarth/tree/master
     Example: sound_pack += https://sound-packs.nemelex.cards/Autofire/BindTheEarth/BindTheEarth.zip
 
-crawl.god_speaks (LUA)
+crawl.article_a (LUA)
     Syntax:
-        crawl.god_speaks(godname, message)
-    Returns: nil.
+        crawl.article_a(s[, lowercase=true])
+    Returns: string.
     Parameters:
-        godname a string. The name of a god (case-insensitive). The list of names can be found in the function god_name in religion.cc.
-        message a string.
-    Description: A god speaks to you. This function is dlua-only.
+        s a string.
+        lowercase a boolean (optional; default value: true).
+    Description: Correctly attaches the article 'a' to a string. If `lowercase` is true, the article will be lowercase.
 
-crawl.mpr (LUA)
+crawl.c_input_line (LUA)
     Syntax:
-        crawl.mpr(message, channel)
-    Returns: nil.
-    Parameters:
-        message a string.
-        channel a integer (optional; default value: 0).
-        Description: Prints message to the message window using the message channel channel. The default channel is plain.
-    List of channels
-        Index	Channel name	Description
-        0	plain	regular text
-        1	friend action	friendly monsters taking actions
-        2	prompt	various prompts
-        3	god	god/religion
-        4	pray	praying messages
-        5	duration	effect down/warnings
-        6	danger	serious life threats (ie: very large HP attacks)
-        7	warn	much less serious threats
-        8	food	hunger notices
-        9	recovery	recovery from disease/stat/poison condition
-        10	sound	messages about things the player hears
-        11	talk	monster talk
-        12	talk visual	silent monster “talk”
-        13	intrinsic gain	player level/stat/species-power gains
-        14	mutation	player gain/lose mutations
-        15	monster spell	monsters casting spells
-        16	monster enchant	monsters enchantments up and down
-        17	friend spell	allied monsters casting spells
-        18	friend enchant	allied monsters' enchantments up and down
-        19	monster damage	monster damage reports
-        20	monster target	message marking the monster as a target
-        21	banishment	Abyss-related messages
-        22	rotten meat	messages about chunks/corpses becoming rotten
-        23	equipment	equipment listing messages
-        24	floor items	like equipment, but lists of floor items
-        25	multiturn actions	delayed action messages
-        26	examine	messages describing monsters, features, items
-        27	examine filter	“less important” instances of the above
-        28	diagnostics	various diagnostic messages
-        29	error	error messages
-        30	tutorial	messages for tutorial
-        31	orb	messages for the orb
+        line = crawl.c_input_line()
+    Returns: string or nil.
+    Parameters: None.
+    Description: Cancellably prompts the user for a line of input. The line is limited to 500 characters. Returns the input string or nil if canceled.
 
-crawl.formatted_mpr (LUA)
+crawl.call_dlua (LUA)
     Syntax:
-        crawl.formatted_mpr(message, channel)
-    Returns: nil.
+        result = crawl.call_dlua(chunk)
+    Returns: scalar value.
     Parameters:
-        message a string.
-        channel a integer (optional; default value: 0).
-    Description: Prints message to the message window using the message channel channel. The default channel is plain.
+        chunk a string representing Lua code to execute.
+    Description: Executes Lua code in the dungeon (dlua) context and returns the result of the execution.
 
-crawl.stderr (LUA)
+crawl.clear_messages (LUA)
     Syntax:
-        crawl.stderr(text)
+        crawl.clear_messages(force)
     Returns: nil.
     Parameters:
-        text a string.
-    Description: Prints text to stderr.
+        force a boolean.
+    Description: Clears the message window. If `force` is true, all messages will be cleared immediately.
+
+crawl.coinflip (LUA)
+    Syntax:
+        result = crawl.coinflip()
+    Returns: boolean.
+    Description: Flips a coin and returns true or false with a 50% chance.
+
+crawl.delay (LUA)
+    Syntax:
+        crawl.delay(ms)
+    Returns: nil.
+    Parameters:
+        ms an integer representing the delay in milliseconds.
+    Description: Pauses the game for the specified number of milliseconds.
+
+crawl.div_rand_round (LUA)
+    Syntax:
+        result = crawl.div_rand_round(numerator, denominator)
+    Returns: integer.
+    Parameters:
+        numerator an integer.
+        denominator an integer.
+    Description: Divides `numerator` by `denominator` and returns the result. If there is a remainder, there is a chance it rounds up.
+
+crawl.do_commands (LUA)
+    Syntax:
+        crawl.do_commands(commands[, hide=false])
+    Returns: nil.
+    Parameters:
+        commands an array of command names.
+        hide a boolean (optional; default value: false).
+    Description: Executes a sequence of named crawl commands. The commands are processed in the order given. If `hide` is true, the targeter will be hidden during processing.
+
+crawl.do_targeted_command (LUA)
+    Syntax:
+        action_taken = crawl.do_targeted_command(command[, x=0[, y=0[, if=false]]])
+    Returns: boolean.
+    Parameters:
+        command a string representing the command name.
+        x a number (optional; default value: 0).
+        y a number (optional; default value: 0).
+        if a boolean (optional; default value: false).
+    Description: Handles any command that requires a target. If coordinates `x` and `y` are valid, the command will be executed at that location. Returns true if an action is taken.
 
 crawl.dpr (LUA)
     Syntax:
@@ -2787,44 +2793,13 @@ crawl.dpr (LUA)
     Returns: nil.
     Parameters:
         text a string.
-    Description: Outputs a debug message.
+    Description: Outputs the given string to the debug channel, visible only in debug builds.
 
-crawl.more (LUA)
+crawl.dump_char (LUA)
     Syntax:
-        crawl.more()
+        crawl.dump_char()
     Returns: nil.
-    Parameters: None.
-    Description: Forces a –more– prompt.
-
-crawl.flush_prev_message (LUA)
-    Syntax:
-        crawl.flush_prev_message()
-    Returns: nil.
-    Parameters: None.
-    Description: Writes out to the message window any previous message.
-
-crawl.mesclr (LUA)
-    Syntax:
-        crawl.mesclr(force)
-    Returns: nil.
-    Parameters:
-        force a boolean (optional; default value: false).
-    Description: Flushes any previous message and marks old messages as read. If force is true or the clear_messages user option is on, it also clears the message window.
-
-crawl.redraw_screen (LUA)
-    Syntax:
-        crawl.redraw_screen()
-    Returns: nil.
-    Parameters: None.
-    Description: Redraws the whole screen.
-
-crawl.set_more_autoclear (LUA)
-    Syntax:
-        crawl.set_more_autoclear(flag)
-    Returns: nil.
-    Parameters:
-        flag a boolean.
-    Description: Sets the value of the autoclear_more option to flag.
+    Description: Produces a character dump, which contains detailed information about the player character.
 
 crawl.enable_more (LUA)
     Syntax:
@@ -2832,110 +2807,541 @@ crawl.enable_more (LUA)
     Returns: nil.
     Parameters:
         flag a boolean.
-    Description: Enables/Disables the –more– prompts.
+    Description: Enables or disables the use of --- more --- prompts, depending on the value of `flag`.
 
-crawl.c_input_line (LUA)
+crawl.err_trace (LUA)
     Syntax:
-        line = crawl.c_input_line()
-    Returns: Either a string if one is input, or nil if input is cancelled.
-    Parameters: None.
-    Description: Wrapper for cancelable_get_line(). Since that takes a pre-allocated buffer, an arbitrary 500-character limit is currently imposed.
-
-crawl.getchm (LUA)
-    Syntax:
-        c = crawl.getchm()
-    Returns: A integer representing the key (combo) input.
-    Parameters: None.
-    Description: Reads a keypress.
-
-crawl.kbhit (LUA)
-    Syntax:
-        flag = crawl.kbhit()
-    Returns: 1 if there is pending input, 0 otherwise.
-    Parameters: None.
-    Description: Checks for pending input.
+        result = crawl.err_trace(func, args)
+    Returns: the result of the function call or an error trace.
+    Parameters:
+        func a Lua function to call.
+        args a table of arguments to pass to the function.
+    Description: Attempts to execute the given Lua function and traces any errors that occur. Returns the function result or the error trace if the call fails.
 
 crawl.flush_input (LUA)
     Syntax:
         crawl.flush_input()
     Returns: nil.
     Parameters: None.
-    Description: Flushes the input buffer (typeahead). Any attempt to flush means that the processing of the previously fetched keystroke is complete.
+    Description: Flushes the input buffer, removing any pending key presses.
 
-crawl.yesno (LUA)
+crawl.flush_prev_message (LUA)
     Syntax:
-        answer = crawl.yesno(prompt, safe, safe_answer, clear_after, no_prompt)
-    Returns: A boolean. The answer.
+        crawl.flush_prev_message()
+    Returns: nil.
+    Parameters: None.
+    Description: Writes out any previous message to the message window.
+
+crawl.formatted_mpr (LUA)
+    Syntax:
+        crawl.formatted_mpr(message, channel)
+    Returns: nil.
     Parameters:
-        prompt a string. The question for the user.
-        safe a boolean. Accept lowercase answers?
-        safe_answer if a letter, this will be considered a safe default.
-        clear_after a boolean. Clear the question after the user answers?
-        no_prompt a boolean. If true, skip asking the question; just wait for the answer.
-    Description: Asks the player a yes/no question.
+        message a string.
+        channel an integer (optional; default value: 0).
+    Description: Prints the formatted message to the message window using the specified message channel.
 
-crawl.yesnoquit (LUA)
+crawl.game_started (LUA)
     Syntax:
-        answer = crawl.yesnoquit(prompt, safe, safe_answer, allow_all, clear_after)
-    Returns: A integer. The answer: 0 for no, 1 for yes, and -1 for quit.
-    Parameters:
-        prompt a string. The question for the user.
-        safe a boolean. Accept lowercase answers?
-        safe_answer if a letter, this will be considered a safe default.
-        clear_after a boolean. Clear the question after the user answers?
-        allow_all a boolean. Actually ask a yes/no/quit/all question.
-    Description: Asks the player a yes/no/quit question.
-
-crawl.coinflip (LUA)
-    Syntax:
-        crawl.coinflip()
+        result = crawl.game_started()
     Returns: boolean.
-    Description: 50% chance each of true or false.
+    Parameters: None.
+    Description: Checks if the game has started and returns true if it has, otherwise returns false.
+
+crawl.get_command (LUA)
+    Syntax:
+        keybind = crawl.get_command(name)
+    Returns: string or nil.
+    Parameters:
+        name a string representing the command name.
+    Description: Looks up the current key bound to a command and returns the key combination or nil if not found.
+
+crawl.get_target (LUA)
+    Syntax:
+        x, y = crawl.get_target()
+    Returns: two integers representing coordinates.
+    Parameters: None.
+    Description: Prompts the user to select a location via the targeting screen and returns the relative position of the chosen location.
+
+crawl.getch (LUA)
+    Syntax:
+        key = crawl.getch()
+    Returns: integer.
+    Parameters: None.
+    Description: Reads and returns a key press (key combo).
+
+crawl.grammar (LUA)
+    Syntax:
+        description = crawl.grammar(what[, how="plain"])
+    Returns: string.
+    Parameters:
+        what a string representing the item to describe.
+        how a string (optional; default value: "plain") representing the description type.
+    Description: Grammatically describes an object or entity. Different description types are available (e.g., "plain", "the", "a", "your", etc.).
+
+crawl.is_tiles (LUA)
+    Syntax:
+        result = crawl.is_tiles()
+    Returns: boolean.
+    Parameters: None.
+    Description: Returns true if the game is running in tiles mode, otherwise returns false.
+
+crawl.is_touch_ui (LUA)
+    Syntax:
+        result = crawl.is_touch_ui()
+    Returns: boolean.
+    Parameters: None.
+    Description: Returns true if the touch UI is being used, otherwise returns false.
+
+crawl.is_webtiles (LUA)
+    Syntax:
+        result = crawl.is_webtiles()
+    Returns: boolean.
+    Parameters: None.
+    Description: Returns true if the game is running as a webtiles build, even if the player is currently using console mode.
+
+crawl.kbhit (LUA)
+    Syntax:
+        flag = crawl.kbhit()
+    Returns: integer (1 or 0).
+    Parameters: None.
+    Description: Returns 1 if there is pending input, otherwise returns 0.
+
+crawl.message (LUA)
+    Syntax:
+        crawl.message(message, channel)
+    Returns: nil.
+    Parameters:
+        message a string.
+        channel an integer representing the message channel.
+    Description: Prints a message to the message window on the specified channel. A wrapper for message output.
+
+crawl.message_filter (LUA)
+    Syntax:
+        filter = crawl.message_filter(pat[, ch=-1])
+    Returns: MessageFilter or nil.
+    Parameters:
+        pat a string representing the filter pattern.
+        ch an integer (optional; default value: -1) representing the channel number.
+    Description: Creates a message filter based on the given pattern and channel.
+
+crawl.messages (LUA)
+    Syntax:
+        crawl.messages(num)
+    Returns: string.
+    Parameters:
+        num an integer representing how many lines back to go.
+    Description: Retrieves a specified number of previous messages from the message buffer.
+
+crawl.more (LUA)
+    Syntax:
+        crawl.more()
+    Returns: nil.
+    Parameters: None.
+    Description: Displays a --- more --- prompt to the player.
+
+crawl.mpr (LUA)
+    Syntax:
+        crawl.mpr(message, channel)
+    Returns: nil.
+    Parameters:
+        message a string representing the message to print.
+        channel an integer (optional; default value: 0) representing the message channel.
+    Description: Prints a message to the message window using the specified message channel. The default channel is plain text.
+
+    List of channels:
+        Index   Channel name        Description
+        0       plain               Regular text.
+        1       friend action        Actions taken by friendly monsters.
+        2       prompt              Various prompts to the player.
+        3       god                 God/religion-related messages.
+        4       pray                Messages related to praying.
+        5       duration            Effect duration warnings.
+        6       danger              Serious life-threatening situations (e.g., large HP attacks).
+        7       warn                Less serious threat warnings.
+        8       food                Hunger-related messages.
+        9       recovery            Recovery from conditions (disease, poison, etc.).
+        10      sound               Messages about sounds the player hears.
+        11      talk                Monster speech.
+        12      talk visual         Visual representation of monsters’ "silent talk."
+        13      intrinsic gain      Player level, stat, or species power gains.
+        14      mutation            Messages about player gaining or losing mutations.
+        15      monster spell       Monsters casting spells.
+        16      monster enchant     Monster enchantments (up or down).
+        17      friend spell        Allied monsters casting spells.
+        18      friend enchant      Allied monsters' enchantments (up or down).
+        19      monster damage      Damage reports from monsters.
+        20      monster target      Marks a monster as a target.
+        21      banishment          Abyss-related messages.
+        22      rotten meat         Messages about corpses becoming rotten.
+        23      equipment           Equipment listing messages.
+        24      floor items         Listing of items on the floor.
+        25      multiturn actions   Messages about delayed or multiturn actions.
+        26      examine             Descriptions of monsters, features, or items.
+        27      examine filter      Filtered descriptions (less important instances of the above).
+        28      diagnostics         Various diagnostic messages.
+        29      error               Error messages.
+        30      tutorial            Messages related to the tutorial.
+        31      orb                 Messages related to the Orb.
+
+crawl.msgch_name (LUA)
+    Syntax:
+        name = crawl.msgch_name(num)
+    Returns: string.
+    Parameters:
+        num an integer representing the channel number.
+    Description: Returns the name of the message channel corresponding to the given channel number.
+
+crawl.msgch_num (LUA)
+    Syntax:
+        num = crawl.msgch_num(name)
+    Returns: integer.
+    Parameters:
+        name a string representing the channel name.
+    Description: Returns the channel number corresponding to the given channel name.
 
 crawl.one_chance_in (LUA)
     Syntax:
-        crawl.one_chance_in(num)
+        result = crawl.one_chance_in(in)
     Returns: boolean.
-    Description: This function has one chance in `num` of returning true. Otherwise, it returns false. It does not support real-valued parameters.
+    Parameters:
+        in an integer representing the chance.
+    Description: Performs a weighted coin flip. Returns true if successful based on the specified chance.
 
-crawl.x_chance_in_y (LUA)
+crawl.playsound (LUA)
     Syntax:
-        crawl.x_chance_in_y(numerator, denominator)
+        crawl.playsound(sf)
+    Returns: nil.
+    Parameters:
+        sf a string representing the sound file.
+    Description: Plays a sound. Available only if crawl is compiled with sound support.
+
+crawl.process_command (LUA)
+    Syntax:
+        result = crawl.process_command()
     Returns: boolean.
-    Description: This function has `numerator` in `denominator` of returning true. Otherwise, it returns false. Real-valued parameters are rounded to integers.
+    Parameters: None.
+    Description: Tells crawl to process the current command. Returns true if it will actually do so.
 
-crawl.roll_dice (LUA)
+crawl.process_keys (LUA)
     Syntax:
-        crawl.roll_dice(count, sides)
-    Returns: integer.
-    Description: Simulates rolling `count` dice, each with `sides` sides, and returns the total. This function is weighted towards the center of the range.
+        crawl.process_keys(keys[, hide=false])
+    Returns: nil.
+    Parameters:
+        keys a string representing the input keys.
+        hide a boolean (optional; default value: false).
+    Description: Processes a string of input keys. If `hide` is true, the targeter is hidden during processing.
 
 crawl.random2 (LUA)
     Syntax:
-        val = crawl.random2(num)
+        val = crawl.random2(max)
     Returns: integer.
-    Description: Returns a random integer in the range [0, num). Real-valued parameters are rounded to an integer. Passing a value less than 1.5 always returns 0.
+    Parameters:
+        max an integer representing the upper bound.
+    Description: Returns a random number in the range [0, max). The upper bound is exclusive.
+
+crawl.random2avg (LUA)
+    Syntax:
+        val = crawl.random2avg(max, num)
+    Returns: integer.
+    Parameters:
+        max an integer representing the upper bound for each roll.
+        num an integer representing the number of rolls.
+    Description: Averages `num` random rolls between 0 and `max`.
+
+crawl.random_range (LUA)
+    Syntax:
+        val = crawl.random_range(min, max[, rolls=1])
+    Returns: integer.
+    Parameters:
+        min an integer representing the lower bound.
+        max an integer representing the upper bound.
+        rolls an integer (optional; default value: 1).
+    Description: Returns a random number in the range [min, max], averaged over `rolls` rolls.
 
 crawl.random_real (LUA)
     Syntax:
         val = crawl.random_real()
-    Returns: floating point.
-    Description: Returns a random real number in the range [0, 1). 0 is possible, but 1 is not.
+    Returns: number.
+    Parameters: None.
+    Description: Returns a random floating-point number in the range [0, 1). The upper bound is exclusive.
 
-crawl.random2avg (LUA)
+crawl.read_options (LUA)
     Syntax:
-        val = crawl.random2avg(n1, n2)
-    Returns: integer.
-    Description: Returns a random integer, averaging over two independent rolls of a die with `n1` and `n2` sides, respectively.
+        crawl.read_options(filename)
+    Returns: nil.
+    Parameters:
+        filename a string representing the file name.
+    Description: Reads options from the specified file.
 
-crawl.random_range (LUA)
+crawl.redraw_screen (LUA)
     Syntax:
-        val = crawl.random2(low, high)
-    Returns: integer.
-    Description: Returns a random integer in the range [low, high]. Real-valued parameters are rounded to integers.
+        crawl.redraw_screen()
+    Returns: nil.
+    Parameters: None.
+    Description: Redraws the entire screen.
 
-crawl.div_rand_round (LUA)
+crawl.regex (LUA)
     Syntax:
-        val = crawl.div_rand_round(num, dem)
+        pattern = crawl.regex(pat)
+    Returns: Regex or nil.
+    Parameters:
+        pat a string representing the pattern.
+    Description: Compiles a regular expression using PCRE.
+
+crawl.roll_dice (LUA)
+    Syntax:
+        val = crawl.roll_dice([num_dice=1], sides)
     Returns: integer.
-    Description: Divides `num` by `dem`, truncated to an integer. If the result does not divide evenly, there is a chance that 1 is added to the result based on the remainder.
+    Parameters:
+        num_dice an integer (optional; default value: 1).
+        sides an integer representing the number of sides.
+    Description: Rolls `num_dice` dice, each with `sides` sides, and returns the sum.
+
+crawl.runmacro (LUA)
+    Syntax:
+        crawl.runmacro(macroname)
+    Returns: nil.
+    Parameters:
+        macroname a string representing the macro name.
+    Description: Executes the specified macro.
+
+crawl.sendkeys (LUA)
+    Syntax:
+        crawl.sendkeys(keys[, ...])
+    Returns: nil.
+    Parameters:
+        keys a string, integer, or array representing the input keys.
+        ... (optional).
+    Description: Sends keypresses to crawl. Processes multiple arguments as key inputs in sequence.
+
+crawl.set_more_autoclear (LUA)
+    Syntax:
+        crawl.set_more_autoclear(flag)
+    Returns: nil.
+    Parameters:
+        flag a boolean.
+    Description: Toggles the autoclearing of --- more --- prompts based on the value of `flag`.
+
+crawl.set_sendkeys_errors (LUA)
+    Syntax:
+        crawl.set_sendkeys_errors(param)
+    Returns: nil.
+    Parameters:
+        param a boolean.
+    Description: Enables or disables crashes on incomplete buffer input. Used mainly for testing.
+
+crawl.setopt (LUA)
+    Syntax:
+        crawl.setopt(opt)
+    Returns: nil.
+    Parameters:
+        opt a string representing an option.
+    Description: Sets user options from the provided option string.
+
+crawl.simplex (LUA)
+    Syntax:
+        noise = crawl.simplex(x, y[, z[, w]])
+    Returns: number.
+    Parameters:
+        x a number representing the first coordinate.
+        y a number representing the second coordinate.
+        z a number (optional) representing the third coordinate.
+        w a number (optional) representing the fourth coordinate.
+    Description: Generates 2D, 3D, or 4D Simplex noise based on the given coordinates.
+
+crawl.split (LUA)
+    Syntax:
+        result = crawl.split(s, split)
+    Returns: table of strings.
+    Parameters:
+        s a string to split.
+        split a string representing the delimiter.
+    Description: Splits the input string `s` at each occurrence of `split` and returns a table of strings.
+
+crawl.split_bytes (LUA)
+    Syntax:
+        b1, b2, b3, b4 = crawl.split_bytes(num)
+    Returns: 4 integers.
+    Parameters:
+        num an integer.
+    Description: Splits a 32-bit integer into four bytes.
+
+crawl.stat_gain_prompt (LUA)
+    Syntax:
+        result = crawl.stat_gain_prompt()
+    Returns: boolean.
+    Parameters: None.
+    Description: Checks if the player is being prompted to choose a stat to increase.
+
+crawl.stderr (LUA)
+    Syntax:
+        crawl.stderr(text)
+    Returns: nil.
+    Parameters:
+        text a string.
+    Description: Prints the specified text to stderr for debugging purposes.
+
+crawl.string_compare (LUA)
+    Syntax:
+        result = crawl.string_compare(s1, s2)
+    Returns: integer.
+    Parameters:
+        s1 a string.
+        s2 a string.
+    Description: Compares two strings in a locale-independent way. Returns -1 if `s1` < `s2`, 1 if `s1` > `s2`, and 0 if they are equal.
+
+crawl.take_note (LUA)
+    Syntax:
+        crawl.take_note(note)
+    Returns: nil.
+    Parameters:
+        note a string representing the note.
+    Description: Records a note.
+
+crawl.trim (LUA)
+    Syntax:
+        result = crawl.trim(s)
+    Returns: string.
+    Parameters:
+        s a string.
+    Description: Trims leading and trailing whitespace from the input string.
+
+crawl.version (LUA)
+    Syntax:
+        version = crawl.version([fmt="long"])
+    Returns: string.
+    Parameters:
+        fmt a string (optional; default value: "long").
+    Description: Returns the crawl version. The `fmt` can be "long", "major", or "short" to specify the format.
+
+crawl.weapon_check (LUA)
+    Syntax:
+        result = crawl.weapon_check()
+    Returns: boolean.
+    Parameters: None.
+    Description: Checks if the player really wants to use their current weapon and returns true if confirmed.
+
+crawl.worley (LUA)
+    Syntax:
+        dist1, dist2, id1, id2, pos1x, pos1y, pos1z, pos2x, pos2y, pos2z = crawl.worley(px, py, pz)
+    Returns: multiple values.
+    Parameters:
+        px a number representing the x-coordinate.
+        py a number representing the y-coordinate.
+        pz a number representing the z-coordinate.
+    Description: Returns the full Worley noise datum for a given point, including distances and IDs of the nearest points.
+
+crawl.worley_diff (LUA)
+    Syntax:
+        diff, id1 = crawl.worley_diff(px, py, pz)
+    Returns: multiple values.
+    Parameters:
+        px a number representing the x-coordinate.
+        py a number representing the y-coordinate.
+        pz a number representing the z-coordinate.
+    Description: Returns the difference between the nearest point Worley distances.
+
+crawl.x_chance_in_y (LUA)
+    Syntax:
+        result = crawl.x_chance_in_y(x, y)
+    Returns: boolean.
+    Parameters:
+        x an integer.
+        y an integer.
+    Description: Performs a random draw with `x` chances in `y` and returns true if successful.
+
+crawl.yesno (LUA)
+    Syntax:
+        answer = crawl.yesno(prompt, safe[, safe_answer[, clear_after=true[, interrupt_delays=true[, no_prompt=false]]]])
+    Returns: boolean.
+    Parameters:
+        prompt a string representing the question for the user.
+        safe a boolean indicating whether lowercase answers are accepted.
+        safe_answer a string or nil (optional) to specify a safe default answer.
+        clear_after a boolean (optional; default value: true) to clear the prompt after the user answers.
+        interrupt_delays a boolean (optional; default value: true) to interrupt ongoing delays.
+        no_prompt a boolean (optional; default value: false) to skip asking the question and just wait for the answer.
+    Description: Asks the player a yes/no question and returns the answer.
+
+crawl.yesnoquit (LUA)
+    Syntax:
+        answer = crawl.yesnoquit(prompt, safe[, safe_answer[, allow_all=false[, clear_after=true]]])
+    Returns: integer.
+    Parameters:
+        prompt a string representing the question for the user.
+        safe a boolean indicating whether lowercase answers are accepted.
+        safe_answer a string or nil (optional) to specify a safe default answer.
+        allow_all a boolean (optional; default value: false) to ask a yes/no/quit/all question.
+        clear_after a boolean (optional; default value: true) to clear the prompt after the user answers.
+    Description: Asks the player a yes/no/quit question and returns 0 for no, 1 for yes, and -1 for quit.
+
+crawl.args (LUA)
+    Syntax:
+        args = crawl.args()
+    Returns: table.
+    Parameters: None.
+    Description: Retrieves the command-line arguments passed to the game and returns them as a table.
+
+crawl.god_speaks (LUA)
+    Syntax:
+        crawl.god_speaks(Name, Speech)
+    Returns: nil.
+    Parameters:
+        Name a string representing the name of a crawl god.
+        Speech a string representing the message the god speaks.
+    Description: Displays divine speech from a specified god.
+
+crawl.make_name (LUA)
+    Syntax:
+        name = crawl.make_name()
+    Returns: string.
+    Parameters: None.
+    Description: Generates a random item name and returns it as a string.
+
+crawl.milestone (LUA)
+    Syntax:
+        crawl.milestone(type, milestone, origin)
+    Returns: nil.
+    Parameters:
+        type a string representing the type of milestone.
+        milestone a string describing the milestone.
+        origin a string representing the origin of the milestone.
+    Description: Registers a dgl milestone. No operation if not playing a dgl game.
+
+crawl.millis (LUA)
+    Syntax:
+        time = crawl.millis()
+    Returns: integer.
+    Parameters: None.
+    Description: Returns the current milliseconds of the time of day.
+
+crawl.redraw_stats (LUA)
+    Syntax:
+        crawl.redraw_stats()
+    Returns: nil.
+    Parameters: None.
+    Description: Redraws only the player stats on the screen. Typically, you would use `crawl.redraw_screen()` unless you specifically want to redraw just the stats.
+
+crawl.redraw_view (LUA)
+    Syntax:
+        crawl.redraw_view()
+    Returns: nil.
+    Parameters: None.
+    Description: Redraws only the view window. For most cases, `crawl.redraw_screen()` should be used unless you specifically need to update just the view window.
+
+crawl.set_max_runes (LUA)
+    Syntax:
+        crawl.set_max_runes(nrune)
+    Returns: nil.
+    Parameters:
+        nrune an integer representing the total number of obtainable runes.
+    Description: Modifies the maximum number of obtainable runes in the game.
+
+crawl.unavailable_god (LUA)
+    Syntax:
+        available = crawl.unavailable_god(godname)
+    Returns: boolean.
+    Parameters:
+        godname a string representing the name of the god.
+    Description: Checks if a specific god is still available for new games. Returns false if the god is no longer available (e.g., if Jiyva has been killed by the player).
