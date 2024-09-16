@@ -20,7 +20,6 @@ const port = 3000;
 
 app.use(bodyParser.json());
 
-app.use(cors());
 app.post('/', async (req, res) => {
     const {url} = req.body;
 
@@ -43,6 +42,7 @@ app.post('/', async (req, res) => {
         response.headers.forEach((value, name) => {
             res.setHeader(name, value);
         });
+        res.setHeader('Access-Control-Allow-Origin', '*');
 
         response.body.pipe(res);
     } catch (error) {
