@@ -229,7 +229,7 @@ export default class RCManager {
                                         headers: {
                                             'Content-Type': 'application/json',
                                         },
-                                        body: {url}
+                                        body: JSON.stringify({url})
                                     }).then(r => r.text());
                                 } catch (e) {
                                     console.error(`Failed to fetch RCURL. ${url}`);
