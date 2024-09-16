@@ -6,10 +6,12 @@ import 'https://cdn.jsdelivr.net/npm/ace-builds@1.36.2/src-noconflict/ext-langua
 export default class AdvancedRCEditor {
     static name = 'AdvancedRCEditor';
     static version = '1.0';
-    static dependencies = ['IOHook'];
+    static dependencies = ['IOHook', 'SiteInformation'];
     static description = '(Library) This module provides advanced rc editor.';
 
     onLoad() {
+        const {IOHook, SiteInformation} = DWEM.Modules;
+
         ace.config.set('basePath', 'https://cdn.jsdelivr.net/npm/ace-builds@1.36.2/src-noconflict');
         ace.require('ace/ext/language_tools');
         const completionsPath = import.meta.url.substring(0, import.meta.url.lastIndexOf('/')) + '/completions.json';
@@ -57,8 +59,29 @@ export default class AdvancedRCEditor {
 
         const editorDiv = document.createElement('div');
         editorDiv.id = 'editor';
-        editorDiv.title = 'F11';
         editorParent.prepend(editorDiv);
+        const br = editorParent.querySelector('br');
+        const helpSpan = document.createElement('span');
+        const downloadButton = document.createElement('input');
+        downloadButton.classList.add('button');
+        downloadButton.value = 'Download';
+        downloadButton.type = 'button';
+        downloadButton.style.float = 'right';
+        downloadButton.style.marginRight = '5px';
+        downloadButton.onclick = () => {
+            const rcfile = this.editor.getValue();
+            const name = `${SiteInformation.current_user}.rc`; // 파일 이름 지정
+            const blob = new Blob([rcfile], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        helpSpan.textContent = 'F11: Toggle FullScreen Mode';
+        br.insertAdjacentElement('afterend', helpSpan);
+        editorParent.append(downloadButton);
 
         const {SourceMapperRegistry: SMR, MatcherRegistry: MR} = DWEM;
 
@@ -78,12 +101,11 @@ export default class AdvancedRCEditor {
         const clientMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${clientInjector.toString()}()`);
         SMR.add('client', clientMapper);
 
-        const {IOHook} = DWEM.Modules;
         IOHook.handle_message.after.addHandler('rc-manager', async (data) => {
             if (data.msg === 'rcfile_contents') {
                 textarea.style.display = '';
                 const rcfile = data.contents;
-                this?.editor?.destory();
+                this?.editor?.destory?.();
                 this.editor = ace.edit("editor");
 
                 this.editor.setTheme("ace/theme/tomorrow_night_bright");
