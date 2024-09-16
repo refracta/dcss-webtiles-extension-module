@@ -103,7 +103,9 @@ export default class AdvancedRCEditor {
                     const lastColumn = this.editor.session.getLine(lastRow).length;
                     this.editor.gotoLine(lastRow + 1, lastColumn);
                     this.editor.renderer.scrollCursorIntoView();
+                    this.editor.focus();
                 });
+
                 this.editor.commands.addCommand({
                     name: "Toggle Fullscreen", bindKey: {win: "F11", mac: "F11"}, exec: function (editor) {
                         const isFullScreen = document.body.classList.toggle("fullScreen");
