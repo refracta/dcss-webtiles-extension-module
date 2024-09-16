@@ -84,7 +84,6 @@ export default class AdvancedRCEditor {
         editorParent.append(downloadButton);
 
         const {SourceMapperRegistry: SMR, MatcherRegistry: MR} = DWEM;
-
         function clientInjector() {
             const {AdvancedRCEditor} = DWEM.Modules;
             send_rc = function () {
