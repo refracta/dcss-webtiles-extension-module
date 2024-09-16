@@ -57,15 +57,17 @@ export default class AdvancedRCEditor {
 
         const editorDiv = document.createElement('div');
         editorDiv.id = 'editor';
+        editorDiv.title = 'F11';
         editorParent.prepend(editorDiv);
 
         const {SourceMapperRegistry: SMR, MatcherRegistry: MR} = DWEM;
 
         function clientInjector() {
+            const {AdvancedRCEditor} = DWEM.Modules;
             send_rc = function () {
                 console.log()
                 send_message("set_rc", {
-                    game_id: editing_rc, contents: DWEM.Modules.AdvancedRCEditor.editor.getValue()
+                    game_id: editing_rc, contents: AdvancedRCEditor.editor.getValue()
                 });
                 hide_dialog();
                 return false;
@@ -81,6 +83,7 @@ export default class AdvancedRCEditor {
             if (data.msg === 'rcfile_contents') {
                 textarea.style.display = '';
                 const rcfile = data.contents;
+                this?.editor?.destory();
                 this.editor = ace.edit("editor");
 
                 this.editor.setTheme("ace/theme/tomorrow_night_bright");
