@@ -1,5 +1,5 @@
 {
-  "name": "cnc-chat-server",
+  "name": "cnc-rc-proxy-server",
   "version": "1.0.0",
   "description": "",
   "main": "../../modules/cnc-chat/index.js",
@@ -17,11 +17,10 @@
   },
   "homepage": "https://github.com/refracta/dcss-webtiles-extension-module#readme",
   "dependencies": {
+    "body-parser": "^1.20.3",
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "lowdb": "^7.0.1",
-    "multer": "^1.4.5-lts.1",
-    "nanoid": "^5.0.7"
+    "node-fetch": "^3.3.2"
   },
   "type": "module"
 }

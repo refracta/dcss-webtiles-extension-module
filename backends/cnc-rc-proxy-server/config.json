@@ -1,0 +1,12 @@
+{
+  "allowed": [
+    "https://archive.nemelex.cards/rcfiles",
+    "https://crawl.dcss.io/crawl/rcfiles",
+    "https://crawl.akrasiac.org/rcfiles",
+    "https://underhound.eu/crawl/rcfiles",
+    "https://cbro.berotato.org/rcfiles",
+    "https://crawl.xtahua.com/crawl/rcfiles",
+    "https://crawl.project357.org/rc-files",
+    "http://lazy-life.ddo.jp/mirror/meta"
+  ]
+}
