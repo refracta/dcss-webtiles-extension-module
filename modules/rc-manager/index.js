@@ -220,14 +220,18 @@ export default class RCManager {
                         (async () => {
                             const username = this.session.username || SiteInformation.current_user;
                             const version = data.text;
-                            const rawURL = this.getRCURL(version, username);
-                            console.log(`RC URL: ${rawURL}`);
-                            const url = `https://corsproxy.io/?${rawURL}?${Date.now()}`;
+                            const url = this.getRCURL(version, username);
                             // TODO: backend needed
                             let rcfile = '';
-                            if (rawURL && url) {
+                            if (url) {
                                 try {
-                                    rcfile = await fetch(url).then(r => r.text());
+                                    rcfile = await fetch('https://rc-proxy.nemelex.cards', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: {url}
+                                    }).then(r => r.text());
                                 } catch (e) {
                                     console.error(`Failed to fetch RCURL. ${url}`);
                                 }
