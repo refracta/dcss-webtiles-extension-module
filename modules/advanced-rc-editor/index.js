@@ -19,7 +19,7 @@ export default class AdvancedRCEditor {
                     if (prefix.length === 0) {
                         return callback(null, []);
                     }
-                    callback(null, completions);
+                    callback(null, completions.map(c => ({...c, score: 9999})));
                 }
             };
             ace.require("ace/ext/language_tools").addCompleter(customCompleter);
