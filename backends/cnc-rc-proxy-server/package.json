@@ -18,6 +18,7 @@
   "homepage": "https://github.com/refracta/dcss-webtiles-extension-module#readme",
   "dependencies": {
     "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
     "express": "^4.19.2",
     "node-fetch": "^3.3.2"
   },

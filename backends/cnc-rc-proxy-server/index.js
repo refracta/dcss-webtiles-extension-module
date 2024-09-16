@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import fetch from 'node-fetch'; // If Node 18+, you can skip this and use the native fetch
+import fetch from 'node-fetch';
 import fs from 'fs';
 
 const configPath = 'config.json';
@@ -19,6 +19,7 @@ const app = express();
 const port = 3000;
 
 app.use(bodyParser.json());
+app.use(cors());
 app.get('/', (req, res) =>{
     res.write('<html></html>');
     res.end();
