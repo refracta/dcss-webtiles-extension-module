@@ -11,12 +11,14 @@ for (let snippet of snippets) {
     let meta = snippet.includes('(DWEM)') ? "dwem option" : "dcss option";
     if (snippet.includes('(LUA)')) {
         meta = 'dcss lua';
+    } else if (snippet.includes('(SOUND PACK)')) {
+        meta = 'sound pack';
     }
 
     for (let line of lines) {
         const lineSplit = line.split(' ');
         let name = lineSplit.shift();
-        if (line.includes('= ') || meta === 'dcss lua') {
+        if (line.includes('= ') || meta === 'dcss lua' || meta === 'sound pack') {
             if (name === "") {
                 break;
             }

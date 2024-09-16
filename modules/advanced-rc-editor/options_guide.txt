@@ -2696,6 +2696,21 @@ redirect_chat = true (DWEM)
 lab_use_click_to_send_chat = true (BETA) (DWEM)
     Enable click to send item feature.
 
+https://osp.nemelex.cards/build/latest.zip (SOUND PACK)
+    CNC Open Sound Pack: https://l.abstr.net/cnc-osp
+    Example1 (Default): sound_pack += https://osp.nemelex.cards/build/latest.zip:["init.txt"]
+    Example2 (Default + Xobeh): sound_pack += https://osp.nemelex.cards/build/latest.zip:["xobeh.txt", "init.txt"]
+    Example2 (Default + Trog): sound_pack += https://osp.nemelex.cards/build/latest.zip:["trog.txt", "init.txt"]
+    Example4 (Default + Zin): sound_pack += https://osp.nemelex.cards/build/latest.zip:["zin.txt", "init.txt"]
+
+https://sound-packs.nemelex.cards/crawler/2018-03-27/DCSS.22.zip (SOUND PACK)
+    Crawler's Sound Pack
+    Example1 (Default): sound_pack += https://sound-packs.nemelex.cards/crawler/2018-03-27/DCSS.22.zip:["사운드 적용하는법.txt"]
+    Example2 (Default + Zin): sound_pack += https://sound-packs.nemelex.cards/crawler/2018-03-27/DCSS.22.zip
+
+https://sound-packs.nemelex.cards/Autofire/BindTheEarth/BindTheEarth.zip (SOUND PACK)
+    BindTheEarth Sound Pack: https://github.com/Autofire/BindTheEarth/tree/master
+    Example: sound_pack += https://sound-packs.nemelex.cards/Autofire/BindTheEarth/BindTheEarth.zip
 
 crawl.god_speaks (LUA)
     Syntax:
