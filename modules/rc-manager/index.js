@@ -221,7 +221,6 @@ export default class RCManager {
                             const username = this.session.username || SiteInformation.current_user;
                             const version = data.text;
                             const url = this.getRCURL(version, username);
-                            // TODO: backend needed
                             let rcfile = '';
                             if (url) {
                                 try {
