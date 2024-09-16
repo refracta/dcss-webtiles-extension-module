@@ -326,7 +326,7 @@ export default class CNCChat {
         }, 999);
 
         this.mapQueue = [];
-        this.mapQueueSize = 30;
+        this.mapQueueSize = 20;
         this.prerenderSize = 10;
         IOHook.handle_message.after.addHandler('cnc-chat-gif', (data) => {
             if (data.msg === 'map') {
