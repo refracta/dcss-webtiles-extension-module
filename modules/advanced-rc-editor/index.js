@@ -70,7 +70,7 @@ export default class AdvancedRCEditor {
         downloadButton.style.marginRight = '5px';
         downloadButton.onclick = () => {
             const rcfile = this.editor.getValue();
-            const name = `${SiteInformation.current_user}.rc`; // 파일 이름 지정
+            const name = `${SiteInformation.current_user}.rc`;
             const blob = new Blob([rcfile], { type: 'text/plain' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
