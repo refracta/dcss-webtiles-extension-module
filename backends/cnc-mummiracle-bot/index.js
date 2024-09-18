@@ -68,11 +68,11 @@ async function runThread(threadId, userMessage, assistantId) {
         const message = messages.data.pop();
 
         if (message && message.content[0].type === "text") {
-            let { text } = message.content[0];
-            const { annotations } = text;
+            let {text} = message.content[0];
+            const {annotations} = text;
             if (annotations && annotations.length > 0) {
                 for (let annotation of annotations) {
-                    const { file_citation } = annotation;
+                    const {file_citation} = annotation;
                     if (file_citation) {
                         const citedFile = await openai.files.retrieve(file_citation.file_id);
 
@@ -118,6 +118,9 @@ client.on('messageCreate', async (message) => {
         console.log(reply);
         userSessions[username].lastMessageTime = Date.now();
 
-        await message.reply({content: reply});
+        for (let i = 0; i < reply.length; i += 2000) {
+            const chunk = reply.slice(i, i + 2000);
+            await message.reply({content: chunk});
+        }
     }
 });
