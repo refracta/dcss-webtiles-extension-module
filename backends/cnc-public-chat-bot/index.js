@@ -33,7 +33,10 @@ client.on('messageCreate', (message) => {
         });
 
         if (message.content !== '') {
-            socket.chat_msg(JSON.stringify({msg: 'discord', sender, text}));
+            for (let i = 0; i < text.length; i += 950) {
+                const chunk = text.slice(i, i + 950);
+                socket.chat_msg(JSON.stringify({msg: 'discord', sender, text: chunk}));
+            }
             console.log(new Date(), `[DISCORD] ${sender}: ${text}`);
         }
 

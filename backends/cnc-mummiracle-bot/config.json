@@ -1,0 +1,8 @@
+{
+  "discordToken": "",
+  "openAIAPIKey": "",
+  "assistants": {
+    "tomenet": "",
+    "default": ""
+  }
+}
