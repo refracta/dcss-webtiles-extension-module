@@ -96,11 +96,11 @@ client.on('messageCreate', async (message) => {
     if (message.author.id === client.user.id) return;
     let {content, author} = message;
     const username = author.username;
-    const msgSplit = content.split(': ?');
+    const msgSplit = content.split(': ~');
     if (msgSplit.length > 1) {
-        content = '?' + msgSplit.slice(1).join(': ?');
+        content = '~' + msgSplit.slice(1).join(': ~');
     }
-    if (content.match(/^\?[^?]/)) {
+    if (content.match(/^~[^~]/)) {
         let msg = content.slice(1).trim();
         if (msg.startsWith('clear')) {
             delete userSessions[username];
