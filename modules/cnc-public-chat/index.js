@@ -77,12 +77,11 @@ export default class CNCPublicChat {
             }
 
             clear = function () {
-                if (SiteInformation.current_hash === '#lobby') {
-                    return;
-                }
                 $("#spectator_list").html("&nbsp;");
                 $("#chat_history").html("");
-                if (SiteInformation.current_hash === '#lobby') {
+                console.log('what', CNCPublicChat.lastSpectatorsData, SiteInformation.current_hash, SiteInformation.playing, SiteInformation.watching);
+
+                if (!(SiteInformation.playing || SiteInformation.watching)) {
                     $("#spectator_count").html("0 users");
                     if (CNCPublicChat.lastSpectatorsData) {
                         CNCPublicChat.update_spectators(CNCPublicChat.lastSpectatorsData);
@@ -245,7 +244,7 @@ export default class CNCPublicChat {
             } else if (data.msg === 'go_lobby' && this.lastSpectatorsData) {
                 CNCPublicChat.update_spectators(this.lastSpectatorsData);
                 CNCPublicChat.focus();
-                document.querySelector('#chat')?.focus_trap?.deactivate();
+                document.querySelector('#chat')?.focus_trap?.deactivate?.();
             }
         });
 
@@ -254,7 +253,6 @@ export default class CNCPublicChat {
                 return true;
             }
         });
-
 
 
         // Migrate to CommandManager
