@@ -79,7 +79,6 @@ export default class CNCPublicChat {
             clear = function () {
                 $("#spectator_list").html("&nbsp;");
                 $("#chat_history").html("");
-                console.log('what', CNCPublicChat.lastSpectatorsData, SiteInformation.current_hash, SiteInformation.playing, SiteInformation.watching);
 
                 if (!(SiteInformation.playing || SiteInformation.watching)) {
                     $("#spectator_count").html("0 users");
