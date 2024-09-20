@@ -8,7 +8,6 @@ export default class ConvenienceModule {
         const {RCManager} = DWEM.Modules;
         const showGoldStatus = RCManager.getRCOption(rcfile, 'show_gold_status', 'boolean', false);
         const disableClearChat = RCManager.getRCOption(rcfile, 'disable_clear_chat', 'boolean', false);
-        console.log(disableClearChat);
         const redirectChat = RCManager.getRCOption(rcfile, 'redirect_chat', 'boolean', false);
         const inputTimeoutMS = RCManager.getRCOption(rcfile, 'input_timeout_ms', 'float', 0);
         return {
