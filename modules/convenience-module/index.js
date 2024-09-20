@@ -5,25 +5,49 @@ export default class ConvenienceModule {
     static description = '(Beta) This module provides convenience features.';
 
     getRCConfig(rcfile) {
-        let showGoldStatus = Array.from(rcfile.matchAll(/^(?!\s*#).*show_gold_status\s*=\s*(\S+)\s*/gm));
-        showGoldStatus = showGoldStatus.pop()?.[1];
-        showGoldStatus = showGoldStatus === 'true';
-
-        let disableClearChat = Array.from(rcfile.matchAll(/^(?!\s*#).*disable_clear_chat\s*=\s*(\S+)\s*/gm));
-        disableClearChat = disableClearChat.pop()?.[1];
-        disableClearChat = disableClearChat === 'true';
-
-        let redirectChat = Array.from(rcfile.matchAll(/^(?!\s*#).*redirect_chat\s*=\s*(\S+)\s*/gm));
-        redirectChat = redirectChat.pop()?.[1];
-        redirectChat = redirectChat === 'true';
-
+        const {RCManager} = DWEM.Modules;
+        const showGoldStatus = RCManager.getRCOption(rcfile, 'show_gold_status', 'boolean', false);
+        const disableClearChat = RCManager.getRCOption(rcfile, 'disable_clear_chat', 'boolean', false);
+        console.log(disableClearChat);
+        const redirectChat = RCManager.getRCOption(rcfile, 'redirect_chat', 'boolean', false);
+        const inputTimeoutMS = RCManager.getRCOption(rcfile, 'input_timeout_ms', 'float', 0);
         return {
-            showGoldStatus, disableClearChat, redirectChat
+            showGoldStatus, disableClearChat, redirectChat, inputTimeoutMS
         };
     }
 
     onLoad() {
         const {IOHook, RCManager} = DWEM.Modules;
+       /*
+                    const {SourceMapperRegistry: SMR} = DWEM;
+
+                    const {IOHook, RCManager} = DWEM.Modules;
+                    IOHook.send_message.before.addHandler('convenience-module', (msg, data) => {
+                        console.log(msg, data)
+                        this.lastSendTime = Date.now();
+                    });
+
+                    function injectSendKey() {
+                        send_keycode = function (code) {
+
+                    if(DWEM.Modules.ConvenienceModule.lastReceiveTime - DWEM.Modules.ConvenienceModule.lastSendTime > 15){
+                        return;
+                    }
+                    DWEM.Modules.ConvenienceModule.lastSendTime = Date.now();
+
+                    socket.send('{"msg":"key","keycode":' + code + '}');
+                }
+            }
+
+            const injectSendKeyMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${injectSendKey.toString()}()`);
+            SMR.add('client', injectSendKeyMapper);
+
+            IOHook.handle_message.before.addHandler('convenience-module', (data) => {
+                this.lastReceiveTime = Date.now();
+                console.log(this.lastReceiveTime - this.lastSendTime);
+            });
+        */
+
         RCManager.addHandlers('convenience-module', async (msg, data) => {
             if (msg === 'play') {
                 let {
@@ -68,7 +92,10 @@ export default class ConvenienceModule {
                     });
                 }
             } else if (msg === 'go_lobby') {
-                this.disableClearChat = this.showGoldStatus = this.redirectChat = false;
+                // TODO
+                setTimeout(_ => {
+                    this.disableClearChat = this.showGoldStatus = this.redirectChat = false;
+                },100);
                 IOHook.handle_message.before.removeHandler('convenience-module-show-gold-status');
                 IOHook.handle_message.after.removeHandler('convenience-module-show-gold-status');
                 IOHook.handle_message.after.removeHandler('convenience-module-chat-redirect');
@@ -81,7 +108,9 @@ export default class ConvenienceModule {
             originalClear = clear
             const {ConvenienceModule} = DWEM.Modules;
             clear = function () {
+                console.log(ConvenienceModule.disableClearChat);
                 if (!ConvenienceModule.disableClearChat) {
+                    console.log(originalClear)
                     originalClear();
                 }
             }
