@@ -20,4 +20,4 @@ services:
     restart: unless-stopped
     volumes:
       - ./prometheus:/etc/prometheus
-      - prometheus_data:/prometheus
+      - ./prometheus_data:/prometheus
