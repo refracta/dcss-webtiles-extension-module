@@ -107,9 +107,7 @@ export default class ConvenienceModule {
             originalClear = clear
             const {ConvenienceModule} = DWEM.Modules;
             clear = function () {
-                console.log(ConvenienceModule.disableClearChat);
                 if (!ConvenienceModule.disableClearChat) {
-                    console.log(originalClear)
                     originalClear();
                 }
             }
