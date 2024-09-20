@@ -209,9 +209,12 @@ export default class CNCPublicChat {
                         separator: ' ',
                         message: 'When you chat in the lobby or enter a message after a space character, it will be sent to the public chat.'
                     });
-                    CNCChat.receive_message({
-                        msg: 'chat', content
-                    });
+                    // TODO
+                    setTimeout(_ => {
+                        CNCChat.receive_message({
+                            msg: 'chat', content
+                        });
+                    }, 1000);
                 } else if (data.msg === 'go_lobby') {
                     const content = CNCChat.Parser.htmlify({
                         sender: `[Disconnected from ${this.botName}]`,
