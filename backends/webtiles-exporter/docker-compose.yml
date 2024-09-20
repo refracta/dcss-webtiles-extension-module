@@ -1,0 +1,23 @@
+version: '3'
+services:
+  webtiles-exporter:
+    image: node:22.4.0
+    ports:
+      - "9100:9100"
+    volumes:
+      - .:/usr/src
+    working_dir: /usr/src
+    command: sh -c "if [ ! -e node_modules ]; then npm install; fi && node index.js"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus_data:/prometheus

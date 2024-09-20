@@ -1,0 +1,6 @@
+{
+  "websocket": "wss://crawl.nemelex.cards/socket",
+  "username": "",
+  "password": "",
+  "interval": 500
+}
