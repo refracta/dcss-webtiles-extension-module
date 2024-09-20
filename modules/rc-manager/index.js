@@ -189,7 +189,7 @@ export default class RCManager {
             let originalInit = init;
             init = function () {
                 originalInit();
-                RCManager?.initResolver();
+                RCManager?.initResolver?.();
             }
 
             $(document).off("game_preinit game_cleanup").on("game_preinit game_cleanup", init);
