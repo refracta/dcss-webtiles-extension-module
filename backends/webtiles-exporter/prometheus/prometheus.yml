@@ -1,6 +1,6 @@
 global:
   scrape_interval: 500ms
-  scrape_timeout: 10s
+  scrape_timeout: 500ms
   evaluation_interval: 15s
 
 alerting:
