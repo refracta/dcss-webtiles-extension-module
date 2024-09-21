@@ -77,6 +77,7 @@ setTimeout(async _ => {
                 }
 
                 socket.onclose = socket.onerror = function (event) {
+                    latencyGauge.set(-1);
                     reject(event);
                 }
             });
@@ -147,6 +148,19 @@ setTimeout(async _ => {
                 }
 
                 socket.onclose = socket.onerror = function (event) {
+                    const sessionData = {
+                        total: 0,
+                        playing: 0,
+                        playing_idle: 0,
+                        watching: 0,
+                        watching_anon: 0,
+                        lobby: 0,
+                        lobby_anon: 0
+                    };
+                    for (const key in sessionData) {
+                        sessionData[key] = parseInt(sessionData[key]);
+                        sessionGauge.set({type: key}, sessionData[key]);
+                    }
                     reject(event);
                 }
             });
