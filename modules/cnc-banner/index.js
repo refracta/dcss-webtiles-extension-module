@@ -344,6 +344,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         <p style="padding:5px; border-radius:10px; background-color:#2c6f17; display:inline-block; margin:20px 0 10px 0; line-height:1.3;">
             <a href="https://archive.nemelex.cards">플레이어 데이터</a> -
             <a href="https://github.com/refracta/dcss-server/issues">버그 신고</a> -
+            <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">서버 상태</a> - 
             <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="사랑방은 한옥에서 손님을 맞이하는 방을 말합니다. 이 기능이 켜져있으면 자동으로 관전자 수가 제일 많은 플레이어를 관전합니다.">사랑방<span id="sarangbang-second"></span></a> - 
             <a href="https://terminal.nemelex.cards">웹 터미널</a> - 
             <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">WTRec 재생 (베타)</a> - 
@@ -394,6 +395,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                     <p style="padding:5px; border-radius:10px; background-color:#2c6f17; display:inline-block; margin:20px 0 10px 0; line-height:1.3;">
                         <a href="https://archive.nemelex.cards">Player Data</a> -
                         <a href="https://github.com/refracta/dcss-server/issues">Report a Bug</a> -
+                        <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">Server Status</a> - 
                         <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="The 'Sarangbang' refers to the room in traditional Korean houses used to receive guests. When this feature is enabled, it will automatically find and watch the player with the highest number of spectators.">Sarangbang<span id="sarangbang-second"></span></a> - 
                         <a href="https://terminal.nemelex.cards">Web Terminal</a> - 
                         <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">Play WTRec (Beta)</a> - 
