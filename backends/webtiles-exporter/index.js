@@ -97,6 +97,8 @@ setTimeout(async _ => {
                     handle_message: async function (data) {
                         if (data.msg === 'ping') {
                             socket.pong();
+                        } else if (data.msg === 'login_cookie') {
+                            socket.forgotLoginCookie(data.cookie);
                         } else if (data.msg === 'admin_log' && data.text.includes('connections')) {
                             const matches = Array.from(data.text.match(/(\d+) connections: (\d+) playing \((\d+) idle\), (\d+) watching \((\d+) anon\), (\d+) in lobby \((\d+) anon\);/)).slice(1);
                             const [total, playing, playing_idle, watching, watching_anon, lobby, lobby_anon] = matches;
@@ -129,6 +131,10 @@ setTimeout(async _ => {
 
                 socket.login = function (username, password) {
                     socket.safe_send({msg: 'login', username, password});
+                }
+
+                socket.forgotLoginCookie = function (cookie) {
+                    socket.safe_send({msg: 'forgot_login_cookie', cookie});
                 }
 
                 socket.pong = function () {
