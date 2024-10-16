@@ -28,8 +28,10 @@ client.on('messageCreate', (message) => {
         const sender = message.member.displayName;
         let text = message.content;
         message.mentions.members.forEach((member) => {
-            const mentionTag = `<@${member.id}>`;
-            text = text.replaceAll(mentionTag, `@${member.displayName}`);
+            if (member.displayName) {
+                const mentionTag = `<@${member.id}>`;
+                text = text.replaceAll(mentionTag, `@${member.displayName}`);
+            }
         });
 
         if (message.content !== '') {
