@@ -25,13 +25,11 @@ client.on('messageCreate', (message) => {
     if (message.author.id === client.user.id) return;
 
     if (socket && message.channel.name === config.discordChannel) {
-        const sender = message.member.displayName;
+        const sender = message?.member?.displayName || message.author.username;
         let text = message.content;
         message.mentions.members.forEach((member) => {
-            if (member.displayName) {
-                const mentionTag = `<@${member.id}>`;
-                text = text.replaceAll(mentionTag, `@${member.displayName}`);
-            }
+            const mentionTag = `<@${member.id}>`;
+            text = text.replaceAll(mentionTag, `@${member.displayName}`);
         });
 
         if (message.content !== '') {
