@@ -209,6 +209,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 if (tag) {
                     tag.innerHTML = this.getTournamentInfo();
                 }
+                const ccsdtTag = document.getElementById('ccsdt-info');
+                if (ccsdtTag) {
+                    ccsdtTag.innerHTML = this.getCCSDTInfo();
+                }
             }, 1000);
         }
     }
@@ -250,6 +254,58 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             }
         } else {
             message += `🏆 <a href="${url}">${version} Tournament</a> runs from ${startLocal} to ${endLocal}. `;
+            if (startTimeRemaining > 0 && startTimeRemaining <= sevenDays) {
+                const timeToStart = this.#getTimeRemaining(startUTC, now);
+                message += `(Starts in ${timeToStart.days} days ${timeToStart.hours} hours ${timeToStart.minutes} minutes)`;
+            } else if (now >= startUTC && now < endUTC) {
+                const timeToEnd = this.#getTimeRemaining(endUTC, now);
+                message += `(Ends in ${timeToEnd.days} days ${timeToEnd.hours} hours ${timeToEnd.minutes} minutes)`;
+            } else if (Math.abs(endTimeRemaining) <= sevenDays && endTimeRemaining < 0) {
+                message = `🏆 <a href="${url}">${version} Tournament</a> has ended. Thank you for participating.`;
+            } else {
+                message = '';
+            }
+        }
+        return message;
+    }
+
+    getCCSDTInfo() {
+        const startUTC = new Date(Date.UTC(2024, 10, 1, 0, 0, 0));
+        const endUTC = new Date(Date.UTC(2024, 11, 6, 0, 0, 0));
+        const now = new Date();
+        const sevenDays = 7 * 24 * 60 * 60 * 1000;
+
+        const version = '0.32';
+        const options = {
+            month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric'
+        };
+
+        const userLang = navigator.language || navigator.userLanguage;
+        const isKorean = userLang.startsWith('ko');
+        const locales = isKorean ? 'ko' : 'en';
+        const startLocal = startUTC.toLocaleString(locales, options);
+        const endLocal = endUTC.toLocaleString(locales, options);
+
+        let message = '';
+        const url = 'https://cosplay.kelbi.org/ccsdt/ccsdt.html';
+
+        const startTimeRemaining = this.#getTimeRemaining(startUTC, now).total;
+        const endTimeRemaining = this.#getTimeRemaining(endUTC, now).total;
+        if (isKorean) {
+            message += `🏆 <a href="${url}">Crawl Cosplay Sudden Death Tournament (${version})</a>가 ${startLocal}부터 ${endLocal}까지 진행됩니다! `;
+            if (startTimeRemaining > 0 && startTimeRemaining <= sevenDays) {
+                const timeToStart = this.#getTimeRemaining(startUTC, now);
+                message += `(시작까지 ${timeToStart.days}일 ${timeToStart.hours}시간 ${timeToStart.minutes}분 남음)`;
+            } else if (now >= startUTC && now < endUTC) {
+                const timeToEnd = this.#getTimeRemaining(endUTC, now);
+                message += `(종료까지 ${timeToEnd.days}일 ${timeToEnd.hours}시간 ${timeToEnd.minutes}분 남음)`;
+            } else if (Math.abs(endTimeRemaining) <= sevenDays && endTimeRemaining < 0) {
+                message = `🏆 <a href="${url}">${version} 토너먼트</a>가 종료되었습니다. 모두 고생하셨습니다!`;
+            } else {
+                message = '';
+            }
+        } else {
+            message += `🏆 <a href="${url}">Crawl Cosplay Sudden Death Tournament (${version})</a> runs from ${startLocal} to ${endLocal}. `;
             if (startTimeRemaining > 0 && startTimeRemaining <= sevenDays) {
                 const timeToStart = this.#getTimeRemaining(startUTC, now);
                 message += `(Starts in ${timeToStart.days} days ${timeToStart.hours} hours ${timeToStart.minutes} minutes)`;
@@ -359,6 +415,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             7/2 업데이트: <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a>에 추가된 <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a> 모듈을 사용해보세요!
             <br>            
             <span id="tournament-info">${this.getTournamentInfo()}</span>
+            ${this.getTournamentInfo() !== '' && this.getCCSDTInfo() !== '' ? '<br>' : ''}
+            <span id="ccsdt-info">${this.getCCSDTInfo()}</span>
         </p>
         <script>
             DWEM.Modules.CNCBanner.updateLatencyText();
@@ -410,6 +468,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         7/2 Update: Try the new <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a> module <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a>!
                         <br>            
                         <span id="tournament-info">${this.getTournamentInfo()}</span>
+                        ${this.getTournamentInfo() !== '' && this.getCCSDTInfo() !== '' ? '<br>' : ''}
+                        <span id="ccsdt-info">${this.getCCSDTInfo()}</span>
                     </p>
                     <script>
                         DWEM.Modules.CNCBanner.updateLatencyText();
