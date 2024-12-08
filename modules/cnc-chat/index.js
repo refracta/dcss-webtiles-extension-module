@@ -269,6 +269,22 @@ export default class CNCChat {
         const rendererMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${rendererInjector.toString()}()`);
         SMR.add('./dungeon_renderer', rendererMapper);
 
+        function mapKnowledgeInjector() {
+            Object.defineProperty(DWEM.Modules.CNCChat, 'k', {
+                get: function () {
+                    return k;
+                },
+                set: function(newK) {
+                    k = newK;
+                },
+                enumerable: true,
+                configurable: true
+            });
+        }
+
+        const mapKnowledgeMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${mapKnowledgeInjector.toString()}()`);
+        SMR.add('./map_knowledge', mapKnowledgeMapper);
+
         function menuInjector() {
             const {CNCChat} = DWEM.Modules;
             const original_item_click_handler = item_click_handler;
@@ -326,13 +342,16 @@ export default class CNCChat {
         }, 999);
 
         this.mapQueue = [];
+        this.kQueue = [];
         this.mapQueueSize = 20;
         this.prerenderSize = 10;
         IOHook.handle_message.after.addHandler('cnc-chat-gif', (data) => {
             if (data.msg === 'map') {
                 this.mapQueue.push(JSON.parse(JSON.stringify(data)));
+                this.kQueue.push(JSON.parse(JSON.stringify(this.k)));
                 if (this.mapQueue.length > this.mapQueueSize) {
                     this.mapQueue = this.mapQueue.slice(-this.mapQueueSize);
+                    this.kQueue = this.kQueue.slice(-this.mapQueueSize);
                 }
             }
         });
@@ -346,6 +365,7 @@ export default class CNCChat {
                         const frames = [];
                         const mapQueueCopy = [...this.mapQueue];
                         let canvasWidth, canvasHeight;
+                        this.k = this.kQueue[0];
                         if (mapQueueCopy.length > this.prerenderSize) {
                             for (let i = 0; i < this.prerenderSize; i++) {
                                 IOHook.handle_message(mapQueueCopy[i]);
