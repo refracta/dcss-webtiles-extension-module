@@ -300,7 +300,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 const timeToEnd = this.#getTimeRemaining(endUTC, now);
                 message += `(종료까지 ${timeToEnd.days}일 ${timeToEnd.hours}시간 ${timeToEnd.minutes}분 남음)`;
             } else if (Math.abs(endTimeRemaining) <= sevenDays && endTimeRemaining < 0) {
-                message = `🏆 <a href="${url}">${version} 토너먼트</a>가 종료되었습니다. 모두 고생하셨습니다!`;
+                message = `🏆 <a href="${url}">CCSDT (${version})</a>가 종료되었습니다. 모두 고생하셨습니다!`;
             } else {
                 message = '';
             }
@@ -313,7 +313,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 const timeToEnd = this.#getTimeRemaining(endUTC, now);
                 message += `(Ends in ${timeToEnd.days} days ${timeToEnd.hours} hours ${timeToEnd.minutes} minutes)`;
             } else if (Math.abs(endTimeRemaining) <= sevenDays && endTimeRemaining < 0) {
-                message = `🏆 <a href="${url}">${version} Tournament</a> has ended. Thank you for participating.`;
+                message = `🏆 <a href="${url}">CCSDT (${version})</a> has ended. Thank you for participating.`;
             } else {
                 message = '';
             }
