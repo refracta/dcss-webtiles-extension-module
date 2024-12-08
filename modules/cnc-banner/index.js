@@ -129,8 +129,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
 
     async enterSarangbang() {
         for (let i = 10; i > 0; i--) {
-            document.getElementById('sarangbang').style.color = 'blue';
-            document.getElementById('sarangbang').textContent = ` (${i}s)`;
+            document.getElementById('sarangbang-second').style.color = 'blue';
+            document.getElementById('sarangbang-second').textContent = ` (${i}s)`;
             await new Promise(resolve => setTimeout(resolve, 1000));
             if (!this.sarangbang) {
                 return;
@@ -156,8 +156,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             });
             await this.goSarangbang();
         } else {
-            document.getElementById('sarangbang').style.color = '';
-            document.getElementById('sarangbang').textContent = '';
+            document.getElementById('sarangbang-second').style.color = '';
+            document.getElementById('sarangbang-second').textContent = '';
             before.removeHandler('cnc-banner-sarangbang');
             after.removeHandler('cnc-banner-sarangbang');
         }
