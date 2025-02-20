@@ -1,4 +1,4 @@
-import {Chart, registerables} from 'http://cdn.skypack.dev/chart.js@v4.4.7';
+import {Chart, registerables} from 'https://cdn.skypack.dev/chart.js@v4.4.7';
 
 Chart.register(...registerables);
 
