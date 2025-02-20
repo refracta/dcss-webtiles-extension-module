@@ -1,4 +1,4 @@
-import JSZip from 'https://cdn.skypack.dev/jszip';
+import JSZip from 'https://cdn.skypack.dev/jszip@3.10.1';
 
 // TODO: https://github.com/crawl/crawl/blob/master/crawl-ref/source/sound.h#L41
 

@@ -1,5 +1,5 @@
-import * as acorn from 'https://cdn.skypack.dev/acorn';
-import * as astring from 'https://cdn.skypack.dev/astring';
+import * as acorn from 'https://cdn.skypack.dev/acorn@8.14.0';
+import * as astring from 'https://cdn.skypack.dev/astring@1.9.0';
 
 export default class DWEMSourceMapperRegistry {
     sourceMappers = {};

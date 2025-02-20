@@ -1,4 +1,4 @@
-import JSZip from 'https://cdn.skypack.dev/jszip';
+import JSZip from 'https://cdn.skypack.dev/jszip@3.10.1';
 
 export default class WTRec {
     static name = 'WTRec'

@@ -1,4 +1,4 @@
-import {Chart, registerables} from 'https://cdn.skypack.dev/chart.js';
+import {Chart, registerables} from 'http://cdn.skypack.dev/chart.js@v4.4.7';
 
 Chart.register(...registerables);
 
@@ -454,7 +454,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         <a href="https://archive.nemelex.cards">Player Data</a> -
                         <a href="https://github.com/refracta/dcss-server/issues">Report a Bug</a> -
                         <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">Server Status</a> - 
-                        <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="The 'Sarangbang' refers to the room in traditional Korean houses used to receive guests. When this feature is enabled, it will automatically find and watch the player with the highest number of spectators.">Sarangbang<span id="sarangbang-second"></span></a> - 
+                        <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="The 'Sarangbang' refers to the room in traditional korean houses used to receive guests. When this feature is enabled, it will automatically find and watch the player with the highest number of spectators.">Sarangbang<span id="sarangbang-second"></span></a> - 
                         <a href="https://terminal.nemelex.cards">Web Terminal</a> - 
                         <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">Play WTRec (Beta)</a> - 
                         <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM Module Manager (Ctrl + F12)</a>

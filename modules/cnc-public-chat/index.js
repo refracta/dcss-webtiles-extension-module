@@ -1,4 +1,4 @@
-import gifshot from 'https://cdn.skypack.dev/gifshot';
+import gifshot from 'https://cdn.skypack.dev/gifshot@0.4.5';
 
 export default class CNCPublicChat {
     static name = 'CNCPublicChat';
