@@ -202,31 +202,55 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         };
     }
 
+    tournaments = [
+        {
+            id: 'stable-tournament',
+            name: '0.32 Tournament',
+            startUTC: new Date(Date.UTC(2024, 7, 30, 20, 0, 0)),
+            endUTC: new Date(Date.UTC(2024, 8, 15, 20, 0, 0)),
+            url: navigator.language.startsWith('ko') ? 'https://tournament.nemelex.cards/0.32.html' : 'https://crawl.develz.org/tournament/0.32/'
+        },
+        {
+            id: 'cssdt-tournament',
+            name: 'Crawl Cosplay Sudden Death Tournament (0.32)',
+            startUTC: new Date(Date.UTC(2024, 10, 1, 0, 0, 0)),
+            endUTC: new Date(Date.UTC(2024, 11, 6, 0, 0, 0)),
+            url: 'https://cosplay.kelbi.org/ccsdt/ccsdt.html'
+        },
+        {
+            id: 'cctt-tournament',
+            name: 'Crawl Cosplay Trunk Tournament',
+            startUTC: new Date(Date.UTC(2025, 2 - 1, 21, 0, 0, 0)),
+            endUTC: new Date(Date.UTC(2025, 2 - 1, 21 + 7 * 5, 0, 0, 0)),
+            url: 'https://crawlcosplay.dcss.io/cctt/about_cctt'
+        }
+    ];
+
+    getTournaments() {
+        return this.tournaments.map(tournament => (
+            {message: this.getTournamentMessage(tournament.name, tournament.startUTC, tournament.endUTC, tournament.url), ...tournament}
+        ))
+            .filter(info => info.message !== '')
+            .map(info => `<span id="${info.id}">${info.message}</span>`)
+            .join('<br>');
+    }
+
     startUpdateTournamentInfo() {
-        if (!this.updateTournamentKey) {
-            this.updateTournamentKey = setInterval(() => {
-                const tag = document.getElementById('tournament-info');
+        clearInterval(this.updateTournamentKey);
+        this.updateTournamentKey = setInterval(() => {
+            for (const tournament of this.tournaments) {
+                const tag = document.getElementById(tournament.id);
                 if (tag) {
-                    tag.innerHTML = this.getTournamentInfo();
+                    tag.innerHTML = this.getTournamentMessage(tournament.name, tournament.startUTC, tournament.endUTC, tournament.url);
                 }
-                const ccsdtTag = document.getElementById('ccsdt-info');
-                if (ccsdtTag) {
-                    ccsdtTag.innerHTML = this.getCCSDTInfo();
-                }
-            }, 1000);
-        }
+            }
+        }, 1000);
     }
 
-    getTournamentInfo() {
-        const startUTC = new Date(Date.UTC(2024, 7, 30, 20, 0, 0));
-        const endUTC = new Date(Date.UTC(2024, 8, 15, 20, 0, 0));
+    getTournamentMessage(name, startUTC, endUTC, url) {
         const now = new Date();
         const sevenDays = 7 * 24 * 60 * 60 * 1000;
-
-        const version = '0.32';
-        const options = {
-            month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric'
-        };
+        const options = {month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric'};
 
         const userLang = navigator.language || navigator.userLanguage;
         const isKorean = userLang.startsWith('ko');
@@ -235,12 +259,11 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         const endLocal = endUTC.toLocaleString(locales, options);
 
         let message = '';
-        const url = isKorean ? `https://tournament.nemelex.cards/${version}.html` : `https://crawl.develz.org/tournament/${version}/`;
-
         const startTimeRemaining = this.#getTimeRemaining(startUTC, now).total;
         const endTimeRemaining = this.#getTimeRemaining(endUTC, now).total;
+
         if (isKorean) {
-            message += `🏆 <a href="${url}">${version} 토너먼트</a>가 ${startLocal}부터 ${endLocal}까지 진행됩니다! `;
+            message += `🏆 <a href="${url}">${name}</a>가 ${startLocal}부터 ${endLocal}까지 진행됩니다! `;
             if (startTimeRemaining > 0 && startTimeRemaining <= sevenDays) {
                 const timeToStart = this.#getTimeRemaining(startUTC, now);
                 message += `(시작까지 ${timeToStart.days}일 ${timeToStart.hours}시간 ${timeToStart.minutes}분 남음)`;
@@ -248,12 +271,12 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 const timeToEnd = this.#getTimeRemaining(endUTC, now);
                 message += `(종료까지 ${timeToEnd.days}일 ${timeToEnd.hours}시간 ${timeToEnd.minutes}분 남음)`;
             } else if (Math.abs(endTimeRemaining) <= sevenDays && endTimeRemaining < 0) {
-                message = `🏆 <a href="${url}">${version} 토너먼트</a>가 종료되었습니다. 모두 고생하셨습니다!`;
+                message = `🏆 <a href="${url}">${name}</a>가 종료되었습니다. 모두 고생하셨습니다!`;
             } else {
                 message = '';
             }
         } else {
-            message += `🏆 <a href="${url}">${version} Tournament</a> runs from ${startLocal} to ${endLocal}. `;
+            message += `🏆 <a href="${url}">${name}</a> runs from ${startLocal} to ${endLocal}. `;
             if (startTimeRemaining > 0 && startTimeRemaining <= sevenDays) {
                 const timeToStart = this.#getTimeRemaining(startUTC, now);
                 message += `(Starts in ${timeToStart.days} days ${timeToStart.hours} hours ${timeToStart.minutes} minutes)`;
@@ -261,59 +284,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 const timeToEnd = this.#getTimeRemaining(endUTC, now);
                 message += `(Ends in ${timeToEnd.days} days ${timeToEnd.hours} hours ${timeToEnd.minutes} minutes)`;
             } else if (Math.abs(endTimeRemaining) <= sevenDays && endTimeRemaining < 0) {
-                message = `🏆 <a href="${url}">${version} Tournament</a> has ended. Thank you for participating.`;
-            } else {
-                message = '';
-            }
-        }
-        return message;
-    }
-
-    getCCSDTInfo() {
-        const startUTC = new Date(Date.UTC(2024, 10, 1, 0, 0, 0));
-        const endUTC = new Date(Date.UTC(2024, 11, 6, 0, 0, 0));
-        const now = new Date();
-        const sevenDays = 7 * 24 * 60 * 60 * 1000;
-
-        const version = '0.32';
-        const options = {
-            month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric'
-        };
-
-        const userLang = navigator.language || navigator.userLanguage;
-        const isKorean = userLang.startsWith('ko');
-        const locales = isKorean ? 'ko' : 'en';
-        const startLocal = startUTC.toLocaleString(locales, options);
-        const endLocal = endUTC.toLocaleString(locales, options);
-
-        let message = '';
-        const url = 'https://cosplay.kelbi.org/ccsdt/ccsdt.html';
-
-        const startTimeRemaining = this.#getTimeRemaining(startUTC, now).total;
-        const endTimeRemaining = this.#getTimeRemaining(endUTC, now).total;
-        if (isKorean) {
-            message += `🏆 <a href="${url}">Crawl Cosplay Sudden Death Tournament (${version})</a>가 ${startLocal}부터 ${endLocal}까지 진행됩니다! `;
-            if (startTimeRemaining > 0 && startTimeRemaining <= sevenDays) {
-                const timeToStart = this.#getTimeRemaining(startUTC, now);
-                message += `(시작까지 ${timeToStart.days}일 ${timeToStart.hours}시간 ${timeToStart.minutes}분 남음)`;
-            } else if (now >= startUTC && now < endUTC) {
-                const timeToEnd = this.#getTimeRemaining(endUTC, now);
-                message += `(종료까지 ${timeToEnd.days}일 ${timeToEnd.hours}시간 ${timeToEnd.minutes}분 남음)`;
-            } else if (Math.abs(endTimeRemaining) <= sevenDays && endTimeRemaining < 0) {
-                message = `🏆 <a href="${url}">CCSDT (${version})</a>가 종료되었습니다. 모두 고생하셨습니다!`;
-            } else {
-                message = '';
-            }
-        } else {
-            message += `🏆 <a href="${url}">Crawl Cosplay Sudden Death Tournament (${version})</a> runs from ${startLocal} to ${endLocal}. `;
-            if (startTimeRemaining > 0 && startTimeRemaining <= sevenDays) {
-                const timeToStart = this.#getTimeRemaining(startUTC, now);
-                message += `(Starts in ${timeToStart.days} days ${timeToStart.hours} hours ${timeToStart.minutes} minutes)`;
-            } else if (now >= startUTC && now < endUTC) {
-                const timeToEnd = this.#getTimeRemaining(endUTC, now);
-                message += `(Ends in ${timeToEnd.days} days ${timeToEnd.hours} hours ${timeToEnd.minutes} minutes)`;
-            } else if (Math.abs(endTimeRemaining) <= sevenDays && endTimeRemaining < 0) {
-                message = `🏆 <a href="${url}">CCSDT (${version})</a> has ended. Thank you for participating.`;
+                message = `🏆 <a href="${url}">${name}</a> has ended. Thank you for participating.`;
             } else {
                 message = '';
             }
@@ -413,10 +384,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             계정 또는 서버 문제의 경우, <a href="https://discord.gg/cFUynNtAVA">서버 디스코드</a>에서 ASCIIPhilia에게 문의할 수 있습니다.
             <br>
             7/2 업데이트: <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a>에 추가된 <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a> 모듈을 사용해보세요!
-            <br>            
-            <span id="tournament-info">${this.getTournamentInfo()}</span>
-            ${this.getTournamentInfo() !== '' && this.getCCSDTInfo() !== '' ? '<br>' : ''}
-            <span id="ccsdt-info">${this.getCCSDTInfo()}</span>
+            <br>
+            ${this.getTournaments()}
         </p>
         <script>
             DWEM.Modules.CNCBanner.updateLatencyText();
@@ -466,10 +435,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         For account or server issues, contact ASCIIPhilia on <a href="https://discord.gg/cFUynNtAVA">Server Discord</a>.
                         <br>
                         7/2 Update: Try the new <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a> module <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a>!
-                        <br>            
-                        <span id="tournament-info">${this.getTournamentInfo()}</span>
-                        ${this.getTournamentInfo() !== '' && this.getCCSDTInfo() !== '' ? '<br>' : ''}
-                        <span id="ccsdt-info">${this.getCCSDTInfo()}</span>
+                        <br>
+                        ${this.getTournaments()}
                     </p>
                     <script>
                         DWEM.Modules.CNCBanner.updateLatencyText();
