@@ -205,10 +205,12 @@ export default class WTRec {
                         }
                         IOHook.handle_message(current);
                         if (current.msg === 'game_client') {
-                            require([`game-${current.version}/game`], (game) => {
-                                const images = Array.from(document.querySelectorAll('#game img'));
-                                const imagePromises = images.map(image => image.complete ? Promise.resolve() : new Promise(r => image.onload = r));
-                                Promise.all(imagePromises).then(resolve);
+                            await new Promise(resolve => {
+                                require([`game`], (game) => {
+                                    const images = Array.from(document.querySelectorAll('#game img'));
+                                    const imagePromises = images.map(image => image.complete ? Promise.resolve() : new Promise(r => image.onload = r));
+                                    Promise.all(imagePromises).then(resolve);
+                                });
                             });
                         }
                     }
