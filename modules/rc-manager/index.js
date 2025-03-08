@@ -126,6 +126,11 @@ export default class RCManager {
     }
 
     async triggerHandlers(rcfile) {
+        if(this.queue.triggered) {
+            return;
+        }
+        this.queue.triggered = true;
+
         const {IOHook} = DWEM.Modules;
         for (const {handlers} of this.handlersList) {
             try {
