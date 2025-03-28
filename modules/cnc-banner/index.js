@@ -350,9 +350,137 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         event.preventDefault();
     }
 
-    getKoreanBanner(current_user) {
+    getOverlayHTML(aprilImage) {
         return `
-        <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a> <a title="서버 지연 시간입니다. 다시 측정하려면 클릭, 지연 시간 측정기를 확인하려면 우클릭하세요" style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)" oncontextmenu="DWEM.Modules.CNCBanner.toggleLatencyIndicator(event)">(<span id="latency">?</span> MS)</a>
+    <style>
+        .af-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .af-container {
+            background-color: #000;
+            border: 1px solid #626262;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .af-container img {
+            width: 500px;
+            height: 500px;
+            display: block;
+            z-index: 99999;
+        }
+
+        .af-footer {
+            display: flex;
+            justify-content: space-between;
+            color: #fff;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .close-btn {
+            cursor: pointer;
+            text-decoration: underline;
+        }
+    </style>
+
+    <div class="af-overlay">
+        <div class="af-container">
+            <img src="${aprilImage}" alt="af">
+            <div class="af-footer">
+                <span>인생은 <span style="color: lawngreen">Deal Four </span>아니면 <span style="color: darkorchid">Stack Five</span>다!</span>
+                <span class="close-btn" onclick="document.querySelector('.af-overlay').style.display = 'none';">오늘 하루 보지 않기</span>
+            </div>
+        </div>
+    </div>
+    `;
+    }
+
+    getKoreanBanner(current_user) {
+        const today = new Date();
+        const isAprilFools = today.getMonth() === 4 - 1 && today.getDate() === 1;
+        const aprilImage = import.meta.url.substring(0, import.meta.url.lastIndexOf('/')) + '/images/xobeh.gif';
+        if (isAprilFools) {
+            return `
+        ${this.getOverlayHTML(aprilImage)}
+        <style>
+            #play_now a, #player_list a, .extra_links a {
+                color: #f4d700 !important;
+            }
+            #play_now a:hover, #player_list a:hover, .extra_links a:hover {
+                color: #fa0000 !important;
+            }
+        </style>
+        조베죽 [ New - 갓 - 서버 ]에 온 것을 환영한다.<br>
+        <details>
+            <summary style="cursor: pointer;">당연히 신은 <span style="color: lawngreen">조베</span>겠지?</summary>
+            <div style="margin-left: 15px">
+                <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a>
+                <a title="서버 지연 시간입니다. 다시 측정하려면 클릭, 지연 시간 측정기를 확인하려면 우클릭하세요" style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)" oncontextmenu="DWEM.Modules.CNCBanner.toggleLatencyIndicator(event)">(<span id="latency">?</span> MS)</a>
+                <div id="latency-indicator" style="display: none; max-width: 500px"></div>
+                <br>
+                ${current_user ? `
+                <a href="https://webtiles.nethack.live" style="font-size: small; margin: 0; padding:0; text-decoration: none"> 넷핵도 웹타일로 플레이 할 수 있다는 것을 아시나요?</a>
+                <br>` : ''}
+                <details>
+                    <summary style="cursor: pointer;">KST 2024.06.19 14:12:00 시점의 <a href="https://crawl.project357.org">CPO (호주 서버)</a> 사용자 데이터베이스를 사용하여 서버를 시작했습니다.</summary>
+                    <div>
+                        <p>이것은 단순히 계정 선점 남용(기존 사용자들의 스코어를 망치는 등의 트롤링 행위)을 방지하기 위한 조치입니다. 여러 서버에 걸쳐 서로 다른 소유자를 가진 있는 계정이 있는 경우, 이러한 계정 소유자를 CPO 계정의 소유자로 간주하지 않습니다. 소명 기간은 1년입니다. 다른 서버의 자격 증명을 <strong>2025년 6월</strong>까지 수동으로 제출하면 계정이 최초 요청자에게 이전됩니다.</p>
+                        <p><strong>[자격 증명 제출 방법]</strong><br>
+                            다른 서버에 로그인하여 Trunk RC 파일 상단에 "# CRAWL.NEMELEX.CARDS" 줄을 추가한 후 <a href="javascript:DWEM.Modules.CNCBanner.openRCLinks()">RC 링크</a>를 제출하세요 (<a href="https://discord.gg/cFUynNtAVA">서버 디스코드 - cnc-account-migration 채널</a>). 계정을 받은 후에는 소명 기간이 끝날 때까지 CNC 계정의 Trunk RC 파일 상단에 "# CRAWL.NEMELEX.CARDS" 줄을 추가하고 유지하세요. 또한, 이러한 상황에 있는 CPO 사용자는 이 서버의 Trunk RC 파일 상단에 "# CRAWL.NEMELEX.CARDS" 줄을 추가해야 합니다. 이 줄이 있으면 CPO 계정 사용자를 최초 요청자로 간주합니다.</p>
+                        <p>KST 2024.06.19 19:00:00 갱신: 본 서버에 처음 로그인할 때 "# CRAWL.NEMELEX.CARDS" 줄이 자동으로 Trunk RC 파일에 삽입됩니다.</p>
+                        <p>KST 2024.06.18 00:00:00에서 2024.06.18 07:03:00 사이에 등록한 사용자에 대해서는 계정 데이터가(비밀번호 등) CPO의 것으로 변경되었습니다 (게임 데이터는 유지됩니다). 로그인하는 데 문제가 있는 경우 관리자에게 연락하세요.</p>
+                    </div>
+                </details>
+                <br>
+                <p style="padding:5px; border-radius:10px; background-color:#2c6f17; display:inline-block; margin:0 0 10px 0; line-height:1.3;">
+                            <a href="https://archive.nemelex.cards">플레이어 데이터</a> -
+                            <a href="https://github.com/refracta/dcss-server/issues">버그 신고</a> -
+                            <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">서버 상태</a> - 
+                            <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="사랑방은 한옥에서 손님을 맞이하는 방을 말합니다. 이 기능이 켜져있으면 자동으로 관전자 수가 제일 많은 플레이어를 관전합니다.">사랑방<span id="sarangbang-second"></span></a> - 
+                            <a href="https://terminal.nemelex.cards">웹 터미널</a> - 
+                            <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">WTRec 재생 (베타)</a> - 
+                            <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM 모듈 관리자 (Ctrl + F12)</a>
+                            <br>
+                            'nemelex' 사용자로 포트 1326에서 SSH 접속이 가능합니다. 비밀번호 'xobeh' 또는 <a href="https://archive.nemelex.cards/cao_key" style="text-decoration:none;">CAO 키</a>를 사용하여 인증할 수 있습니다.
+                            <br>
+                            <a href="https://archive.nemelex.cards/code_of_conduct.txt">서버 규칙</a>을 준수해주세요.
+                            <br>
+                            계정 또는 서버 문제의 경우, <a href="https://discord.gg/cFUynNtAVA">서버 디스코드</a>에서 ASCIIPhilia에게 문의할 수 있습니다.
+                            <br>
+                            7/2 업데이트: <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a>에 추가된 <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a> 모듈을 사용해보세요!
+                            <br>
+                            ${this.getTournaments()}
+                </p>
+            </div>
+        </details>
+        <br>
+        ${current_user ? `더 열심히 하지 못하겠나. ${current_user}!<br><a href="https://archive.nemelex.cards/morgue/${current_user}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${current_user}/">ttyrecs</a> <a href="https://archive.nemelex.cards/rcfiles/?user=${current_user}">rcfiles</a><br>` : ''}
+        <script>
+            DWEM.Modules.CNCBanner.updateLatencyText();
+            DWEM.Modules.CNCBanner.startUpdateTournamentInfo();
+        </script>
+        ${current_user ? `
+        <script>
+            DWEM.Modules.CNCBanner.colorizeText();
+        </script>
+        ` : ''}
+    `;
+
+        }
+        return `
+        <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a>
+        <a title="서버 지연 시간입니다. 다시 측정하려면 클릭, 지연 시간 측정기를 확인하려면 우클릭하세요" style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)" oncontextmenu="DWEM.Modules.CNCBanner.toggleLatencyIndicator(event)">(<span id="latency">?</span> MS)</a>
         <div id="latency-indicator" style="display: none; max-width: 500px"></div>
         <br>
         ${current_user ? `
@@ -371,10 +499,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         <p style="padding:5px; border-radius:10px; background-color:#2c6f17; display:inline-block; margin:20px 0 10px 0; line-height:1.3;">
             <a href="https://archive.nemelex.cards">플레이어 데이터</a> -
             <a href="https://github.com/refracta/dcss-server/issues">버그 신고</a> -
-            <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">서버 상태</a> - 
-            <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="사랑방은 한옥에서 손님을 맞이하는 방을 말합니다. 이 기능이 켜져있으면 자동으로 관전자 수가 제일 많은 플레이어를 관전합니다.">사랑방<span id="sarangbang-second"></span></a> - 
-            <a href="https://terminal.nemelex.cards">웹 터미널</a> - 
-            <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">WTRec 재생 (베타)</a> - 
+            <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">서버 상태</a> -
+            <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="사랑방은 한옥에서 손님을 맞이하는 방을 말합니다. 이 기능이 켜져있으면 자동으로 관전자 수가 제일 많은 플레이어를 관전합니다.">사랑방<span id="sarangbang-second"></span></a> -
+            <a href="https://terminal.nemelex.cards">웹 터미널</a> -
+            <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">WTRec 재생 (베타)</a> -
             <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM 모듈 관리자 (Ctrl + F12)</a>
             <br>
             'nemelex' 사용자로 포트 1326에서 SSH 접속이 가능합니다. 비밀번호 'xobeh' 또는 <a href="https://archive.nemelex.cards/cao_key" style="text-decoration:none;">CAO 키</a>를 사용하여 인증할 수 있습니다.
@@ -422,10 +550,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                     <p style="padding:5px; border-radius:10px; background-color:#2c6f17; display:inline-block; margin:20px 0 10px 0; line-height:1.3;">
                         <a href="https://archive.nemelex.cards">Player Data</a> -
                         <a href="https://github.com/refracta/dcss-server/issues">Report a Bug</a> -
-                        <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">Server Status</a> - 
-                        <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="The 'Sarangbang' refers to the room in traditional korean houses used to receive guests. When this feature is enabled, it will automatically find and watch the player with the highest number of spectators.">Sarangbang<span id="sarangbang-second"></span></a> - 
-                        <a href="https://terminal.nemelex.cards">Web Terminal</a> - 
-                        <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">Play WTRec (Beta)</a> - 
+                        <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">Server Status</a> -
+                        <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="The 'Sarangbang' refers to the room in traditional korean houses used to receive guests. When this feature is enabled, it will automatically find and watch the player with the highest number of spectators.">Sarangbang<span id="sarangbang-second"></span></a> -
+                        <a href="https://terminal.nemelex.cards">Web Terminal</a> -
+                        <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">Play WTRec (Beta)</a> -
                         <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM Module Manager (Ctrl + F12)</a>
                         <br>
                         SSH is available on port 1326 with the user 'nemelex'. You can use the password 'xobeh' or authenticate using the <a href="https://archive.nemelex.cards/cao_key" style="text-decoration:none;">CAO key</a>.
