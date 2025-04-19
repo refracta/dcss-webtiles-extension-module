@@ -201,14 +201,14 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             total, days, hours, minutes, seconds
         };
     }
-
+    //  url: navigator.language.startsWith('ko') ? 'https://tournament.nemelex.cards/0.32.html' : 'https://crawl.develz.org/tournament/0.32/'
     tournaments = [
         {
             id: 'stable-tournament',
-            name: '0.32 Tournament',
-            startUTC: new Date(Date.UTC(2024, 7, 30, 20, 0, 0)),
-            endUTC: new Date(Date.UTC(2024, 8, 15, 20, 0, 0)),
-            url: navigator.language.startsWith('ko') ? 'https://tournament.nemelex.cards/0.32.html' : 'https://crawl.develz.org/tournament/0.32/'
+            name: '0.33 Tournament',
+            startUTC: new Date(Date.UTC(2025, 4, 2, 20, 0, 0)),
+            endUTC: new Date(Date.UTC(2025, 4, 18, 20, 0, 0)),
+            url:  'https://crawl.develz.org/tournament/0.33/'
         },
         {
             id: 'cssdt-tournament',
