@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "dependencies": {
+    "glob": "^11.0.1",
+    "jszip": "^3.10.1",
+    "node-fetch": "^3.3.2",
+    "stream-json": "^1.9.1"
+  }
+}

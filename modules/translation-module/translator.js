@@ -1,51 +1,9 @@
 import DataManager from "./processors.js";
 
-export default class TranslationModule {
-    static name = 'TranslationModule';
-    static version = '0.1';
-    static dependencies = ['IOHook'];
-    static description = '(Beta) This module provides i18n feature.';
-
-
-    matchers = [];
-
-    // regex 대신 raw matcher도
-    // 엔진 다듬기 후에 wtrec utils 손보고
-    // tools 페이지에 페이지 하나씩 만들
-    // translation pack을 단위로 번역
-    constructor() {
-        this.matchers = [{
-            category: 'message', regex: {pattern: '(.+)', flags: ''}, replaceValue: '$1', groups: ['system']
-        }, {
-            category: 'system',
-            regex: '\\<lightgrey\\>Press \\<white\\>\\?\\<lightgrey\\> for a list of commands and other information\\.',
-            replaceValue: '<lightgrey>명령어 목록 또는 기타 정보를 보려면 <white>?<lightgrey>를 누르세요.',
-            groups: ['user', 'class']
-        }, {
-            category: 'system',
-            regex: '^Welcome back, (.+) (the .+).',
-            replaceValue: '돌아오신 것을 환영합니다. {$2:이} $1',
-            groups: ['user', 'class']
-        }, {
-            category: 'class', raw: 'the Armataur Hunter', replaceValue: '아머타우르스 사냥꾼',
-        }, {
-            category: 'hit_messages',
-            regex: 'The rebounding (.+?) hits (.+?)\\.',
-            replaceValue: '반동하는 {$1:이} {$2:를} 때렸다.',
-            groups: ['magic', 'target']
-        }, {
-            category: 'magic', regex: 'Welcome back, (.+) (the .+).', replaceValue: '돌아오신 것을 환영합니다',
-        }, {
-            category: 'target', regex: 'Welcome back, (.+) (the .+).', replaceValue: '돌아오신 것을 환영합니다',
-        }, {
-            category: 'target', raw: 'hello', replaceValue: '돌아오신 것을 환영합니다',
-        }]
-
-        this.functions = {
-            '이': (a) => {
-                return a + 'E'
-            }
-        };
+export default class Translator {
+    constructor(matchers, functions) {
+        this.matchers = matchers;
+        this.functions = functions;
 
         this.categories = {};
         for (const matcher of this.matchers) {
@@ -97,8 +55,7 @@ export default class TranslationModule {
         });
     }
 
-    translate(target, language, category = 'message') {
-        /** 기본 결과 ─ 번역 실패로 시작 */
+    translate(target, language, category) {
         const result = {target, translation: target, status: 'untranslated'};
 
         /* ────────────────────────────────────────────────────────────────
@@ -112,10 +69,7 @@ export default class TranslationModule {
         ──────────────────────────────────────────────────────────────── */
         const rawMatcher = cat.rawMap[target];
         if (rawMatcher) {
-            const rawValue =
-                typeof rawMatcher.replaceValue === 'string'
-                    ? rawMatcher.replaceValue
-                    : rawMatcher.replaceValue?.[language] ?? target;
+            const rawValue = typeof rawMatcher.replaceValue === 'string' ? rawMatcher.replaceValue : rawMatcher.replaceValue?.[language] ?? target;
 
             result.translation = this.replaceSpecialPattern(rawValue);
             result.status = 'translated';
@@ -130,10 +84,7 @@ export default class TranslationModule {
             const matchResults = target.match(matcher.regexp);
             if (!matchResults) continue;    // 매치 실패 → 다음으로
 
-            const baseReplace =
-                typeof matcher.replaceValue === 'string'
-                    ? matcher.replaceValue
-                    : matcher.replaceValue?.[language] ?? target;
+            const baseReplace = typeof matcher.replaceValue === 'string' ? matcher.replaceValue : matcher.replaceValue?.[language] ?? target;
 
             let replaced = target.replace(matcher.regexp, baseReplace);
 
@@ -168,23 +119,4 @@ export default class TranslationModule {
 
         return result;
     }
-
-
-    onLoad() {
-        const {IOHook, SiteInformation} = DWEM.Modules;
-        IOHook.handle_message.before.addHandler('translator', (data) => {
-            console.log(JSON.stringify(data));
-            for (const key in DataManager.processors) {
-                const {match, extract, restore} = DataManager.processors[key];
-                if (match(data)) {
-                    const list = extract(data);
-                    console.log(list.map((unitText) => this.translate(unitText, 'korean', 'message')))
-                    const translatedList = list.map((unitText) => this.translate(unitText, 'korean', 'message').translation);
-                    console.log(list, translatedList);
-                    restore(data, translatedList);
-                }
-            }
-        });
-    }
-
 }
