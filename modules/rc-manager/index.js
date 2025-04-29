@@ -182,7 +182,7 @@ export default class RCManager {
             const intValue = parseInt(value, 10);
             return isNaN(intValue) ? defaultValue : intValue;
         } else if (type === 'string') {
-            return value;
+            return value === undefined ? defaultValue : value;
         }
     }
 

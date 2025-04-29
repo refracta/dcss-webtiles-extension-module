@@ -4,11 +4,26 @@ from django.http import HttpResponse
 from django.contrib import admin
 from .models import TranslationData, Matcher
 
+from django.utils.html import format_html, escape   # ← 추가
+
+import json, os, datetime
+from django.conf import settings
+from django.http import HttpResponse
+from django.contrib import admin
+from django.utils.html import format_html, escape      # ★
+from .models import TranslationData, Matcher
+
 @admin.register(TranslationData)
 class TranslationDataAdmin(admin.ModelAdmin):
-    list_display = ("source", "short_content")
-    search_fields = ("source", "content")
-    def short_content(self, obj): return obj.content[:50]
+    list_display  = ("source", "pretty_content")
+    list_filter   = ("source",)              # ← 소스별 분류
+    search_fields = ("source", "content")    # ← 전역 검색
+
+    def pretty_content(self, obj):           # ← 줄바꿈 포함 전체 표시
+        html = "<pre style='max-height:10rem;overflow:auto;margin:0'>{}</pre>"
+        return format_html(html, escape(obj.content))
+    pretty_content.short_description = "content"
+
 
 @admin.action(description="선택된 매처 JSON으로 내보내기")
 def export_as_json(modeladmin, request, queryset):
@@ -26,7 +41,7 @@ def export_as_json(modeladmin, request, queryset):
 
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"matchers_{ts}.json"
-    path = os.path.join(settings.MEDIA_ROOT, "matchers", filename)
+    path = os.path.join(settings.BUILD_ROOT, "matchers", filename)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as fp:
         json.dump(items, fp, ensure_ascii=False, indent=2)

@@ -1,14 +1,14 @@
-import DataManager from "./processors.js";
+import DataManager from "./data-manager.js";
+import Translator from "./translator.js";
 
 export default class TranslationModule {
     static name = 'TranslationModule';
     static version = '0.1';
-    static dependencies = ['IOHook'];
+    static dependencies = ['IOHook', 'RCManager', 'SiteInformation'];
     static description = '(Beta) This module provides i18n feature.';
 
 
     matchers = [];
-
     // regex 대신 raw matcher도
     // 엔진 다듬기 후에 wtrec utils 손보고
     // tools 페이지에 페이지 하나씩 만들
@@ -29,6 +29,8 @@ export default class TranslationModule {
         }, {
             category: 'class', raw: 'the Armataur Hunter', replaceValue: '아머타우르스 사냥꾼',
         }, {
+            category: 'user', raw: 'dummy', replaceValue: '아머타우르스 사냥꾼',
+        }, {
             category: 'hit_messages',
             regex: 'The rebounding (.+?) hits (.+?)\\.',
             replaceValue: '반동하는 {$1:이} {$2:를} 때렸다.',
@@ -46,143 +48,80 @@ export default class TranslationModule {
                 return a + 'E'
             }
         };
-
-        this.categories = {};
-        for (const matcher of this.matchers) {
-            if (typeof matcher.regex === 'string') {
-                matcher.regexp = new RegExp(matcher.regex);
-            } else if (typeof matcher.regex === 'object') {
-                matcher.regexp = new RegExp(matcher.regex.pattern, matcher.regex.flags);
-            }
-            matcher.groups = matcher?.groups?.map?.(g => typeof g === 'string' ? [g] : g) || [];
-            if (!this.categories[matcher.category]) {
-                this.categories[matcher.category] = {matchers: [], rawMap: {}};
-            }
-            if (typeof matcher.raw === 'string') {
-                this.categories[matcher.category].rawMap[matcher.raw] = matcher;
-            } else if (matcher.regexp) {
-                this.categories[matcher.category].matchers.push(matcher);
-            }
-        }
     }
+    /*
+    function apply_font_patch() {
+	if (typeof fontStyle === 'undefined') {
+		window.WebFontConfig = {
+			custom : {
+				families : ['Nanum Gothic Coding'],
+				urls : ['https://fonts.googleapis.com/earlyaccess/nanumgothiccoding.css']
+			}
+		};
+		(function () {
+			var wf = document.createElement('script');
+			wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+			'://ajax.googleapis.com/ajax/libs/webfont/1.4.10/webfont.js';
+			wf.type = 'text/javascript';
+			wf.async = 'true';
+			var s = document.getElementsByTagName('script')[0];
+			s.parentNode.insertBefore(wf, s);
+		})();
+		var fontStyle = document.createElement("style");
+		fontStyle.setAttribute("id", "font_style_apply");
+		fontStyle.appendChild(document.createTextNode(
+				'* {font-family: "Nanum Gothic Coding", monospace;}'));
+		document.getElementsByTagName("head")[0].appendChild(fontStyle);
+	}
+}
+function disapply_font_patch() {
+	var font_tag = $('#font_style_apply');
+	if (font_tag) {
+		font_tag.remove();
+	}
+}
+     */
 
-    replaceSpecialPattern(text) {
-        return text.replace(/\{((?:\\.|[^{}])+?):([\p{L}\p{N}_]+)\}/gsu, (match, paramsStr, funcName) => {
-            if (this.functions[funcName]) {
-                const params = [];
-                let currParam = '';
-                let escaping = false;
-                for (let i = 0; i < paramsStr.length; i++) {
-                    const char = paramsStr[i];
+    #getTranslationConfig(rcfile) {
+        const {RCManager} = DWEM.Modules;
+        const translation = RCManager.getRCOption(rcfile, 'translation', 'string');
+        const translationFile = RCManager.getRCOption(rcfile, 'translation_file', 'string', 'http://localhost:8000/build/matchers/latest.json');
+        const translationDebug = RCManager.getRCOption(rcfile, 'translation_debug', 'boolean');
 
-                    if (escaping) {
-                        currParam += char;
-                        escaping = false;
-                    } else if (char === '\\') {
-                        escaping = true;
-                    } else if (char === ',') {
-                        params.push(currParam);
-                        currParam = '';
-                    } else {
-                        currParam += char;
-                    }
-                }
-                params.push(currParam);
-                const unescapeParam = (str) => str.replace(/\\(.)/gs, '$1');
-                const args = params.map(unescapeParam);
-                return this.functions[funcName](...args);
-            } else {
-                return match;
-            }
-        });
+        return {
+            translation, translationFile, translationDebug
+        };
     }
-
-    translate(target, language, category = 'message') {
-        /** 기본 결과 ─ 번역 실패로 시작 */
-        const result = {target, translation: target, status: 'untranslated'};
-
-        /* ────────────────────────────────────────────────────────────────
-           0. 카테고리 존재 여부 확인
-        ──────────────────────────────────────────────────────────────── */
-        const cat = this.categories[category];
-        if (!cat) return result;            // 없는 카테고리면 그대로 반환
-
-        /* ────────────────────────────────────────────────────────────────
-           1. O(1) 완전 일치(raw) 매치
-        ──────────────────────────────────────────────────────────────── */
-        const rawMatcher = cat.rawMap[target];
-        if (rawMatcher) {
-            const rawValue =
-                typeof rawMatcher.replaceValue === 'string'
-                    ? rawMatcher.replaceValue
-                    : rawMatcher.replaceValue?.[language] ?? target;
-
-            result.translation = this.replaceSpecialPattern(rawValue);
-            result.status = 'translated';
-            return result;                  // 바로 반환하므로 재귀 없음
-        }
-
-        /* ────────────────────────────────────────────────────────────────
-           2. 정규식 매치 순회
-        ──────────────────────────────────────────────────────────────── */
-        const translations = [];
-        for (const matcher of cat.matchers) {
-            const matchResults = target.match(matcher.regexp);
-            if (!matchResults) continue;    // 매치 실패 → 다음으로
-
-            const baseReplace =
-                typeof matcher.replaceValue === 'string'
-                    ? matcher.replaceValue
-                    : matcher.replaceValue?.[language] ?? target;
-
-            let replaced = target.replace(matcher.regexp, baseReplace);
-
-            /* ── 캡처 그룹별 재귀 번역 ──────────────────────────────── */
-            for (let i = 1; i < matchResults.length; i++) {
-                const capture = matchResults[i];
-                const groupCatNames = matcher.groups[i - 1] || [];   // ex) ['user','class']
-
-                let done = false;
-                for (const name of groupCatNames) {
-                    if (name === category) continue;                 // 같은 카테고리 → 무한루프 방지
-                    if (!this.categories[name]) continue;            // 존재하지 않는 카테고리 무시
-
-                    const subRes = this.translate(capture, language, name);
-                    if (subRes.status === 'translated') {
-                        replaced = replaced.replace(capture, subRes.translation);
-                        translations.push(subRes);
-                        done = true;
-                        break;
-                    }
-                }
-                if (!done) {
-                    translations.push({target: capture, status: 'untranslated'});
-                }
-            }
-
-            result.translation = this.replaceSpecialPattern(replaced);
-            result.status = 'translated';
-            if (translations.length) result.translations = translations;
-            break;
-        }
-
-        return result;
-    }
-
 
     onLoad() {
-        const {IOHook, SiteInformation} = DWEM.Modules;
-        IOHook.handle_message.before.addHandler('translator', (data) => {
-            console.log(JSON.stringify(data));
-            for (const key in DataManager.processors) {
-                const {match, extract, restore} = DataManager.processors[key];
-                if (match(data)) {
-                    const list = extract(data);
-                    console.log(list.map((unitText) => this.translate(unitText, 'korean', 'message')))
-                    const translatedList = list.map((unitText) => this.translate(unitText, 'korean', 'message').translation);
-                    console.log(list, translatedList);
-                    restore(data, translatedList);
-                }
+        const {IOHook, RCManager, SiteInformation} = DWEM.Modules;
+
+        RCManager.addHandlers('translation-handler', {
+            onGameInitialize: async (rcfile) => {
+                this.translationConfig = this.#getTranslationConfig(rcfile);
+                console.log(this.translationConfig.translationFile);
+                this.translationFile = await fetch(this.translationConfig.translationFile, {cache: "no-store"}).then((r) => r.json());
+                this.translator = new Translator(this.translationFile, this.functions);
+                console.log(this.translationFile)
+                IOHook.handle_message.before.addHandler('translation-handler', (data) => {
+                    console.log(data);
+
+                    for (const key in DataManager.processors) {
+                        const {match, extract, restore} = DataManager.processors[key];
+                        if (match(data)) {
+                            const list = extract(data);
+                            // console.log(list.map((unitText) => this.translate(unitText, 'ko', 'message')))
+                            const language = this.translationConfig.translation;
+                            const translatedList = list.map((unitText) => this.translator.translate(unitText, language, key).translation);
+                            console.log(list.map((unitText) => this.translator.translate(unitText, language, key)), language, key)
+                            // console.log(list, translatedList);
+                            restore(data, translatedList);
+                        }
+                    }
+                });
+            },
+            onGameEnd: () => {
+                IOHook.handle_message.after.removeHandler('translation-handler');
             }
         });
     }

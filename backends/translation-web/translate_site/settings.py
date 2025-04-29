@@ -42,6 +42,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -56,7 +57,7 @@ ROOT_URLCONF = 'translate_site.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [ BASE_DIR / 'templates' ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -123,13 +124,24 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-MEDIA_ROOT = BASE_DIR / "media"
-MEDIA_URL  = "/media/"
+BUILD_ROOT = BASE_DIR / "build"
+BUILD_URL  = "/build/"
 
 JAZZMIN_SETTINGS = {
     "site_title": "번역 관리",
     "site_header": "Translation Admin",
     "topmenu_links": [
-        {"name": "매처 내보내기", "url": "export-matchers", "permissions": ["core.view_matcher"]},
+        {
+            "name": "Generate matchers",
+            "url": "generate-matchers",
+            "permissions": ["core.view_matcher"],
+        },
     ],
 }
+
+# ① 기본 규칙 ― 아무 오리진에서든 GET/HEAD/OPTIONS 허용
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_METHODS = ["GET", "OPTIONS", "HEAD"]
+
+# ② build/ 경로만 CORS 헤더를 달고 싶다면:
+CORS_URLS_REGEX = r"^/build/.*$"

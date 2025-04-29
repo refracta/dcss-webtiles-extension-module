@@ -1,5 +1,3 @@
-import DataManager from "./processors.js";
-
 export default class Translator {
     constructor(matchers, functions) {
         this.matchers = matchers;

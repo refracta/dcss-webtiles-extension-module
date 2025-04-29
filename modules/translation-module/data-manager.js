@@ -33,7 +33,7 @@ export default class DataManager {
 
         /* ===== msgs:messages[]|tokenize ===== */
         "msgs@messages[]#tokenize": {
-            match: (d) => DataManager.processors["msgs:messages[]"].match(d),
+            match: (d) => DataManager.processors["msgs@messages[]"].match(d),
             extract: (d) =>
                 d.messages.flatMap((m) =>
                     m.text
