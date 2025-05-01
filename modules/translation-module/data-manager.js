@@ -1,5 +1,6 @@
 export default class DataManager {
     /* ---------- 공통 유틸 ---------- */
+    /** `<tag>`를 보존하면서 텍스트 토큰화 */
     static tokenize = (s) =>
         [...s.matchAll(/(<\/?[a-z]+>)|([^<]+)/gi)].map((m) =>
             m[1] ? {type: "tag", content: m[1]} : {type: "text", content: m[2]}
@@ -8,174 +9,226 @@ export default class DataManager {
     /** 깊은 복사(브라우저·노드 공통) */
     static clone = (o) => structuredClone(o);
 
-    /** extracted 배열을 순차적으로 소비 */
+    /** 배열을 순차 소비하는 클로저 */
     static makeNext = (arr) => () => arr.shift();
 
-    /** 복원 타깃 선택: true → 복사본, false → 원본 */
-    static target = (d, useClone) =>
-        useClone === false ? d : DataManager.clone(d);
+    /** 복원 시 원본‧복사 선택 */
+    static target = (d, useClone = true) => (useClone ? DataManager.clone(d) : d);
 
-    /* ---------- processors ---------- */
-    static processors = {
-        /* ===== msgs:messages[] ===== */
-        "msgs@messages[]": {
-            match: (d) => d?.msg === "msgs" && d.messages?.length,
-            extract: (d) => d.messages.flatMap((m) => (m.text ? [m.text] : [])),
-            restore: (d, arr, useClone = false) => {
-                const out = DataManager.target(d, useClone);
-                const next = DataManager.makeNext(arr);
-                out.messages?.forEach((m) => {
-                    if (m.text != null) m.text = next();
-                });
-                return out;
-            },
-        },
+    /* ---------- DSL 파서 ---------- */
+    static parseSpec = (spec) => {
+        const [head, tail] = spec.split("@");
+        const [pathPart, option] = tail.split("#");
 
-        /* ===== msgs:messages[]|tokenize ===== */
-        "msgs@messages[]#tokenize": {
-            match: (d) => DataManager.processors["msgs@messages[]"].match(d),
-            extract: (d) =>
-                d.messages.flatMap((m) =>
-                    m.text
-                        ? DataManager.tokenize(m.text)
-                            .filter((t) => t.type === "text")
-                            .map((t) => t.content)
-                        : []
-                ),
-            restore: (d, arr, useClone = false) => {
-                const out = DataManager.target(d, useClone);
-                const next = DataManager.makeNext(arr);
-                out.messages?.forEach((m) => {
-                    if (!m.text) return;
-                    const tokens = DataManager.tokenize(m.text);
-                    tokens.forEach((t) => {
-                        if (t.type === "text") t.content = next();
-                    });
-                    m.text = tokens.map((t) => t.content).join("");
-                });
-                return out;
-            },
-        },
+        const path = pathPart.split(".").map((seg) => {
+            if (seg.endsWith("[]"))   // 원본 배열
+                return {key: seg.slice(0, -2), isArray: true, isObjArray: false};
+            if (seg.endsWith("[o]"))  // {0:…,1:…} 형태의 객체배열
+                return {key: seg.slice(0, -3), isArray: true, isObjArray: true};
+            return {key: seg, isArray: false, isObjArray: false};
+        });
 
-        /* ===== menu:items[] ===== */
-        "menu@items[]": {
-            match: (d) => d?.msg === "menu" && d.items?.length,
-            extract: (d) => d.items.flatMap((it) => (it.text ? [it.text] : [])),
-            restore: (d, arr, useClone = false) => {
-                const out = DataManager.target(d, useClone);
-                const next = DataManager.makeNext(arr);
-                out.items?.forEach((it) => {
-                    if (it.text != null) it.text = next();
-                });
-                return out;
-            },
-        },
-
-        /* ===== ui-push 관련 ===== */
-        "ui-push@main-items.buttons[].description": {
-            match: (d) =>
-                d?.msg === "ui-push" &&
-                d["main-items"]?.buttons?.some((b) => b.description),
-            extract: (d) =>
-                d["main-items"].buttons.flatMap((b) =>
-                    b.description ? [b.description] : []
-                ),
-            restore: (d, arr, useClone = false) => {
-                const out = DataManager.target(d, useClone);
-                const next = DataManager.makeNext(arr);
-                out["main-items"]?.buttons?.forEach((b) => {
-                    if (b.description != null) b.description = next();
-                });
-                return out;
-            },
-        },
-
-        "ui-push@sub-items.buttons[].description": {
-            match: (d) =>
-                d?.msg === "ui-push" &&
-                d["sub-items"]?.buttons?.some((b) => b.description),
-            extract: (d) =>
-                d["sub-items"].buttons.flatMap((b) =>
-                    b.description ? [b.description] : []
-                ),
-            restore: (d, arr, useClone = false) => {
-                const out = DataManager.target(d, useClone);
-                const next = DataManager.makeNext(arr);
-                out["sub-items"]?.buttons?.forEach((b) => {
-                    if (b.description != null) b.description = next();
-                });
-                return out;
-            },
-        },
-
-        "ui-push@sub-items.buttons[].label": {
-            match: (d) =>
-                d?.msg === "ui-push" &&
-                d["sub-items"]?.buttons?.some((b) => b.label),
-            extract: (d) =>
-                d["sub-items"].buttons.flatMap((b) => (b.label ? [b.label] : [])),
-            restore: (d, arr, useClone = false) => {
-                const out = DataManager.target(d, useClone);
-                const next = DataManager.makeNext(arr);
-                out["sub-items"]?.buttons?.forEach((b) => {
-                    if (b.label != null) b.label = next();
-                });
-                return out;
-            },
-        },
-
-        "ui-push@main-items.buttons[].labels[]": {
-            match: (d) =>
-                d?.msg === "ui-push" &&
-                d["main-items"]?.buttons?.some((b) => Array.isArray(b.labels)),
-            extract: (d) =>
-                d["main-items"].buttons.flatMap((b) => b.labels ?? []),
-            restore: (d, arr, useClone = false) => {
-                const out = DataManager.target(d, useClone);
-                const next = DataManager.makeNext(arr);
-                out["main-items"]?.buttons?.forEach((b) => {
-                    if (Array.isArray(b.labels)) {
-                        b.labels = b.labels.map(() => next());
-                    }
-                });
-                return out;
-            },
-        },
-
-        /* ===== ui-push 단일 필드 ===== */
-        ...["title", "text", "body", "actions", "prompt"].reduce((o, f) => {
-            o[`ui-push:${f}`] = {
-                match: (d) => d?.msg === "ui-push" && d[f] != null,
-                extract: (d) => [d[f]],
-                restore: (d, arr, useClone = false) => {
-                    const out = DataManager.target(d, useClone);
-                    out[f] = arr[0];
-                    return out;
-                },
-            };
-            return o;
-        }, {}),
-
-        /* ===== ui-state:text ===== */
-        "ui-state@text": {
-            match: (d) => d?.msg === "ui-state" && d.text,
-            extract: (d) => [d.text],
-            restore: (d, arr, useClone = false) => {
-                const out = DataManager.target(d, useClone);
-                out.text = arr[0];
-                return out;
-            },
-        },
-
-        /* ===== game_ended:message ===== */
-        "game_ended@message": {
-            match: (d) => d?.msg === "game_ended" && d.message,
-            extract: (d) => [d.message],
-            restore: (d, arr, useClone = false) => {
-                const out = DataManager.target(d, useClone);
-                out.message = arr[0];
-                return out;
-            },
-        },
+        return {msgType: head, path, option: option ?? null};
     };
+
+    /* ---------- 값 수집 ---------- */
+    static collectValues = (obj, path, res = []) => {
+        if (!obj) return res;
+        const [{key, isArray, isObjArray}, ...rest] = path;
+
+        const nodes = isArray
+            ? isObjArray
+                ? Object.values(obj[key] ?? {})           // [o]
+                : (obj[key] ?? [])                        // []
+            : [obj[key]];                               // 단일
+
+        nodes.forEach((node) =>
+            rest.length
+                ? DataManager.collectValues(node, rest, res)
+                : node !== undefined && res.push(node)
+        );
+        return res;
+    };
+
+    /* ---------- 값 복원 ---------- */
+    static restoreValues = (obj, path, injector) => {
+        if (!obj) return;
+        const [{key, isArray, isObjArray}, ...rest] = path;
+
+        // nodes: [값], keys: 각 값의 식별자(인덱스 또는 객체키)
+        let nodes, keys;
+        if (isArray) {
+            if (isObjArray) {
+                const entries = Object.entries(obj[key] ?? {});      // {k: v}...
+                nodes = entries.map((e) => e[1]);
+                keys = entries.map((e) => e[0]);
+            } else {
+                nodes = obj[key] ?? [];
+                keys = nodes.map((_, i) => i);
+            }
+        } else {
+            nodes = [obj[key]];
+            keys = [null];
+        }
+
+        nodes.forEach((node, idx) => {
+            if (rest.length) {
+                DataManager.restoreValues(node, rest, injector);
+            } else {
+                // 리프 자체가 배열(예: labels[])인 경우
+                if (isArray && Array.isArray(node)) {
+                    node.forEach((v, i) => {
+                        node[i] = injector(v);
+                    });
+                } else if (node != null) {
+                    const newVal = injector(node);
+                    if (isArray) {
+                        if (isObjArray) obj[key][keys[idx]] = newVal;
+                        else obj[key][idx] = newVal;
+                    } else {
+                        obj[key] = newVal;
+                    }
+                }
+            }
+        });
+    };
+
+
+    /* ---------- 옵션 훅 ---------- */
+    static optionHooks = {
+        tokenize: {
+            // 1개의 원본 문자열 → N개의 조각
+            extract: (str) =>
+                DataManager.tokenize(str)
+                    .filter((t) => t.type === "text")
+                    .map((t) => t.content),
+            // 조각을 next()로 돌려받아 원래 포맷에 삽입
+            restore: (original, next) => {
+                const tokens = DataManager.tokenize(original);
+                tokens.forEach((t) => {
+                    if (t.type === "text") t.content = next();
+                });
+                return tokens.map((t) => t.content).join("");
+            },
+        },
+        quote: {
+            extract: (str) => {
+                if (typeof str !== "string") return [];
+                const re = /_{10,}\n\n<.+?>([\s\S]+?)\n<.+?>/;
+                const m  = str.match(re);
+                return m ? [m[1]] : [];
+            },
+
+            restore: (original, next) => {
+                if (typeof original !== "string") return original;
+                const re   = /_{10,}\n\n<.+?>([\s\S]+?)\n<.+?>/;
+                const repl = next();                 // 배열의 첫 요소
+                return original.replace(re, (full, g1) => full.replace(g1, repl));
+            },
+        },
+        lines: {
+            // 1개의 원본 문자열 → N개의 “줄” 조각
+            extract: (str) =>
+                typeof str === "string" ? str.split("\n") : [],
+
+            // next() 로 돌려받은 조각들을 원래 줄 구조에 삽입
+            restore: (original, next) => {
+                if (typeof original !== "string") return original;
+
+                const parts = original.split("\n");          // 줄 개수 파악
+                const rebuilt = parts.map(() => next()).join("\n");
+
+                // 원본이 마지막에 개행을 갖고 있었다면 그대로 유지
+                return original.endsWith("\n") ? rebuilt + "\n" : rebuilt;
+            },
+        },
+        // 추가 훅은 여기에...
+    };
+
+    /* ---------- 프로세서 팩토리 ---------- */
+    static makeProcessor = (spec) => {
+        const {msgType, path, option} = DataManager.parseSpec(spec);
+        const hook = DataManager.optionHooks[option] ?? null;
+
+        return {
+            match: (d) =>
+                d?.msg === msgType &&
+                DataManager.collectValues(d, path).some((v) => v != null),
+
+            extract: (d) => {
+                const vals = DataManager.collectValues(d, path);
+                return hook ? vals.flatMap((v) => hook.extract(v)) : vals;
+            },
+
+            restore: (d, arr, useClone = false) => {
+                const out = DataManager.target(d, useClone);
+                const next = DataManager.makeNext(arr);
+
+                if (hook) {
+                    const wrapperNext = () => next();
+                    const inject = (node) => hook.restore(node, wrapperNext);
+                    DataManager.restoreValues(out, path, inject);
+                } else {
+                    DataManager.restoreValues(out, path, next);
+                }
+                return out;
+            },
+        };
+    };
+
+    /* ---------- 프로세서 등록 ---------- */
+    static register = (specs) =>
+        Object.fromEntries(specs.map((s) => [s, DataManager.makeProcessor(s)]));
+
+    /* ---------- 기본 스펙 목록 ---------- */
+    static processors = DataManager.register([
+        "game_ended@message",
+        "map@cells[].mon.name",
+        "map@cells[].mon.plural",
+        "menu@alt_more",
+        "menu@items[].text",
+        "menu@more",
+        "menu@title.text",
+        "msgs@messages[].text",
+        "msgs@messages[].text#tokenize",
+        "player@god",
+        "player@inv[o].inscription",
+        "player@inv[o].name",
+        "player@inv[o].qty_field",
+        "player@inv[o].action_verb",
+        "player@place",
+        "player@quiver_desc",
+        "player@species",
+        "player@status[].desc",
+        "player@status[].light",
+        "player@status[].text",
+        "player@title",
+        "player@unarmed_attack",
+        "txt@lines[o]",
+        "ui-push@actions",
+        "ui-push@body",
+        "ui-push@body#quote",
+        "ui-push@body#lines",
+        "ui-push@highlight",
+        "ui-push@main-items.buttons[].description",
+        "ui-push@main-items.buttons[].labels[]",
+        "ui-push@more",
+        "ui-push@prompt",
+        "ui-push@quote",
+        "ui-push@spellset[].label",
+        "ui-push@spellset[].spells[].effect",
+        "ui-push@spellset[].spells[].letter",
+        "ui-push@spellset[].spells[].range_string",
+        "ui-push@spellset[].spells[].schools",
+        "ui-push@spellset[].spells[].title",
+        "ui-push@sub-items.buttons[].description",
+        "ui-push@sub-items.buttons[].label",
+        "ui-push@text",
+        "ui-push@title",
+        "ui-state@highlight",
+        "ui-state@text",
+        "update_menu@alt_more",
+        "update_menu@more",
+        "update_menu_items@items[].text"
+    ]);
 }

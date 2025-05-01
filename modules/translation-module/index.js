@@ -7,120 +7,173 @@ export default class TranslationModule {
     static dependencies = ['IOHook', 'RCManager', 'SiteInformation'];
     static description = '(Beta) This module provides i18n feature.';
 
-
-    matchers = [];
-    // regex 대신 raw matcher도
-    // 엔진 다듬기 후에 wtrec utils 손보고
-    // tools 페이지에 페이지 하나씩 만들
-    // translation pack을 단위로 번역
     constructor() {
-        this.matchers = [{
-            category: 'message', regex: {pattern: '(.+)', flags: ''}, replaceValue: '$1', groups: ['system']
-        }, {
-            category: 'system',
-            regex: '\\<lightgrey\\>Press \\<white\\>\\?\\<lightgrey\\> for a list of commands and other information\\.',
-            replaceValue: '<lightgrey>명령어 목록 또는 기타 정보를 보려면 <white>?<lightgrey>를 누르세요.',
-            groups: ['user', 'class']
-        }, {
-            category: 'system',
-            regex: '^Welcome back, (.+) (the .+).',
-            replaceValue: '돌아오신 것을 환영합니다. {$2:이} $1',
-            groups: ['user', 'class']
-        }, {
-            category: 'class', raw: 'the Armataur Hunter', replaceValue: '아머타우르스 사냥꾼',
-        }, {
-            category: 'user', raw: 'dummy', replaceValue: '아머타우르스 사냥꾼',
-        }, {
-            category: 'hit_messages',
-            regex: 'The rebounding (.+?) hits (.+?)\\.',
-            replaceValue: '반동하는 {$1:이} {$2:를} 때렸다.',
-            groups: ['magic', 'target']
-        }, {
-            category: 'magic', regex: 'Welcome back, (.+) (the .+).', replaceValue: '돌아오신 것을 환영합니다',
-        }, {
-            category: 'target', regex: 'Welcome back, (.+) (the .+).', replaceValue: '돌아오신 것을 환영합니다',
-        }, {
-            category: 'target', raw: 'hello', replaceValue: '돌아오신 것을 환영합니다',
-        }]
+        /* ===== 한글·받침 판별 유틸 ===== */
+        const isHangul = cp => cp >= 0xAC00 && cp <= 0xD7A3;
+        const hasBatchim = word => {
+            const cp = word.charCodeAt(word.length - 1);
+            return isHangul(cp) && (cp - 0xAC00) % 28 !== 0;   // 종성 0 → 받침 없음
+        };
+        const jongIdx = word => {
+            const cp = word.charCodeAt(word.length - 1);
+            return isHangul(cp) ? (cp - 0xAC00) % 28 : -1;     // -1 = 비한글
+        };
 
+        /* ===== 헬퍼: 조사 생성 ===== */
+        const josa = (withBatchim, withoutBatchim, paren = false) => w => {
+            const last = w.charCodeAt(w.length - 1);
+            if (!isHangul(last)) {
+                return paren ? `${w}${withBatchim}(${withoutBatchim})` : w + withoutBatchim;
+            }
+            return w + (hasBatchim(w) ? withBatchim : withoutBatchim);
+        };
+
+        /* ===== this.functions ===== */
         this.functions = {
-            '이': (a) => {
-                return a + 'E'
+            /* 주제·보조 */
+            '은': josa('은', '는', true),
+            '는': josa('은', '는', true),
+
+            /* 주격 */
+            '이': josa('이', '가', true),
+            '가': josa('이', '가', true),
+
+            /* 목적격 */
+            '을': josa('을', '를', true),
+            '를': josa('을', '를', true),
+
+            /* 대등·동반 */
+            '과': josa('과', '와'),
+            '와': josa('과', '와'),
+            '이랑': josa('이랑', '랑'),
+            '랑': josa('이랑', '랑'),
+
+            /* 선택·비교·양보 */
+            '이나': josa('이나', '나'),
+            '나': josa('이나', '나'),
+            '이라도': josa('이라도', '라도'),
+            '라도': josa('이라도', '라도'),
+            '이든': josa('이든', '든'),
+            '든': josa('이든', '든'),
+            '이든지': josa('이든지', '든지'),
+            '든지': josa('이든지', '든지'),
+
+            /* 인용 */
+            '이라고': josa('이라고', '라고'),
+            '라고': josa('이라고', '라고'),
+
+            /* 조건·원인 */
+            '이라면': josa('이라면', '라면'),
+            '라면': josa('이라면', '라면'),
+            '이라서': josa('이라서', '라서'),
+            '라서': josa('이라서', '라서'),
+
+            /* 병렬 */
+            '이며': josa('이며', '며'),
+            '며': josa('이며', '며'),
+            '이고': josa('이고', '고'),
+            '고': josa('이고', '고'),
+
+            /* 의문·강조 */
+            '이냐': josa('이냐', '냐'),
+            '냐': josa('이냐', '냐'),
+            '이니': josa('이니', '니'),
+            '니': josa('이니', '니'),
+
+            /* 호격 */
+            '아': josa('아', '야'),
+            '야': josa('아', '야'),
+
+            /* 방향·수단 : 특수 규칙 */
+            '으로': w => {
+                const j = jongIdx(w);
+                return w + ((j === 0 || j === 8 || j === -1) ? '로' : '으로');
+            },
+            '로': w => {
+                const j = jongIdx(w);
+                return w + ((j === 0 || j === 8 || j === -1) ? '로' : '으로');
             }
         };
     }
-    /*
-    function apply_font_patch() {
-	if (typeof fontStyle === 'undefined') {
-		window.WebFontConfig = {
-			custom : {
-				families : ['Nanum Gothic Coding'],
-				urls : ['https://fonts.googleapis.com/earlyaccess/nanumgothiccoding.css']
-			}
-		};
-		(function () {
-			var wf = document.createElement('script');
-			wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
-			'://ajax.googleapis.com/ajax/libs/webfont/1.4.10/webfont.js';
-			wf.type = 'text/javascript';
-			wf.async = 'true';
-			var s = document.getElementsByTagName('script')[0];
-			s.parentNode.insertBefore(wf, s);
-		})();
-		var fontStyle = document.createElement("style");
-		fontStyle.setAttribute("id", "font_style_apply");
-		fontStyle.appendChild(document.createTextNode(
-				'* {font-family: "Nanum Gothic Coding", monospace;}'));
-		document.getElementsByTagName("head")[0].appendChild(fontStyle);
-	}
-}
-function disapply_font_patch() {
-	var font_tag = $('#font_style_apply');
-	if (font_tag) {
-		font_tag.remove();
-	}
-}
-     */
+
+    loadTranslationFont(language) {
+        if (language === 'ko') {
+            window.WebFontConfig = {
+                custom: {
+                    families: ['Nanum Gothic Coding'],
+                    urls: ['https://fonts.googleapis.com/earlyaccess/nanumgothiccoding.css']
+                }
+            };
+            (function () {
+                const wf = document.createElement('script');
+                wf.src = ('https:' == document.location.protocol ? 'https' : 'http') + '://ajax.googleapis.com/ajax/libs/webfont/1.4.10/webfont.js';
+                wf.type = 'text/javascript';
+                wf.async = 'true';
+                const s = document.getElementsByTagName('script')[0];
+                s.parentNode.insertBefore(wf, s);
+            })();
+            const fontStyle = document.createElement("style");
+            fontStyle.setAttribute("id", "translation_font");
+            fontStyle.appendChild(document.createTextNode('* {font-family: "Nanum Gothic Coding", monospace;}'));
+            document.getElementsByTagName("head")[0].appendChild(fontStyle);
+        }
+    }
+
+    unloadTranslationFont() {
+        document.querySelector('#translation_font')?.remove();
+    }
+
 
     #getTranslationConfig(rcfile) {
         const {RCManager} = DWEM.Modules;
-        const translation = RCManager.getRCOption(rcfile, 'translation', 'string');
+        const translationLanguage = RCManager.getRCOption(rcfile, 'translation_language', 'string');
         const translationFile = RCManager.getRCOption(rcfile, 'translation_file', 'string', 'http://localhost:8000/build/matchers/latest.json');
+        const useTranslationFont = RCManager.getRCOption(rcfile, 'use_translation_font', 'boolean');
         const translationDebug = RCManager.getRCOption(rcfile, 'translation_debug', 'boolean');
 
         return {
-            translation, translationFile, translationDebug
+            translationLanguage, useTranslationFont, translationFile, translationDebug
         };
     }
 
     onLoad() {
-        const {IOHook, RCManager, SiteInformation} = DWEM.Modules;
+        const {IOHook, RCManager} = DWEM.Modules;
 
+        // const adder = DataManager.makeAdder(s => typeof s === 'string');
         RCManager.addHandlers('translation-handler', {
             onGameInitialize: async (rcfile) => {
-                this.translationConfig = this.#getTranslationConfig(rcfile);
-                console.log(this.translationConfig.translationFile);
-                this.translationFile = await fetch(this.translationConfig.translationFile, {cache: "no-store"}).then((r) => r.json());
-                this.translator = new Translator(this.translationFile, this.functions);
-                console.log(this.translationFile)
-                IOHook.handle_message.before.addHandler('translation-handler', (data) => {
-                    console.log(data);
-
-                    for (const key in DataManager.processors) {
-                        const {match, extract, restore} = DataManager.processors[key];
-                        if (match(data)) {
-                            const list = extract(data);
-                            // console.log(list.map((unitText) => this.translate(unitText, 'ko', 'message')))
-                            const language = this.translationConfig.translation;
-                            const translatedList = list.map((unitText) => this.translator.translate(unitText, language, key).translation);
-                            console.log(list.map((unitText) => this.translator.translate(unitText, language, key)), language, key)
-                            // console.log(list, translatedList);
-                            restore(data, translatedList);
-                        }
+                this.config = this.#getTranslationConfig(rcfile);
+                if (this.config.translationLanguage) {
+                    this.loadTranslationFont(this.config.translationLanguage);
+                    this.matchers = await fetch(this.config.translationFile, {cache: "no-store"}).then((r) => r.json());
+                    if (this.config.translationDebug) {
+                        console.log('[TranslationModule] Config:', this.config);
+                        console.log(`[TranslationModule] Matchers file loaded (${this.matchers.length}):`, this.matchers);
                     }
-                });
-            },
-            onGameEnd: () => {
+                    this.translator = new Translator(this.matchers, this.functions);
+                    IOHook.handle_message.before.addHandler('translation-handler', (data) => {
+
+                        if (this.config.translationDebug) {
+                            console.log('[TranslationModule] data received:', JSON.parse(JSON.stringify(data)));
+                        }
+                        for (const key in DataManager.processors) {
+                            const {match, extract, restore} = DataManager.processors[key];
+                            if (match(data)) {
+                                const list = extract(data);
+                                const translatedList = list.map((unitText) => this.translator.translate(unitText, this.config.translationLanguage, key));
+                                if (this.config.translationDebug) {
+                                    for (let i = 0; i < list.length; i++) {
+                                        console.log(`%c<${key} [${i}]:RAW>%c\n${list[i]}\n%c<${key} [${i}]:TRANSLATED>%c\n${translatedList[i].translation}`, 'font-weight: bold; color: red', '', 'font-weight: bold; color: blue', '');
+                                        console.log(`Translation result:`, translatedList[i]);
+                                    }
+                                }
+                                restore(data, translatedList.map(result => result.translation));
+                            }
+                        }
+                    });
+                }
+            }, onGameEnd: () => {
+                this.unloadTranslationFont();
                 IOHook.handle_message.after.removeHandler('translation-handler');
             }
         });

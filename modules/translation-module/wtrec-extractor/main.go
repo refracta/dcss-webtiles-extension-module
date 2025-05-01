@@ -1,3 +1,5 @@
+// go:build 1.22
+// main.go  – DSL-driven extractor + hooks (TRANAPP)
 package main
 
 import (
@@ -12,9 +14,11 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 /* ─────────── A. 경로 설정 ─────────── */
+
 const (
 	localRoot = "../wtrec-downloader/wtrecs" // 입력 폴더
 	tmpDir    = "units_tmp"                  // 중간 tmp
@@ -22,11 +26,12 @@ const (
 )
 
 /* ─────────── B. 공통 유틸 ─────────── */
+
 var invalid = regexp.MustCompile(`[<>:"/\\|?*]`)
 
 func safeName(s string) string { return invalid.ReplaceAllString(s, "_") }
 
-// 간단 토크나이저: <tag> 제거 후 텍스트만
+// HTML 태그 제거용 간단 토크나이저
 var tagRE = regexp.MustCompile(`</?[a-z]+>`)
 
 func tokenize(src string) []string {
@@ -34,211 +39,215 @@ func tokenize(src string) []string {
 	parts := strings.Split(out, "\x00")
 	res := make([]string, 0, len(parts))
 	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p != "" {
+		if p = strings.TrimSpace(p); p != "" {
 			res = append(res, p)
 		}
 	}
 	return res
 }
 
-/* ─────────── C. processor 정의 ─────────── */
+/* ─────────── C. DSL & 훅 구현 ─────────── */
+
+type pathSeg struct {
+	key        string
+	isArray    bool
+	isObjArray bool
+}
+
 type processor struct {
 	key     string
-	match   func(map[string]any) bool
+	msgType string
+	path    []pathSeg
+	option  string
 	extract func(map[string]any) []string
+	match   func(map[string]any) bool
 }
 
-// JSON 헬퍼
-func str(m map[string]any, k string) string {
-	if v, ok := m[k]; ok {
-		if s, ok := v.(string); ok {
-			return s
+/* ---- 1) 훅 정의 ---- */
+
+type hookFn func(string) []string
+
+var (
+	hookTokenize hookFn = func(s string) []string { return tokenize(s) }
+
+	hookQuoteRE        = regexp.MustCompile(`(?s)_{10,}\n\n<.+?>(.+?)\n<.+?>`)
+	hookQuote   hookFn = func(s string) []string {
+		if m := hookQuoteRE.FindStringSubmatch(s); len(m) == 2 {
+			return []string{m[1]}
 		}
+		return nil
 	}
-	return ""
-}
-func arr(m map[string]any, k string) []any {
-	if v, ok := m[k]; ok {
-		if a, ok := v.([]any); ok {
-			return a
+
+	hookLines hookFn = func(s string) []string { return strings.Split(s, "\n") }
+
+	hooks = map[string]hookFn{
+		"tokenize": hookTokenize,
+		"quote":    hookQuote,
+		"lines":    hookLines,
+	}
+)
+
+/* ---- 2) DSL 파서 ---- */
+
+func parseSpec(spec string) (msgType string, path []pathSeg, option string) {
+	headTail := strings.SplitN(spec, "@", 2)
+	msgType, tail := headTail[0], headTail[1]
+
+	pathPart := tail
+	if i := strings.Index(tail, "#"); i != -1 {
+		pathPart, option = tail[:i], tail[i+1:]
+	}
+
+	for _, seg := range strings.Split(pathPart, ".") {
+		ps := pathSeg{key: seg}
+		switch {
+		case strings.HasSuffix(seg, "[]"):
+			ps.key, ps.isArray = seg[:len(seg)-2], true
+		case strings.HasSuffix(seg, "[o]"):
+			ps.key, ps.isArray, ps.isObjArray = seg[:len(seg)-3], true, true
 		}
+		path = append(path, ps)
 	}
-	return nil
+	return
 }
 
-// processor 전부 (14 개)
-func processors() []processor {
-	ps := []processor{
-		// 1) msgs:messages[]
-		{
-			key: "msgs@messages[]",
-			match: func(m map[string]any) bool {
-				return str(m, "msg") == "msgs" && len(arr(m, "messages")) > 0
-			},
-			extract: func(m map[string]any) []string {
-				var out []string
-				for _, v := range arr(m, "messages") {
-					if mm, ok := v.(map[string]any); ok {
-						if t := str(mm, "text"); t != "" {
-							out = append(out, t)
-						}
-					}
-				}
-				return out
-			},
-		},
-		// 2) msgs:messages[]|tokenize
-		{
-			key: "msgs@messages[]#tokenize",
-			match: func(m map[string]any) bool {
-				return str(m, "msg") == "msgs" && len(arr(m, "messages")) > 0
-			},
-			extract: func(m map[string]any) []string {
-				var out []string
-				for _, v := range arr(m, "messages") {
-					if mm, ok := v.(map[string]any); ok {
-						if t := str(mm, "text"); t != "" {
-							out = append(out, tokenize(t)...)
-						}
-					}
-				}
-				return out
-			},
-		},
-		// 3) menu:items[]
-		{
-			key: "menu@items[]",
-			match: func(m map[string]any) bool {
-				return str(m, "msg") == "menu" && len(arr(m, "items")) > 0
-			},
-			extract: func(m map[string]any) []string {
-				var out []string
-				for _, v := range arr(m, "items") {
-					if mm, ok := v.(map[string]any); ok {
-						if t := str(mm, "text"); t != "" {
-							out = append(out, t)
-						}
-					}
-				}
-				return out
-			},
-		},
+/* ---- 3) 값 수집 ---- */
+
+func collectValues(node any, path []pathSeg) []any {
+	if node == nil {
+		return nil
+	}
+	if len(path) == 0 {
+		return []any{node}
+	}
+	seg, rest := path[0], path[1:]
+
+	m, ok := node.(map[string]any)
+	if !ok {
+		return nil
+	}
+	child, ok := m[seg.key]
+	if !ok {
+		return nil
 	}
 
-	// 4~6) ui-push 버튼(메인/서브) description·label
-	addBtn := func(key, base, field string) {
-		ps = append(ps, processor{
-			key: key,
-			match: func(m map[string]any) bool {
-				if str(m, "msg") != "ui-push" {
-					return false
-				}
-				if blk, ok := m[base].(map[string]any); ok {
-					if btns, ok := blk["buttons"].([]any); ok {
-						for _, v := range btns {
-							if bb, ok := v.(map[string]any); ok && bb[field] != nil {
-								return true
-							}
-						}
-					}
-				}
-				return false
-			},
-			extract: func(m map[string]any) []string {
-				var out []string
-				if blk, ok := m[base].(map[string]any); ok {
-					if btns, ok := blk["buttons"].([]any); ok {
-						for _, v := range btns {
-							if bb, ok := v.(map[string]any); ok {
-								if s := str(bb, field); s != "" {
-									out = append(out, s)
-								}
-							}
-						}
-					}
-				}
-				return out
-			},
-		})
+	var nextNodes []any
+	switch {
+	case seg.isArray && seg.isObjArray:
+		if objArr, ok := child.(map[string]any); ok {
+			for _, v := range objArr {
+				nextNodes = append(nextNodes, v)
+			}
+		}
+	case seg.isArray:
+		if arr, ok := child.([]any); ok {
+			nextNodes = append(nextNodes, arr...)
+		}
+	default:
+		nextNodes = []any{child}
 	}
-	addBtn("ui-push@main-items.buttons[].description", "main-items", "description")
-	addBtn("ui-push@sub-items.buttons[].description", "sub-items", "description")
-	addBtn("ui-push@sub-items.buttons[].label", "sub-items", "label")
 
-	// 7) ui-push:main-items.buttons[].labels[]
-	ps = append(ps, processor{
-		key: "ui-push@main-items.buttons[].labels[]",
+	var out []any
+	for _, n := range nextNodes {
+		out = append(out, collectValues(n, rest)...)
+	}
+	return out
+}
+
+/* ---- 4) Processor 팩토리 ---- */
+
+func makeProcessor(spec string) processor {
+	msgType, path, option := parseSpec(spec)
+	hook := hooks[option]
+
+	return processor{
+		key:     spec,
+		msgType: msgType,
+		path:    path,
+		option:  option,
 		match: func(m map[string]any) bool {
-			if str(m, "msg") != "ui-push" {
-				return false
-			}
-			if blk, ok := m["main-items"].(map[string]any); ok {
-				if btns, ok := blk["buttons"].([]any); ok {
-					for _, v := range btns {
-						if bb, ok := v.(map[string]any); ok && bb["labels"] != nil {
-							return true
-						}
-					}
-				}
-			}
-			return false
+			return m["msg"] == msgType && len(collectValues(m, path)) > 0
 		},
 		extract: func(m map[string]any) []string {
+			vals := collectValues(m, path)
 			var out []string
-			if blk, ok := m["main-items"].(map[string]any); ok {
-				if btns, ok := blk["buttons"].([]any); ok {
-					for _, v := range btns {
-						if bb, ok := v.(map[string]any); ok {
-							if ls, ok := bb["labels"].([]any); ok {
-								for _, l := range ls {
-									if s, ok := l.(string); ok {
-										out = append(out, s)
-									}
-								}
-							}
-						}
+			for _, v := range vals {
+				if s, ok := v.(string); ok && s != "" {
+					if hook != nil {
+						out = append(out, hook(s)...)
+					} else {
+						out = append(out, s)
 					}
 				}
 			}
 			return out
 		},
-	})
+	}
+}
 
-	// 8~12) ui-push 단일 필드
-	for _, f := range []string{"title", "text", "body", "actions", "prompt"} {
-		ff := f
-		ps = append(ps, processor{
-			key: "ui-push@" + ff,
-			match: func(m map[string]any) bool {
-				return str(m, "msg") == "ui-push" && m[ff] != nil
-			},
-			extract: func(m map[string]any) []string {
-				return []string{str(m, ff)}
-			},
-		})
+/* ---- 5) 전체 스펙 → processors ---- */
+
+func processors() []processor {
+	specs := []string{
+		"game_ended@message",
+		"map@cells[].mon.name",
+		"map@cells[].mon.plural",
+		"menu@alt_more",
+		"menu@items[].text",
+		"menu@more",
+		"menu@title.text",
+		"msgs@messages[].text",
+		"msgs@messages[].text#tokenize",
+		"player@god",
+		"player@inv[o].inscription",
+		"player@inv[o].name",
+		"player@inv[o].qty_field",
+		"player@inv[o].action_verb",
+		"player@place",
+		"player@quiver_desc",
+		"player@species",
+		"player@status[].desc",
+		"player@status[].light",
+		"player@status[].text",
+		"player@title",
+		"player@unarmed_attack",
+		"txt@lines[o]",
+		"ui-push@actions",
+		"ui-push@body",
+		"ui-push@body#quote",
+		"ui-push@body#lines",
+		"ui-push@highlight",
+		"ui-push@main-items.buttons[].description",
+		"ui-push@main-items.buttons[].labels[]",
+		"ui-push@more",
+		"ui-push@prompt",
+		"ui-push@quote",
+		"ui-push@spellset[].label",
+		"ui-push@spellset[].spells[].effect",
+		"ui-push@spellset[].spells[].letter",
+		"ui-push@spellset[].spells[].range_string",
+		"ui-push@spellset[].spells[].schools",
+		"ui-push@spellset[].spells[].title",
+		"ui-push@sub-items.buttons[].description",
+		"ui-push@sub-items.buttons[].label",
+		"ui-push@text",
+		"ui-push@title",
+		"ui-state@highlight",
+		"ui-state@text",
+		"update_menu@alt_more",
+		"update_menu@more",
+		"update_menu_items@items[].text",
 	}
 
-	// 13) ui-state:text
-	ps = append(ps, processor{
-		key: "ui-state@text",
-		match: func(m map[string]any) bool {
-			return str(m, "msg") == "ui-state" && m["text"] != nil
-		},
-		extract: func(m map[string]any) []string { return []string{str(m, "text")} },
-	})
-	// 14) game_ended:message
-	ps = append(ps, processor{
-		key: "game_ended@message",
-		match: func(m map[string]any) bool {
-			return str(m, "msg") == "game_ended" && m["message"] != nil
-		},
-		extract: func(m map[string]any) []string { return []string{str(m, "message")} },
-	})
+	ps := make([]processor, 0, len(specs))
+	for _, s := range specs {
+		ps = append(ps, makeProcessor(s))
+	}
 	return ps
 }
 
 /* ─────────── D. tmp writer ─────────── */
+
 type fileWriter struct {
 	file   *os.File
 	writer *bufio.Writer
@@ -273,6 +282,7 @@ func (p *writerPool) closeAll() {
 }
 
 /* ─────────── E. JSON 파일 처리 ─────────── */
+
 func processFile(path string, procs []processor, pool *writerPool) error {
 	f, err := os.Open(path)
 	if err != nil {
@@ -294,9 +304,7 @@ func processFile(path string, procs []processor, pool *writerPool) error {
 		for _, p := range procs {
 			if p.match(m) {
 				for _, s := range p.extract(m) {
-					if s != "" {
-						pool.write(p.key, s)
-					}
+					pool.write(p.key, s)
 				}
 			}
 		}
@@ -304,7 +312,8 @@ func processFile(path string, procs []processor, pool *writerPool) error {
 	return nil
 }
 
-/* ─────────── F. tmp → 정렬·중복 → 저장 ─────────── */
+/* ─────────── F. tmp → 중복 제거·정렬 → 저장 ─────────── */
+
 func sortUniq(lines []string) []string {
 	sort.Strings(lines)
 	out := make([]string, 0, len(lines))
@@ -370,10 +379,11 @@ func flushTmp(parallel int) error {
 }
 
 /* ─────────── G. main ─────────── */
+
 func main() {
 	_ = os.MkdirAll(tmpDir, 0o755)
 
-	// 1) 입력 파일 탐색
+	/* 1) 입력 파일 스캔 */
 	var files []string
 	filepath.WalkDir(localRoot, func(p string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() && strings.HasSuffix(d.Name(), ".json") {
@@ -381,20 +391,31 @@ func main() {
 		}
 		return nil
 	})
-	if len(files) == 0 {
+	total := len(files)
+	if total == 0 {
 		fmt.Println("⚠  no json under", localRoot)
 		return
 	}
 	sort.Strings(files)
-	fmt.Printf("📄 %d files found\n", len(files))
+	fmt.Printf("📄 %d files found\n", total)
 
-	// 2) 병렬 파싱
+	/* 2) 병렬 파싱 */
 	procs := processors()
 	pool := newWriterPool()
 
 	maxParse := runtime.NumCPU() * 4
 	sem := make(chan struct{}, maxParse)
 	var wg sync.WaitGroup
+
+	var done int32 // <= 처리된 파일 수
+
+	logProgress := func() {
+		d := atomic.AddInt32(&done, 1)     // 완료 개수
+		if d%100 == 0 || int(d) == total { // 100개마다 또는 끝에서만
+			fmt.Printf("   … %d / %d done  (%d remaining)\n",
+				d, total, total-int(d))
+		}
+	}
 
 	for _, f := range files {
 		f := f
@@ -404,6 +425,7 @@ func main() {
 			if err := processFile(f, procs, pool); err != nil {
 				fmt.Println("⚠", err)
 			}
+			logProgress() // ← 여기!
 			wg.Done()
 			<-sem
 		}()
@@ -411,7 +433,7 @@ func main() {
 	wg.Wait()
 	pool.closeAll()
 
-	// 3) tmp → 결과
+	/* 3) tmp → 결과 */
 	if err := flushTmp(runtime.NumCPU() * 2); err != nil {
 		fmt.Println("❌", err)
 	}
