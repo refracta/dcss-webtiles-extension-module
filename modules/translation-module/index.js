@@ -7,95 +7,6 @@ export default class TranslationModule {
     static dependencies = ['IOHook', 'RCManager', 'SiteInformation'];
     static description = '(Beta) This module provides i18n feature.';
 
-    constructor() {
-        /* ===== 한글·받침 판별 유틸 ===== */
-        const isHangul = cp => cp >= 0xAC00 && cp <= 0xD7A3;
-        const hasBatchim = word => {
-            const cp = word.charCodeAt(word.length - 1);
-            return isHangul(cp) && (cp - 0xAC00) % 28 !== 0;   // 종성 0 → 받침 없음
-        };
-        const jongIdx = word => {
-            const cp = word.charCodeAt(word.length - 1);
-            return isHangul(cp) ? (cp - 0xAC00) % 28 : -1;     // -1 = 비한글
-        };
-
-        /* ===== 헬퍼: 조사 생성 ===== */
-        const josa = (withBatchim, withoutBatchim, paren = false) => w => {
-            const last = w.charCodeAt(w.length - 1);
-            if (!isHangul(last)) {
-                return paren ? `${w}${withBatchim}(${withoutBatchim})` : w + withoutBatchim;
-            }
-            return w + (hasBatchim(w) ? withBatchim : withoutBatchim);
-        };
-
-        /* ===== this.functions ===== */
-        this.functions = {
-            /* 주제·보조 */
-            '은': josa('은', '는', true),
-            '는': josa('은', '는', true),
-
-            /* 주격 */
-            '이': josa('이', '가', true),
-            '가': josa('이', '가', true),
-
-            /* 목적격 */
-            '을': josa('을', '를', true),
-            '를': josa('을', '를', true),
-
-            /* 대등·동반 */
-            '과': josa('과', '와'),
-            '와': josa('과', '와'),
-            '이랑': josa('이랑', '랑'),
-            '랑': josa('이랑', '랑'),
-
-            /* 선택·비교·양보 */
-            '이나': josa('이나', '나'),
-            '나': josa('이나', '나'),
-            '이라도': josa('이라도', '라도'),
-            '라도': josa('이라도', '라도'),
-            '이든': josa('이든', '든'),
-            '든': josa('이든', '든'),
-            '이든지': josa('이든지', '든지'),
-            '든지': josa('이든지', '든지'),
-
-            /* 인용 */
-            '이라고': josa('이라고', '라고'),
-            '라고': josa('이라고', '라고'),
-
-            /* 조건·원인 */
-            '이라면': josa('이라면', '라면'),
-            '라면': josa('이라면', '라면'),
-            '이라서': josa('이라서', '라서'),
-            '라서': josa('이라서', '라서'),
-
-            /* 병렬 */
-            '이며': josa('이며', '며'),
-            '며': josa('이며', '며'),
-            '이고': josa('이고', '고'),
-            '고': josa('이고', '고'),
-
-            /* 의문·강조 */
-            '이냐': josa('이냐', '냐'),
-            '냐': josa('이냐', '냐'),
-            '이니': josa('이니', '니'),
-            '니': josa('이니', '니'),
-
-            /* 호격 */
-            '아': josa('아', '야'),
-            '야': josa('아', '야'),
-
-            /* 방향·수단 : 특수 규칙 */
-            '으로': w => {
-                const j = jongIdx(w);
-                return w + ((j === 0 || j === 8 || j === -1) ? '로' : '으로');
-            },
-            '로': w => {
-                const j = jongIdx(w);
-                return w + ((j === 0 || j === 8 || j === -1) ? '로' : '으로');
-            }
-        };
-    }
-
     loadTranslationFont(language) {
         if (language === 'ko') {
             window.WebFontConfig = {
@@ -127,7 +38,7 @@ export default class TranslationModule {
     #getTranslationConfig(rcfile) {
         const {RCManager} = DWEM.Modules;
         const translationLanguage = RCManager.getRCOption(rcfile, 'translation_language', 'string');
-        const translationFile = RCManager.getRCOption(rcfile, 'translation_file', 'string', 'http://localhost:8000/build/matchers/latest.json');
+        const translationFile = RCManager.getRCOption(rcfile, 'translation_file', 'string', 'http://localhost:8000/build/latest.json');
         const useTranslationFont = RCManager.getRCOption(rcfile, 'use_translation_font', 'boolean');
         const translationDebug = RCManager.getRCOption(rcfile, 'translation_debug', 'boolean');
 
@@ -150,7 +61,7 @@ export default class TranslationModule {
                         console.log('[TranslationModule] Config:', this.config);
                         console.log(`[TranslationModule] Matchers file loaded (${this.matchers.length}):`, this.matchers);
                     }
-                    this.translator = new Translator(this.matchers, this.functions);
+                    this.translator = new Translator(this.matchers, DataManager.functions);
                     IOHook.handle_message.before.addHandler('translation-handler', (data) => {
 
                         if (this.config.translationDebug) {
