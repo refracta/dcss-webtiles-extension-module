@@ -81,7 +81,7 @@ export default class TranslationModule {
                                 const translatedList = list.map((unitText) => this.translator.translate(unitText, this.config.translationLanguage, key));
                                 if (this.config.translationDebug) {
                                     for (let i = 0; i < list.length; i++) {
-                                        console.log(`%c<${key} [${i}]:RAW>%c\n${list[i]}\n%c<${key} [${i}]:TRANSLATED>%c\n${translatedList[i].translation}`, 'font-weight: bold; color: red', '', 'font-weight: bold; color: blue', '');
+                                        console.log(`%c<${key} [${i}]:RAW>%c\n${list[i]}\n%c<${key} [${i}]:TRANSLATED>%c\n${translatedList[i].translation}\n%c<${key} [${i}]:RESULT>%c\n${JSON.stringify(translatedList[i], null, 4)}`, 'font-weight: bold; color: red', '', 'font-weight: bold; color: blue', '', 'font-weight: bold; color: grey', '');
                                         console.log(`Translation result:`, translatedList[i]);
                                     }
                                 }

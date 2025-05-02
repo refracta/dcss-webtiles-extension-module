@@ -135,10 +135,10 @@ def generate_translation_file(request):
                                      action_flag__in=(ADDITION, CHANGE, DELETION))
     counts = Counter(log_qs.values_list("user__username", flat=True))
 
-    messages = [
-        f"Thanks to {user} (x{cnt})"
+    messages = [", ".join([
+        f"{user} (x{cnt})"
         for user, cnt in sorted(counts.items(), key=lambda x: -x[1])
-    ]
+    ])]
 
     # 3. 최종 JSON 구조
     payload = {
