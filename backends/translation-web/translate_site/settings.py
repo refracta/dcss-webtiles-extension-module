@@ -156,6 +156,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 BUILD_ROOT = BASE_DIR / "build"
 BUILD_URL  = "/build/"
 
+STATICFILES_DIRS = [
+    BASE_DIR / "static",        # (있다면)
+    BUILD_ROOT,                 # ★ 추가
+]
+
 JAZZMIN_SETTINGS = {
     "site_title": "Dashboard",
     "site_header": "DCSS Translation",
