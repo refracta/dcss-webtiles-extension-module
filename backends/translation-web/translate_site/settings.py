@@ -155,7 +155,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 BUILD_ROOT = BASE_DIR / "build"
 BUILD_URL  = "/build/"
-WHITENOISE_AUTOREFRESH = True
+
 STATICFILES_DIRS = [
     BASE_DIR / "static",        # (있다면)
     BUILD_ROOT,                 # ★ 추가

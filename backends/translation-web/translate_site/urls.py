@@ -5,6 +5,8 @@ from django.conf.urls.static import static
 from django.shortcuts import redirect
 from django.contrib import admin
 from core import views as core_views
+from django.urls import re_path
+from .views_build import serve_build
 
 urlpatterns = [
     path("", lambda r: redirect("admin:index")),
@@ -17,6 +19,7 @@ urlpatterns = [
 
     # (2) JSON 생성 → 이름을 **generate-matchers** 로 유지
     path("build/generate/", core_views.generate_translation_file, name="generate-translation-file"),
+    re_path(r"^build/(?P<path>.+)$", serve_build, name="serve-build"),
 
 ]
 
