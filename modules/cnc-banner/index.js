@@ -460,6 +460,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                             <br>
                             7/2 업데이트: <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a>에 추가된 <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a> 모듈을 사용해보세요!
                             <br>
+                            <a href="https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing">번역 모듈</a>이 추가되었습니다. 한국어로 게임을 즐겨보세요. 관심이 있다면 번역 작업에도 도움을 주세요!
+                            <br>
                             ${this.getTournaments()}
                 </p>
             </div>
@@ -563,6 +565,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         For account or server issues, contact ASCIIPhilia on <a href="https://discord.gg/cFUynNtAVA">Server Discord</a>.
                         <br>
                         7/2 Update: Try the new <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a> module <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a>!
+                        <br>
+                        <a href="https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing">Translation Module</a> has been added to DWEM. If you are interested, please help with the translation work.
                         <br>
                         ${this.getTournaments()}
                     </p>
