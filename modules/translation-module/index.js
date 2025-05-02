@@ -39,8 +39,8 @@ export default class TranslationModule {
         const {RCManager} = DWEM.Modules;
         const translationLanguage = RCManager.getRCOption(rcfile, 'translation_language', 'string');
         const translationFile = RCManager.getRCOption(rcfile, 'translation_file', 'string', 'https://translation.nemelex.cards/build/latest.json');
-        const useTranslationFont = RCManager.getRCOption(rcfile, 'use_translation_font', 'boolean');
-        const translationDebug = RCManager.getRCOption(rcfile, 'translation_debug', 'boolean');
+        const useTranslationFont = RCManager.getRCOption(rcfile, 'use_translation_font', 'boolean', true);
+        const translationDebug = RCManager.getRCOption(rcfile, 'translation_debug', 'boolean', false);
 
         return {
             translationLanguage, useTranslationFont, translationFile, translationDebug
