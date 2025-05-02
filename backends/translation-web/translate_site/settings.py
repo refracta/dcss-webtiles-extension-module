@@ -26,8 +26,8 @@ SECRET_FILE = BASE_DIR / ".secret_key"
 import os
 from django.core.management.utils import get_random_secret_key
 
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://discord.com/api/webhooks/1367878924503224320/HjwThN0hlM49t8lxVGuUErQTv2dNo62xfJjl5pIdFQxWU1eQ5CpP5ZcWxxLJTdNC4mYu")   # 빈 값이면 전송 안 함
-EXTERNAL_URL = os.getenv("EXTERNAL_URL", "http://localhost:8000")   # 빈 값이면 전송 안 함
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")   # 빈 값이면 전송 안 함
+EXTERNAL_URL = os.getenv("EXTERNAL_URL", "https://translation.nemelex.cards")   # 빈 값이면 전송 안 함
 
 
 if "DJANGO_SECRET_KEY" in os.environ:
