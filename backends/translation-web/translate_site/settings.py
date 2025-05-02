@@ -28,7 +28,7 @@ SECRET_FILE = BASE_DIR / ".secret_key"
 import os
 from django.core.management.utils import get_random_secret_key
 
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")   # 빈 값이면 전송 안 함
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")   # 빈 값이면 전송 안 함
 EXTERNAL_URL = os.getenv("EXTERNAL_URL", "https://translation.nemelex.cards")   # 빈 값이면 전송 안 함
 CSRF_TRUSTED_ORIGINS = ["https://translation.nemelex.cards"]
 
