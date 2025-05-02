@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 
+from django.conf.global_settings import CSRF_TRUSTED_ORIGINS
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -28,7 +30,7 @@ from django.core.management.utils import get_random_secret_key
 
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")   # 빈 값이면 전송 안 함
 EXTERNAL_URL = os.getenv("EXTERNAL_URL", "https://translation.nemelex.cards")   # 빈 값이면 전송 안 함
-
+CSRF_TRUSTED_ORIGINS = ["https://translation.nemelex.cards"]
 
 if "DJANGO_SECRET_KEY" in os.environ:
     # 1️⃣ 환경 변수 우선
