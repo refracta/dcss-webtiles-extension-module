@@ -132,8 +132,8 @@ export default class Translator {
             const translatedCnt = translations.filter(t => t.status === 'translated').length;
 
             result.total_status =
-                translatedCnt === translations.length ? 'full-translated'
-                    : translatedCnt > 0 ? 'partial-translated'
+                translatedCnt === translations.length ? 'translated'
+                    : translatedCnt > 0 ? 'part-translated'
                         : 'untranslated';
 
             result.translations = translations;  // 하위 객체엔 total_status 없음
