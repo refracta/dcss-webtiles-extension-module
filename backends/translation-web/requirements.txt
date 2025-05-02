@@ -3,3 +3,4 @@ django-jazzmin==2.6.2
 django-cors-headers~=4.3
 whitenoise~=6.6
 gunicorn~=22.0
+requests
