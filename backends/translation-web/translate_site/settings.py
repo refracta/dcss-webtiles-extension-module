@@ -22,6 +22,29 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = ''
 
+SECRET_FILE = BASE_DIR / ".secret_key"
+import os
+from django.core.management.utils import get_random_secret_key
+
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://discord.com/api/webhooks/1367878924503224320/HjwThN0hlM49t8lxVGuUErQTv2dNo62xfJjl5pIdFQxWU1eQ5CpP5ZcWxxLJTdNC4mYu")   # 빈 값이면 전송 안 함
+EXTERNAL_URL = os.getenv("EXTERNAL_URL", "http://localhost:8000")   # 빈 값이면 전송 안 함
+
+
+if "DJANGO_SECRET_KEY" in os.environ:
+    # 1️⃣ 환경 변수 우선
+    SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
+
+elif SECRET_FILE.exists():
+    # 2️⃣ 이전에 생성된 파일 재사용
+    SECRET_KEY = SECRET_FILE.read_text().strip()
+
+else:
+    # 3️⃣ 처음 실행 → 랜덤 키 생성 후 파일에 저장
+    SECRET_KEY = get_random_secret_key()
+    SECRET_FILE.write_text(SECRET_KEY)
+    # (권장) 권한을 600 으로 제한
+    SECRET_FILE.chmod(0o600)
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
@@ -52,6 +75,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "core.middleware.CurrentUserMiddleware",
 ]
 
 ROOT_URLCONF = 'translate_site.urls'

@@ -1,0 +1,19 @@
+services:
+  node:
+    image: python:3.12-bookworm
+    ports:
+      - "43034:8000"
+    volumes:
+      - .:/usr/src
+    working_dir: /usr/src
+    command: >
+      sh -c "
+        if [ ! -e db.sqlite3 ]; then
+          pip install --no-cache-dir -r requirements.txt &&
+          python manage.py migrate &&
+          python manage.py collectstatic --noinput
+        fi &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    restart: unless-stopped
+# python manage.py createsuperuser

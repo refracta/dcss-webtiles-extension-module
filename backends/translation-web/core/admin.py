@@ -42,9 +42,10 @@ from django.urls import reverse
 from django.utils.html import escape, mark_safe
 from urllib.parse import urlencode
 from .models import TranslationData
-from .forms  import TranslationDataForm
+from .forms import TranslationDataForm
 
 import base64
+
 
 @admin.register(TranslationData)
 class TranslationDataAdmin(admin.ModelAdmin):
@@ -53,26 +54,37 @@ class TranslationDataAdmin(admin.ModelAdmin):
     search_fields = ("source", "content")
     list_per_page = 50
     list_filter = ("source",)
-    readonly_fields = ("source", "content", "content_pre", "translation", "translation_status", "to_matcher_link", "translation_info")
+    readonly_fields = (
+        "source", "content", "content_pre", "translation", "translation_status", "to_matcher_link", "translation_info")
 
     fieldsets = (
-        (None, {"fields": ("source", "content_pre", "translation", "translation_info", "translation_status", "to_matcher_link")}),
+        (None, {"fields": (
+            "source", "content_pre", "translation", "translation_info", "translation_status", "to_matcher_link")}),
     )
 
+    def save_model(self, request, obj, form, change):
+        # ▲ signals 쪽에서 읽을 수 있도록
+        obj._actor = request.user.username  # ← 한 줄 추가
+        super().save_model(request, obj, form, change)
+
     def get_readonly_fields(self, request, obj=None):
-        if obj is None:                 # ➜ 새 레코드 추가 화면
-            return ("content_pre", "translation", "translation_status", "to_matcher_link", "translation_info")                  # 두 필드 모두 수정 가능
-        return ("source", "content", "content_pre", "translation", "translation_status", "to_matcher_link", "translation_info")
+        if obj is None:  # ➜ 새 레코드 추가 화면
+            return (
+                "content_pre", "translation", "translation_status", "to_matcher_link",
+                "translation_info")  # 두 필드 모두 수정 가능
+        return (
+            "source", "content", "content_pre", "translation", "translation_status", "to_matcher_link",
+            "translation_info")
 
     def get_fieldsets(self, request, obj=None):
-        if obj is None:                 # ➜ 새 레코드 추가 화면
+        if obj is None:  # ➜ 새 레코드 추가 화면
             return (
                 (None, {"fields": ("source", "content")}),
-            )                   # 두 필드 모두 수정 가능
+            )  # 두 필드 모두 수정 가능
         return (
-            (None, {"fields": ("source", "content_pre", "translation", "translation_info", "translation_status", "to_matcher_link")}),
+            (None, {"fields": (
+                "source", "content_pre", "translation", "translation_info", "translation_status", "to_matcher_link")}),
         )
-
 
     def translation_info(self, obj):
         """
@@ -86,6 +98,7 @@ class TranslationDataAdmin(admin.ModelAdmin):
             f'data-source="{escape(obj.source)}" '
             f'data-content="{escape(obj.content)}"></span>'
         )
+
     translation_info.short_description = "Translation Result"
 
     @admin.display(description="Status")
@@ -105,13 +118,14 @@ class TranslationDataAdmin(admin.ModelAdmin):
 
     content_pre.short_description = "Content"
     content_pre.admin_order_field = "content"
+
     # ── To matcher 버튼 ───────────────────────────────────────
     def to_matcher_link(self, obj):
         add_url = reverse("admin:core_matcher_add")
 
-        params  = urlencode({
+        params = urlencode({
             "category": obj.source,
-            "raw": obj.content.encode(),       # ← 인코딩된 값
+            "raw": obj.content.encode(),  # ← 인코딩된 값
             "type": "raw",
         })
 
@@ -191,12 +205,42 @@ def export_as_json(modeladmin, request, qs):
     return resp
 
 
+from django.db.models import TextField, Q
+from django.db.models.functions import Cast
+
+
 # ──────────────────────────────────────────
 # ModelAdmin
 # ──────────────────────────────────────────
 @admin.register(Matcher)
 class MatcherAdmin(admin.ModelAdmin):
     form = MatcherForm
+
+    def save_model(self, request, obj, form, change):
+        # ▲ signals 쪽에서 읽을 수 있도록
+        obj._actor = request.user.username  # ← 한 줄 추가
+        super().save_model(request, obj, form, change)
+
+    def get_search_results(self, request, queryset, search_term):
+        qs, use_distinct = super().get_search_results(
+            request, queryset, search_term
+        )
+
+        if search_term:
+            # 1) JSON → TEXT 로 캐스팅
+            txt_qs = queryset.annotate(
+                rv_text=Cast("replace_value", TextField())
+            )
+
+            # 2) 검색어를 유니코드 이스케이프로 변환 (\uXXXX)
+            escaped = search_term.encode("unicode_escape").decode("ascii")
+
+            # 3) 원본 + 이스케이프 둘 다 contains 로 OR
+            qs |= txt_qs.filter(
+                Q(rv_text__contains=search_term) | Q(rv_text__contains=escaped)
+            )
+
+        return qs.distinct(), use_distinct
 
     list_display = (
         "match_type_col",
@@ -208,7 +252,7 @@ class MatcherAdmin(admin.ModelAdmin):
     )
     list_display_links = None  # 기본 a 태그 비활성화
     list_filter = ("category",)
-    search_fields = ("category", "raw", "regexp_source", "replace_value")
+    search_fields = ("category", "raw", "regexp_source", "replace_value", "memo")
     actions = [export_as_json]
 
     class Media:
@@ -225,7 +269,7 @@ class MatcherAdmin(admin.ModelAdmin):
             try:
                 init["raw"] = request.GET["raw"]
             except Exception:
-                pass   # 잘못된 인코딩이면 무시
+                pass  # 잘못된 인코딩이면 무시
 
         # category, type 등 다른 파라미터도 그대로 사용
         for key in ("category", "type"):
@@ -305,3 +349,4 @@ class MatcherAdmin(admin.ModelAdmin):
         return _wrap_link(obj, preview)
 
     memo_display.short_description = "Memo"
+    memo_display.admin_order_field = "memo"

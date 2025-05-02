@@ -124,4 +124,5 @@ class TranslationDataForm(forms.ModelForm):
             .values_list("source", flat=True)
             .distinct()
         )
-        self.fields["source"].widget = CategoryAutoCompleteWidget(cats)
+        if "sources" in self.fields:
+            self.fields["source"].widget = CategoryAutoCompleteWidget(cats)
