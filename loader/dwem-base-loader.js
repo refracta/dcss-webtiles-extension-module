@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DCSS Webtiles Extension Module Loader
 // @description  Load the DWEM from other Webtiles sites as well.
-// @version      1.8
+// @version      1.9
 // @author       refracta
 // @match        http://webzook.net:8080/*
 // @match        https://crawl.kelbi.org/*
