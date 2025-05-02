@@ -38,7 +38,7 @@ export default class TranslationModule {
     #getTranslationConfig(rcfile) {
         const {RCManager} = DWEM.Modules;
         const translationLanguage = RCManager.getRCOption(rcfile, 'translation_language', 'string');
-        const translationFile = RCManager.getRCOption(rcfile, 'translation_file', 'string', 'http://localhost:8000/build/latest.json');
+        const translationFile = RCManager.getRCOption(rcfile, 'translation_file', 'string', 'https://translation.nemelex.cards/build/latest.json');
         const useTranslationFont = RCManager.getRCOption(rcfile, 'use_translation_font', 'boolean');
         const translationDebug = RCManager.getRCOption(rcfile, 'translation_debug', 'boolean');
 
@@ -56,9 +56,16 @@ export default class TranslationModule {
                 this.config = this.#getTranslationConfig(rcfile);
                 if (this.config.translationLanguage) {
                     this.loadTranslationFont(this.config.translationLanguage);
-                    this.matchers = await fetch(this.config.translationFile, {cache: "no-store"}).then((r) => r.json());
+                    const {
+                        matchers,
+                        time,
+                        messages
+                    } = await fetch(this.config.translationFile, {cache: "no-store"}).then((r) => r.json());
+                    this.matchers = matchers;
                     if (this.config.translationDebug) {
                         console.log('[TranslationModule] Config:', this.config);
+                        console.log('[TranslationModule] Build time:', new Date(time));
+                        console.log('[TranslationModule] Messages:', messages);
                         console.log(`[TranslationModule] Matchers file loaded (${this.matchers.length}):`, this.matchers);
                     }
                     this.translator = new Translator(this.matchers, DataManager.functions);

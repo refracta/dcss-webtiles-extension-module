@@ -118,6 +118,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -128,14 +129,15 @@ BUILD_ROOT = BASE_DIR / "build"
 BUILD_URL  = "/build/"
 
 JAZZMIN_SETTINGS = {
-    "site_title": "번역 관리",
-    "site_header": "Translation Admin",
+    "site_title": "Dashboard",
+    "site_header": "DCSS Translation",
     "topmenu_links": [
         {
-            "name": "Generate matchers",
-            "url": "generate-matchers",
+            "name": "Generate translation file",
+            "url": "generate-translation-file",
             "permissions": ["core.view_matcher"],
         },
+        {"name": "User statistics", "url": "user-statistics", "permissions": ["auth.view_user"]},
     ],
 }
 

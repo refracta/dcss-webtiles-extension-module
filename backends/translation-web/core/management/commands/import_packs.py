@@ -34,7 +34,7 @@ class Command(BaseCommand):
 
     # ------------------------------------------------------------------
     def handle(self, *args, **kw):
-        packs_dir = Path(settings.BASE_DIR) / "packs"
+        packs_dir = Path(settings.BASE_DIR) / "../../modules/translation-module/wtrec-extractor/output"
         json_files = sorted(packs_dir.glob("*.json"))
         if not json_files:
             self.stdout.write(self.style.WARNING("packs 디렉터리에 JSON 파일이 없습니다."))
