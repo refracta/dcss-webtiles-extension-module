@@ -229,6 +229,7 @@ export default class DataManager {
         "ui-state@text",
         "update_menu@alt_more",
         "update_menu@more",
+        "update_menu@title.text",
         "update_menu_items@items[].text"
     ]);
 
