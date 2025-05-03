@@ -71,7 +71,7 @@ class Matcher(models.Model):
             # 2. raw 가 빈칸(즉 regex)인 경우,
             #    regexp_source + regexp_flag 쌍이 유일
             models.UniqueConstraint(
-                fields=["regexp_source", "regexp_flag"],
+                fields=["category", "regexp_source", "regexp_flag"],
                 condition=Q(raw=""),
                 name="uniq_regex_pair",
             ),
