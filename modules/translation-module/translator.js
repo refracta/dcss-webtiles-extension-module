@@ -5,15 +5,15 @@ export default class Translator {
 
         this.categories = {};
         for (const matcher of this.matchers) {
-            if (typeof matcher.regex === 'string') {
-                matcher.regexp = new RegExp(matcher.regex);
-            } else if (typeof matcher.regex === 'object') {
-                try {
+            try {
+                if (typeof matcher.regex === 'string') {
+                    matcher.regexp = new RegExp(matcher.regex);
+                } else if (typeof matcher.regex === 'object') {
                     matcher.regexp = new RegExp(matcher.regex.pattern, matcher.regex.flags);
-                } catch (e) {
-                    console.error(e);
-                    continue;
                 }
+            } catch (e) {
+                console.error(e);
+                continue;
             }
             matcher.groups = matcher?.groups?.map?.(g => typeof g === 'string' ? [g] : g) || [];
             if (!this.categories[matcher.category]) {
