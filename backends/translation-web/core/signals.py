@@ -69,17 +69,18 @@ def _td_embed(instance, action):
         }]
     }
 
-
+from django.utils.html import format_html, escape, mark_safe
 def groups_to_str(groups: list[str | list]) -> str:
     # 중첩 리스트 fl atten
     flat = []
 
     def walk(g, prefix=""):
+
         if isinstance(g, list):
             for i, sub in enumerate(g):
                 walk(sub, f"{prefix}{i + 1}:")
         else:
-            flat.append(f"{prefix}{g}")
+            flat.append(f"{escape(str(prefix if prefix is not None else "null"))}{g}")
 
     walk(groups)
     return " ".join(f"`{s}`" for s in flat)

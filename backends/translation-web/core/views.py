@@ -26,6 +26,7 @@ def _to_dict(m: Matcher) -> dict:
         )
     if m.groups:
         d["groups"] = m.groups
+    d["priority"] = m.priority
     return d
 
 from collections import Counter

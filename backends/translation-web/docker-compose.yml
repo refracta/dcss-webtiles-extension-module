@@ -1,6 +1,31 @@
 services:
-  node:
-    image: python:3.12-bookworm
+  mysql:
+    image: mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: translation-web
+      MYSQL_DATABASE: translation_web
+    volumes:
+      - ./data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  phpmyadmin:
+    image: phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "47081:80"
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+
+  translation-web:
+    build: .
+    depends_on:
+      mysql:
+        condition: service_healthy
     ports:
       - "43034:8000"
     volumes:
@@ -8,12 +33,16 @@ services:
     working_dir: /usr/src
     command: >
       sh -c "
-        if [ ! -e db.sqlite3 ]; then
+        if [ ! -e .inited ]; then
           python manage.py migrate &&
-          python manage.py collectstatic --noinput
+          python manage.py collectstatic --noinput &&
+          touch .inited
         fi &&
         pip install --no-cache-dir -r requirements.txt &&
         python manage.py runserver 0.0.0.0:8000
       "
     restart: unless-stopped
+
+
+
 # python manage.py createsuperuser

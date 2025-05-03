@@ -59,6 +59,7 @@ class MatcherForm(forms.ModelForm):
             "replace_value",
             "groups",
             "memo",
+            "priority"
         )
         widgets = {
             "replace_value": ReplaceValueWidget,
@@ -99,6 +100,7 @@ class MatcherForm(forms.ModelForm):
         if data.get("type") == "raw":
             data["regexp_source"] = ""
             data["regexp_flag"]   = ""
+            data["groups"]   = ""
             if not data.get("raw"):
                 self.add_error("raw", "Raw 값이 필요합니다.")
         else:

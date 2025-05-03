@@ -1,19 +1,11 @@
-import json, os, datetime
-from django.conf import settings
-from django.http import HttpResponse
 from django.contrib import admin
-from django.urls import reverse
-from django.utils.html import format_html, escape, mark_safe
-from django.db.models.functions import Coalesce
-
-from .models import Matcher
-from .forms import MatcherForm
-from django.utils.http import urlsafe_base64_decode
 
 admin.site.site_header = "DCSS Translation"  # 상단 굵은 글씨
 admin.site.site_title = "Dashboard"  # 브라우저 탭 <title>
 admin.site.index_title = "DCSS Translation"  # “Site administration” 자리
+from django.http import HttpResponseRedirect
 
+from .models import TranslationData, Matcher, AdminFastLink
 
 def _change_url(obj):
     """해당 객체의 admin change URL"""
@@ -31,29 +23,96 @@ def _wrap_link(obj, inner_html):
         mark_safe(inner_html),
     )
 
+@admin.register(AdminFastLink)
+class AdminFastLinkAdmin(admin.ModelAdmin):
+    def changelist_view(self, request, extra_context=None):
+        url = reverse('admin:core_translationdata_changelist') + '?mode=fast'
+        return HttpResponseRedirect(url)
 
-from .models import TranslationData
+    def has_module_permission(self, request):
+        return True  # 반드시 True로 설정해야 왼쪽 메뉴에 나옴
 
 # core/admin.py  (TranslationDataAdmin 부분만 발췌)
-import urllib.parse
 
-from django.contrib import admin
-from django.urls import reverse
-from django.utils.html import escape, mark_safe
+import json, os, datetime
 from urllib.parse import urlencode
-from .models import TranslationData
-from .forms import TranslationDataForm
 
-import base64
+from django.conf import settings
+from django.contrib import admin
+from django.db.models.functions import Coalesce
+from django.http import HttpResponse
+from django.urls import reverse
+from django.utils.html import format_html, escape, mark_safe
+
+from .forms import TranslationDataForm, MatcherForm
+from .utils import NoCountPaginator
+from .utils import SmartPaginator
+from django.db import models
+from django.db.models import Func, Value, F, Expression
+
+
+class MatchBoolean(Func):
+    """
+    MATCH(column) AGAINST (%s IN BOOLEAN MODE) → FLOAT score
+    사용:
+        qs.annotate(score=MatchBoolean('content', '+foo* -bar*'))
+    """
+    output_field = models.FloatField()
+    arity = 2  # column, query
+
+    def __init__(self, column: Expression | str, query: str, **extra):
+        if not isinstance(query, Expression):
+            query = Value(query)
+        super().__init__(column, query, **extra)
+
+    # 안전한 SQL 생성
+    def as_sql(self, compiler, connection, **extra_context):
+        col_sql, col_params = compiler.compile(self.source_expressions[0])
+        qry_sql, qry_params = compiler.compile(self.source_expressions[1])
+        sql = f"MATCH({col_sql}) AGAINST ({qry_sql} IN BOOLEAN MODE)"
+        return sql, col_params + qry_params
+
+
+FAST_PARAM = "mode"
+FAST_VALUE = "fast"
+from urllib.parse import parse_qsl
+
+
+def _is_fast_mode(request):
+    """`mode=fast` 여부를 request 에서 복구"""
+    # 1) 최초 요청(주소창)에서는 그대로 존재
+    if request.GET.get(FAST_PARAM) == FAST_VALUE:
+        return True
+    # 2) Django 내부 링크(다음 페이지 등)에서는 _changelist_filters 로 보존
+    pf = request.GET.get("_changelist_filters")
+    if pf:
+        qs = dict(parse_qsl(pf))
+        return qs.get(FAST_PARAM) == FAST_VALUE
+    return False
+
+
+from django.contrib.admin import SimpleListFilter
+
+
+class ModePassThroughFilter(SimpleListFilter):
+    title = ''
+    parameter_name = FAST_PARAM  # "mode"
+    template = 'admin/hidden_filter.html'
+    def lookups(self, request, model_admin):
+        return ((request.GET.get(self.parameter_name), ''),)
+
+    def queryset(self, request, queryset):
+        return queryset
 
 
 @admin.register(TranslationData)
 class TranslationDataAdmin(admin.ModelAdmin):
     form = TranslationDataForm
     list_display = ("id", "source", "content_pre", "translation", "translation_status", "to_matcher_link")
-    search_fields = ("source", "content")
+    search_fields = ["source"]
     list_per_page = 50
-    list_filter = ("source",)
+    list_filter = ("source", ModePassThroughFilter,)
+    paginator = NoCountPaginator
     readonly_fields = (
         "source", "content", "content_pre", "translation", "translation_status", "to_matcher_link", "translation_info")
 
@@ -61,6 +120,41 @@ class TranslationDataAdmin(admin.ModelAdmin):
         (None, {"fields": (
             "source", "content_pre", "translation", "translation_info", "translation_status", "to_matcher_link")}),
     )
+
+    # ────────────────────────────────────────────────
+    # URL ?mode=fast  → NoCountPaginator  사용
+    # ────────────────────────────────────────────────
+    def get_paginator(
+            self, request, queryset, per_page,
+            orphans=0, allow_empty_first_page=True, **kwargs,
+    ):
+        use_fast = _is_fast_mode(request)  # ← 핵심
+        PaginatorClass = NoCountPaginator if use_fast else SmartPaginator
+        return PaginatorClass(
+            queryset, per_page,
+            orphans=orphans,
+            allow_empty_first_page=allow_empty_first_page,
+            **kwargs,
+        )
+
+    def get_search_results(self, request, queryset, search_term):
+        base_qs, use_distinct = super().get_search_results(
+            request, queryset, search_term
+        )
+
+        if search_term:
+            boolean_query = " ".join(f"+{w}*" for w in search_term.split())
+
+            # 1) 먼저 annotate → filter 로 FT 결과만 얻는다
+            annotated = queryset.annotate(
+                score=MatchBoolean(F("content"), boolean_query)
+            )
+            ft_qs = annotated.filter(score__gt=0)
+
+            # 2) 두 QuerySet 합치기 (UNION)
+            base_qs = base_qs | ft_qs
+
+        return base_qs.distinct(), use_distinct
 
     def save_model(self, request, obj, form, change):
         # ▲ signals 쪽에서 읽을 수 있도록
@@ -173,36 +267,7 @@ class TranslationDataAdmin(admin.ModelAdmin):
         js = ("core/js/translationdata_dynamic.js",)  # 정적파일 경로
 
 
-# ──────────────────────────────────────────
-# Action
-# ──────────────────────────────────────────
-@admin.action(description="Export to JSON (Selected Matchers)")
-def export_as_json(modeladmin, request, qs):
-    items = []
-    for m in qs:
-        doc = {"category": m.category, "replaceValue": m.replace_value}
-        if m.raw:
-            doc["raw"] = m.raw
-        else:
-            doc["regex"] = (
-                {"pattern": m.regexp_source, "flags": m.regexp_flag}
-                if m.regexp_flag else m.regexp_source
-            )
-        if m.groups:
-            doc["groups"] = m.groups
-        items.append(doc)
 
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    fn = f"matchers_{ts}.json"
-    path = os.path.join(settings.BUILD_ROOT, fn)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fp:
-        json.dump(items, fp, ensure_ascii=False, indent=2)
-
-    resp = HttpResponse(json.dumps(items, ensure_ascii=False, indent=2),
-                        content_type="application/json")
-    resp["Content-Disposition"] = f'attachment; filename=\"{fn}\"'
-    return resp
 
 
 from django.db.models import TextField, Q
@@ -249,11 +314,11 @@ class MatcherAdmin(admin.ModelAdmin):
         "replace_value_display",
         "groups_display",
         "memo_display",
+        "priority"
     )
     list_display_links = None  # 기본 a 태그 비활성화
     list_filter = ("category",)
     search_fields = ("category", "raw", "regexp_source", "replace_value", "memo")
-    actions = [export_as_json]
 
     class Media:
         js = ("core/js/matcher_form_toggle.js",)
@@ -335,7 +400,7 @@ class MatcherAdmin(admin.ModelAdmin):
         if not obj.groups:
             return _wrap_link(obj, "–")
         badges = " ".join(
-            f'<span class="badge bg-info">{i + 1}:{escape(str(v))}</span>'
+            f'<span class="badge bg-info">{i + 1}:{escape(str(v if v is not None else "null"))}</span>'
             for i, v in enumerate(obj.groups)
         )
         return _wrap_link(obj, badges)

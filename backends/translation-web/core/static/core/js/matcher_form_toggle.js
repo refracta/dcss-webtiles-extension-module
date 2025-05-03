@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Jazzmin & 기본 Admin 양쪽 호환: 행(div) 클래스는 field-<name>
     const rawRow  = document.querySelector(".field-raw");
     const srcRow  = document.querySelector(".field-regexp_source");
+    const groupsRow  = document.querySelector(".field-groups");
     const flagRow = document.querySelector(".field-regexp_flag");
 
     function showRow(row) {
@@ -26,10 +27,12 @@ document.addEventListener("DOMContentLoaded", () => {
             showRow(rawRow);
             hideRow(srcRow);
             hideRow(flagRow);
+            hideRow(groupsRow);
         } else {
             hideRow(rawRow);
             showRow(srcRow);
             showRow(flagRow);
+            showRow(groupsRow);
         }
     }
 
