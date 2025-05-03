@@ -42,6 +42,7 @@ class Command(BaseCommand):
                 Path(settings.BASE_DIR)
                 / "packs"
         )
+
         json_files = sorted(packs_dir.glob("*.json"))
         if not json_files:
             self.stdout.write(

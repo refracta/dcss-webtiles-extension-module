@@ -24,6 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = ''
 
+
 SECRET_FILE = BASE_DIR / ".secret_key"
 import os
 from django.core.management.utils import get_random_secret_key
