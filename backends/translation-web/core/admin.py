@@ -335,7 +335,7 @@ class MatcherAdmin(admin.ModelAdmin):
         if not obj.groups:
             return _wrap_link(obj, "–")
         badges = " ".join(
-            f'<span class="badge bg-info">{i}:{escape(str(v))}</span>'
+            f'<span class="badge bg-info">{i + 1}:{escape(str(v))}</span>'
             for i, v in enumerate(obj.groups)
         )
         return _wrap_link(obj, badges)

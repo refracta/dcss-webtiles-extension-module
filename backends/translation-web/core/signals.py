@@ -77,7 +77,7 @@ def groups_to_str(groups: list[str | list]) -> str:
     def walk(g, prefix=""):
         if isinstance(g, list):
             for i, sub in enumerate(g):
-                walk(sub, f"{prefix}{i}:")
+                walk(sub, f"{prefix}{i + 1}:")
         else:
             flat.append(f"{prefix}{g}")
 
