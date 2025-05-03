@@ -16,7 +16,7 @@ services:
     image: phpmyadmin
     restart: unless-stopped
     ports:
-      - "47081:80"
+      - "43081:80"
     environment:
       - PMA_HOST=mysql
       - PMA_PORT=3306
