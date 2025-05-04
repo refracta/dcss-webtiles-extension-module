@@ -5,7 +5,7 @@ admin.site.site_header = "DCSS Translation"  # 상단 굵은 글씨
 admin.site.site_title = "Dashboard"  # 브라우저 탭 <title>
 admin.site.index_title = "DCSS Translation"  # “Site administration” 자리
 from django.http import HttpResponseRedirect
-
+from django.forms.models import model_to_dict
 from .models import TranslationData, Matcher, AdminFastLink
 
 
@@ -224,7 +224,7 @@ class TranslationDataAdmin(admin.ModelAdmin):
 
         params = urlencode({
             "category": obj.source,
-            "raw": obj.content.encode(),  # ← 인코딩된 값
+            "raw": obj.content,  # ← 인코딩된 값
             "type": "raw",
         })
 
@@ -300,6 +300,7 @@ from .models import TranslationData, Matcher, AdminFastLink
 from .forms import TranslationDataForm, MatcherForm
 from .utils import NoCountPaginator, SmartPaginator
 
+
 # ──────────────────────────────────────────
 # ModelAdmin
 # ──────────────────────────────────────────
@@ -343,10 +344,12 @@ class MatcherAdmin(admin.ModelAdmin):
         "memo_display",
         "priority",
         "ignore_part_translated_display",
+        "copy_link"
     )
     list_display_links = None  # 기본 a 태그 비활성화
     list_filter = ("category",)
     search_fields = ("category", "raw", "regexp_source", "replace_value", "groups", "memo")
+
 
     class Media:
         js = ("core/js/matcher_form_toggle.js",)
@@ -354,20 +357,34 @@ class MatcherAdmin(admin.ModelAdmin):
     def get_changeform_initial_data(self, request):
         """
         /admin/core/matcher/add/?category=...&raw_b64=...&type=raw
-        → GET 파라미터를 초기값으로 변환
+        → GET 파라미터를 ModelAdmin 기본 initial dict 로 변환
         """
         init = super().get_changeform_initial_data(request)
 
-        if "raw" in request.GET:
-            try:
-                init["raw"] = request.GET["raw"]
-            except Exception:
-                pass  # 잘못된 인코딩이면 무시
-
-        # category, type 등 다른 파라미터도 그대로 사용
-        for key in ("category", "type"):
+        # 1) 일반 문자열·숫자 필드 ------------------------------
+        simple_keys = (
+            "category", "type", "raw",          # ← raw(plain) or regex_source
+            "regexp_source", "regexp_flag",
+            "priority", "memo",
+        )
+        for key in simple_keys:
             if key in request.GET:
                 init[key] = request.GET[key]
+
+        # 3) JSON 문자열(딕셔너리/리스트) ------------------------
+        json_keys = ("replace_value", "groups")
+        for key in json_keys:
+            if key in request.GET:
+                try:
+                    init[key] = json.loads(request.GET[key])
+                except json.JSONDecodeError:
+                    init[key] = request.GET[key]   # 그냥 문자열로 보존
+
+        # 4) 불리언 문자열 -------------------------------
+        bool_keys = ("ignore_part_translated",)
+        for key in bool_keys:
+            if key in request.GET:
+                init[key] = request.GET[key].lower() in ("true")
 
         return init
 
@@ -456,6 +473,36 @@ class MatcherAdmin(admin.ModelAdmin):
     ignore_part_translated_display.short_description = "ignorePT"
     ignore_part_translated_display.admin_order_field = "ignore_part_translated"
 
+        # ── To matcher 버튼 ───────────────────────────────────────
+    def copy_link(self, obj):
+        add_url = reverse("admin:core_matcher_add")
+
+        # 1) 모델을 dict 로 변환
+        field_names = [
+            "category", "raw", "regexp_source", "regexp_flag",
+            "replace_value", "groups", "memo",
+            "priority", "ignore_part_translated", "replace_value", "groups"
+        ]
+        data = model_to_dict(obj, field_names)          # {'category': '...', 'raw': '...', ...}
+
+        # 2) 목록/딕셔너리 필드는 JSON 문자열로 바꿔 주기
+        for k in ("replace_value", "groups"):
+            if data.get(k) is not None:
+                data[k] = json.dumps(data[k], ensure_ascii=False)
+
+        # 3) RAW ↔ REGEX 구분용 파라미터 추가
+        data["type"] = "raw" if obj.raw else "regex"
+
+        # 4) URL 인코딩
+        params = urlencode(data, doseq=True)            # /admin/core/matcher/add/?category=...
+
+        return mark_safe(
+            f'<a class="button" href="{add_url}?{params}" '
+            'style="color:#000;background:#e2e2e2;padding:2px 6px;border-radius:4px;">Copy</a>'
+        )
+
+    copy_link.short_description = "Copy"
+
     actions = ["change_category_action"]
 
     def get_urls(self):
@@ -464,11 +511,10 @@ class MatcherAdmin(admin.ModelAdmin):
             path(
                 "change-category/",
                 self.admin_site.admin_view(self.bulk_change_category_view),
-                name="core_matcher_bulk_change_category",   # ★ bulk 이름으로 통일
+                name="core_matcher_bulk_change_category",  # ★ bulk 이름으로 통일
             )
         ]
         return my + urls
-
 
     def bulk_change_category_view(self, request):
         ctx = dict(self.admin_site.each_context(request),
@@ -484,9 +530,9 @@ class MatcherAdmin(admin.ModelAdmin):
                 new = form.cleaned_data["new_category"]
 
                 direct_q = Q(category=old)
-                group_q  = Q(groups__contains=[old])
+                group_q = Q(groups__contains=[old])
                 direct_cnt = Matcher.objects.filter(direct_q).count()
-                group_cnt  = Matcher.objects.filter(group_q).count()
+                group_cnt = Matcher.objects.filter(group_q).count()
 
                 updated = 0
                 with transaction.atomic():
@@ -509,14 +555,14 @@ class MatcherAdmin(admin.ModelAdmin):
                 old = request.POST.get("old_category")
                 if old:
                     direct_cnt = Matcher.objects.filter(category=old).count()
-                    group_cnt  = Matcher.objects.filter(groups__contains=[old]).count()
+                    group_cnt = Matcher.objects.filter(groups__contains=[old]).count()
 
         else:  # GET
             form = CategoryBulkForm(request.GET or None)
-            if form.is_valid():                           # old_category 쿠키로 미리보기
+            if form.is_valid():  # old_category 쿠키로 미리보기
                 old = form.cleaned_data["old_category"]
                 direct_cnt = Matcher.objects.filter(category=old).count()
-                group_cnt  = Matcher.objects.filter(groups__contains=[old]).count()
+                group_cnt = Matcher.objects.filter(groups__contains=[old]).count()
 
         ctx.update(dict(form=form,
                         direct_cnt=direct_cnt,
