@@ -1,4 +1,4 @@
-const commitHash = '47e1fcdc';
+const commitHash = '37c48f5b';
 const translatorPromise = import((`https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module@${commitHash}/modules/translation-module/translator.js`));
 const dataManagerPromise = import((`https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module@${commitHash}/modules/translation-module/data-manager.js`));
 const fetchPromise = fetch('/build/latest.json', {cache: "no-store"}).then((r) => r.json());
