@@ -24,6 +24,9 @@ export default class Translator {
             } else if (matcher.regexp) {
                 this.categories[matcher.category].matchers.push(matcher);
             }
+            for (const category in this.categories) {
+                this.categories[category].sort((m1, m2) => (m1.priority ?? 0) - (m2.priority ?? 0));
+            }
         }
     }
 
