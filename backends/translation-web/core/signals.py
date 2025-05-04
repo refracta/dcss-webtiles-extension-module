@@ -103,7 +103,8 @@ def _matcher_embed(instance, action):
 
     # 번역
     for lang, text in instance.replace_value.items():
-        lines.append(f"{lang}: ```\n{text}\n```")
+        if instance.text != "":
+            lines.append(f"{lang}: ```\n{text}\n```")
 
     # 그룹
     if instance.groups:
@@ -113,7 +114,7 @@ def _matcher_embed(instance, action):
     if instance.memo:
         lines.append("memo: ```\n" + instance.memo + "\n```")
 
-    lines.append(f"priority: ```\n{str(instance.priority)}\n```")
+    lines.append(f"priority: `{str(instance.priority)}`")
 
         # 메모
     if instance.ignore_part_translated:
