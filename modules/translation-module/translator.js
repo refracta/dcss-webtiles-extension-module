@@ -86,6 +86,7 @@ export default class Translator {
 
             result.translation = this.replaceSpecialPattern(rawValue);
             result.status = 'translated';
+            result.totalStatus = 'translated';
             return result;
         }
 
