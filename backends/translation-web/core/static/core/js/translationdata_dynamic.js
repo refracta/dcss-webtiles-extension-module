@@ -20,9 +20,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const source = resultTag.dataset.source;
         const content = resultTag.dataset.content;
         const translationResult = translator.translate(content, navigator.language, source);
-        const badge = STATUS_BADGE[translationResult.total_status] || {
+        const badge = STATUS_BADGE[translationResult.totalStatus] || {
             cls: "bg-secondary",
-            label: translationResult.total_status
+            label: translationResult.totalStatus
         };
         statusTag.innerHTML = `<span class="badge ${badge.cls}">${badge.label}</span>`;
         resultTag.textContent = translationResult.translation;

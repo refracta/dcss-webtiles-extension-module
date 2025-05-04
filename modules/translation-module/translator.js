@@ -67,7 +67,7 @@ export default class Translator {
             target,
             translation: target,
             status: 'untranslated',      // 주(直) 번역 결과
-            total_status: 'untranslated' // 집계 결과(최외곽에만 남김)
+            totalStatus: 'untranslated' // 집계 결과(최외곽에만 남김)
         };
 
         /* 0. 카테고리 존재 여부 확인 */
@@ -86,12 +86,12 @@ export default class Translator {
 
             result.translation = this.replaceSpecialPattern(rawValue);
             result.status = 'translated';
-            result.total_status = 'translated';     // 하위 번역 없음
+            result.totalStatus = 'translated';     // 하위 번역 없음
             return result;
         }
 
         /* 2. 정규식 매치 순회 */
-        let translations = [];        // 하위 번역 모음(여기엔 total_status 제거본만 저장)
+        let translations = [];        // 하위 번역 모음(여기엔 totalStatus 제거본만 저장)
         for (const matcher of cat.matchers) {
             const matchResults = target.match(matcher.regexp);
             if (!matchResults) continue;
@@ -118,8 +118,8 @@ export default class Translator {
 
                     const subRes = this.translate(capture, language, name);
 
-                    // ── total_status 제거 후 translations 에 push ──
-                    const {total_status: _omit, ...clean} = subRes;
+                    // ── totalStatus 제거 후 translations 에 push ──
+                    const {totalStatus: _omit, ...clean} = subRes;
 
                     if (subRes.status === 'translated') {
                         replaced = replaced.replace(capture, subRes.translation);
@@ -136,21 +136,21 @@ export default class Translator {
             result.translation = this.replaceSpecialPattern(replaced);
             result.status = 'translated';
 
-            /* ── (A) total_status 계산 ─────────────────────── */
+            /* ── (A) totalStatus 계산 ─────────────────────── */
             const translatedCnt = translations.filter(t => t.status === 'translated').length;
-            result.total_status =
+            result.totalStatus =
                 translations.length === 0 ? 'translated'      // 하위 항목이 없으면 완전 번역
                     : translations.length > 0 && translatedCnt === translations.length ? 'translated'
                         : 'part-translated';
             result.translations = translations;
 
             /* ── (B) part-translated 무시 옵션 처리 ─────────── */
-            if (matcher.ignorePartTranslated && result.total_status !== 'translated') {
+            if (matcher.ignorePartTranslated && result.totalStatus !== 'translated') {
                 // 이번 매처 결과를 버리고 다음 매처 계속 탐색
                 translations = [];
                 result.translation = target;
                 result.status = 'untranslated';
-                result.total_status = 'untranslated';
+                result.totalStatus = 'untranslated';
                 continue;                       // break 대신 다음 matcher 시도
             }
 
@@ -159,12 +159,12 @@ export default class Translator {
 
         const translatedCnt = translations.filter(t => t.status === 'translated').length;
 
-        result.total_status =
-            translations.length === 0 ? 'translated'      // 하위 항목이 없으면 완전 번역
+        result.totalStatus =
+            result.status === 'translated' && translations.length === 0 ? 'translated'      // 하위 항목이 없으면 완전 번역
                 : translations.length > 0 && translatedCnt === translations.length ? 'translated'
                     : 'part-translated';
 
-        result.translations = translations;  // 하위 객체엔 total_status 없음
+        result.translations = translations;  // 하위 객체엔 totalStatus 없음
 
         return result;
     }
