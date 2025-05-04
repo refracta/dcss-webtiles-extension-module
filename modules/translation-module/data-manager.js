@@ -224,7 +224,6 @@ export default class DataManager {
         "ui-push@sub-items.buttons[].description",
         "ui-push@sub-items.buttons[].label",
         "ui-push@text",
-        "ui-push@text#lines",
         "ui-push@title",
         "ui-state@highlight",
         "ui-state@text",
