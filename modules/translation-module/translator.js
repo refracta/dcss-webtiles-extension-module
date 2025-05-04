@@ -109,13 +109,13 @@ export default class Translator {
 
                     // ── total_status 제거 후 translations 에 push ──
                     const {total_status: _omit, ...clean} = subRes;
-                    translations.push(clean);
 
                     if (subRes.status === 'translated') {
                         replaced = replaced.replace(capture, subRes.translation);
+                        translations.push(clean);
                         done = true;
+                        break;   // 첫 번째 매치된 카테고리만 사용
                     }
-                    break;   // 첫 번째 매치된 카테고리만 사용
                 }
                 if (!done && groupCatNames.length === 0) {
                     translations.push({target: capture, status: 'untranslated'});
