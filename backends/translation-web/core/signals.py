@@ -103,7 +103,7 @@ def _matcher_embed(instance, action):
 
     # 번역
     for lang, text in instance.replace_value.items():
-        if instance.text != "":
+        if text != "":
             lines.append(f"{lang}: ```\n{text}\n```")
 
     # 그룹
