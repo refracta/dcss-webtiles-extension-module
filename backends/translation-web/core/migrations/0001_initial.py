@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='matcher',
-            constraint=models.UniqueConstraint(condition=models.Q(('raw', '')), fields=('category', 'regexp_source', 'regexp_flag'), name='uniq_regex_pair'),
+            constraint=models.UniqueConstraint(condition=models.Q(('raw', '')), fields=('category', 'raw', 'regexp_source', 'regexp_flag'), name='uniq_regex_pair'),
         ),
         migrations.AddConstraint(
             model_name='translationdata',
