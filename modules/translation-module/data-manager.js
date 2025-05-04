@@ -247,6 +247,7 @@ export default class DataManager {
             const cp = word.charCodeAt(word.length - 1);
             return isHangul(cp) ? (cp - 0xAC00) % 28 : -1;     // -1 = 비한글
         };
+        const isUnicode = cp => /[^\u0000-\u00ff]/.test(cp)
 
         /* ===== 헬퍼: 조사 생성 ===== */
         const josa = (withBatchim, withoutBatchim, paren = false) => w => {
@@ -256,6 +257,24 @@ export default class DataManager {
             }
             return w + (hasBatchim(w) ? withBatchim : withoutBatchim);
         };
+
+        /* ===== 헬퍼: 유니코드 문자 크기 고려한 padEnd ===== */
+        const padString = (originalStr, size) => {
+            size = parseInt(size);
+            if (size <= 0) return originalStr;
+
+            let currentSize = 0;
+            for (let i = 0; i < originalStr.length; i++) {
+                currentSize += (isUnicode(originalStr[i]) ? 2 : 1);
+            }
+
+            let result = originalStr;
+            for (let i = 0; i < size - currentSize; i++) {
+                result += ' '
+            }
+
+            return result;
+        }
 
         /* ===== this.functions ===== */
         this.functions = {
@@ -321,7 +340,9 @@ export default class DataManager {
             '로': w => {
                 const j = jongIdx(w);
                 return w + ((j === 0 || j === 8 || j === -1) ? '로' : '으로');
-            }
+            },
+            /* 문자열 길이 정렬 */
+            'PAD_STRING': padString
         };
     }
 }
