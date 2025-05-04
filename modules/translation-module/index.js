@@ -77,8 +77,10 @@ export default class TranslationModule {
                     const wizard_TR = translate("*WIZARD*", 'interface@stats.mode');
                     const explore_TR = translate("*EXPLORE*", 'interface@stats.mode');
                     $("#stats_wizmode").text(player.wizard ? wizard_TR : player.explore ? explore_TR : "");
-                    const species_god_TR = translate(player.species + " of " + player.god, 'interface@stats.species_god');
-                    $("#stats_species_god").text(species_god_TR);
+                    if (player.god != "") {
+                        const species_god_TR = translate(player.species + " of " + player.god, 'interface@stats.species_god');
+                        $("#stats_species_god").text(species_god_TR);
+                    }
 
                     const hp_TR = translate("HP:", 'ui-panel@stats');
                     const health_TR = translate("Health:", 'ui-panel@stats');
