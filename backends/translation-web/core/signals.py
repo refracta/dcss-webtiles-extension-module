@@ -113,6 +113,10 @@ def _matcher_embed(instance, action):
     if instance.memo:
         lines.append("memo: ```\n" + instance.memo + "\n```")
 
+        # 메모
+    if instance.ignore_part_translated:
+        lines.append("ignorePartTranslated: ```\n" + str(instance.ignore_part_translated) + "\n```")
+
     desc = "\n".join(lines)
     link = f"{BASE}/admin/core/matcher/{instance.pk}/change/"
 

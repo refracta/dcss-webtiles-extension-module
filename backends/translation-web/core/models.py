@@ -62,6 +62,7 @@ class Matcher(models.Model):
     priority = models.IntegerField(
         default=0
     )
+    ignore_part_translated = models.BooleanField(default=False)
 
     # ─── 타입을 쉽게 확인할 수 있는 속성 ───
     @property

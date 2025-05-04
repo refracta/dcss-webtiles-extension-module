@@ -4,16 +4,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!typeSelect) return;            // 필드 없으면 중단
 
     // Jazzmin & 기본 Admin 양쪽 호환: 행(div) 클래스는 field-<name>
-    const rawRow  = document.querySelector(".field-raw");
-    const srcRow  = document.querySelector(".field-regexp_source");
-    const groupsRow  = document.querySelector(".field-groups");
+    const rawRow = document.querySelector(".field-raw");
+    const srcRow = document.querySelector(".field-regexp_source");
+    const groupsRow = document.querySelector(".field-groups");
     const flagRow = document.querySelector(".field-regexp_flag");
+    const ignorePT = document.querySelector(".field-ignore_part_translated");
 
     function showRow(row) {
         if (!row) return;
         row.classList.remove("d-none");
         row.style.display = "";           // 이전 inline display 제거
     }
+
     function hideRow(row) {
         if (!row) return;
         row.classList.add("d-none");
@@ -28,11 +30,18 @@ document.addEventListener("DOMContentLoaded", () => {
             hideRow(srcRow);
             hideRow(flagRow);
             hideRow(groupsRow);
+            hideRow(ignorePT);
         } else {
             hideRow(rawRow);
             showRow(srcRow);
             showRow(flagRow);
             showRow(groupsRow);
+            Array.from(groupsRow.querySelectorAll('input')).forEach((input) => {
+                if (input.value === '""') {
+                    input.value = '[]'
+                }
+            })
+            showRow(ignorePT);
         }
     }
 

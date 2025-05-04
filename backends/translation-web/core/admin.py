@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.template.response import TemplateResponse
 
 admin.site.site_header = "DCSS Translation"  # 상단 굵은 글씨
 admin.site.site_title = "Dashboard"  # 브라우저 탭 <title>
@@ -6,6 +7,7 @@ admin.site.index_title = "DCSS Translation"  # “Site administration” 자리
 from django.http import HttpResponseRedirect
 
 from .models import TranslationData, Matcher, AdminFastLink
+
 
 def _change_url(obj):
     """해당 객체의 admin change URL"""
@@ -23,6 +25,7 @@ def _wrap_link(obj, inner_html):
         mark_safe(inner_html),
     )
 
+
 @admin.register(AdminFastLink)
 class AdminFastLinkAdmin(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
@@ -31,6 +34,7 @@ class AdminFastLinkAdmin(admin.ModelAdmin):
 
     def has_module_permission(self, request):
         return True  # 반드시 True로 설정해야 왼쪽 메뉴에 나옴
+
 
 # core/admin.py  (TranslationDataAdmin 부분만 발췌)
 
@@ -44,10 +48,10 @@ from django.http import HttpResponse
 from django.urls import reverse
 from django.utils.html import format_html, escape, mark_safe
 
-from .forms import TranslationDataForm, MatcherForm
+from .forms import TranslationDataForm, MatcherForm, CategoryChangeForm, CategoryBulkForm
 from .utils import NoCountPaginator
 from .utils import SmartPaginator
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Func, Value, F, Expression
 
 
@@ -98,6 +102,7 @@ class ModePassThroughFilter(SimpleListFilter):
     title = ''
     parameter_name = FAST_PARAM  # "mode"
     template = 'admin/hidden_filter.html'
+
     def lookups(self, request, model_admin):
         return ((request.GET.get(self.parameter_name), ''),)
 
@@ -267,12 +272,33 @@ class TranslationDataAdmin(admin.ModelAdmin):
         js = ("core/js/translationdata_dynamic.js",)  # 정적파일 경로
 
 
-
-
-
 from django.db.models import TextField, Q
 from django.db.models.functions import Cast
 
+# ────────────────── Django 기본 ──────────────────
+from django import forms
+from django.contrib import admin, messages
+from django.contrib.admin.views.main import ChangeList
+from django.urls import reverse, path
+from django.http import HttpResponseRedirect
+from django.template.response import TemplateResponse
+from django.utils.html import format_html, escape, mark_safe
+from django.utils.translation import gettext_lazy as _
+
+# ────────────────── 표준 라이브러리 ───────────────
+import json, os, datetime, hashlib
+from urllib.parse import urlencode, parse_qsl
+
+# ────────────────── Django ORM / Models ──────────
+from django.db import models
+from django.db.models import (F, Q, Value, Expression,
+                              Func, TextField)
+from django.db.models.functions import Coalesce, Cast
+
+# ────────────────── 프로젝트 내부 유틸 ────────────
+from .models import TranslationData, Matcher, AdminFastLink
+from .forms import TranslationDataForm, MatcherForm
+from .utils import NoCountPaginator, SmartPaginator
 
 # ──────────────────────────────────────────
 # ModelAdmin
@@ -280,6 +306,7 @@ from django.db.models.functions import Cast
 @admin.register(Matcher)
 class MatcherAdmin(admin.ModelAdmin):
     form = MatcherForm
+    change_list_template = "admin/matcher_change_list.html"
 
     def save_model(self, request, obj, form, change):
         # ▲ signals 쪽에서 읽을 수 있도록
@@ -314,11 +341,12 @@ class MatcherAdmin(admin.ModelAdmin):
         "replace_value_display",
         "groups_display",
         "memo_display",
-        "priority"
+        "priority",
+        "ignore_part_translated_display",
     )
     list_display_links = None  # 기본 a 태그 비활성화
     list_filter = ("category",)
-    search_fields = ("category", "raw", "regexp_source", "replace_value", "memo")
+    search_fields = ("category", "raw", "regexp_source", "replace_value", "groups", "memo")
 
     class Media:
         js = ("core/js/matcher_form_toggle.js",)
@@ -418,3 +446,81 @@ class MatcherAdmin(admin.ModelAdmin):
 
     memo_display.short_description = "Memo"
     memo_display.admin_order_field = "memo"
+
+    def ignore_part_translated_display(self, obj):
+        if not obj.ignore_part_translated:
+            return _wrap_link(obj, "🟪")
+
+        return _wrap_link(obj, "☑")
+
+    ignore_part_translated_display.short_description = "ignorePT"
+    ignore_part_translated_display.admin_order_field = "ignore_part_translated"
+
+    actions = ["change_category_action"]
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my = [
+            path(
+                "change-category/",
+                self.admin_site.admin_view(self.bulk_change_category_view),
+                name="core_matcher_bulk_change_category",   # ★ bulk 이름으로 통일
+            )
+        ]
+        return my + urls
+
+
+    def bulk_change_category_view(self, request):
+        ctx = dict(self.admin_site.each_context(request),
+                   title=_("Change category"))
+
+        # ▶ 항상 초기화
+        direct_cnt = group_cnt = None
+
+        if request.method == "POST":
+            form = CategoryBulkForm(request.POST)
+            if form.is_valid():
+                old = form.cleaned_data["old_category"]
+                new = form.cleaned_data["new_category"]
+
+                direct_q = Q(category=old)
+                group_q  = Q(groups__contains=[old])
+                direct_cnt = Matcher.objects.filter(direct_q).count()
+                group_cnt  = Matcher.objects.filter(group_q).count()
+
+                updated = 0
+                with transaction.atomic():
+                    updated += Matcher.objects.filter(direct_q).update(category=new)
+                    for m in Matcher.objects.filter(group_q):
+                        m.groups = [new if g == old else g for g in m.groups]
+                        m.save(update_fields=["groups"])
+                        updated += 1
+
+                messages.success(
+                    request,
+                    _(f"Updated {updated} matcher(s): "
+                      f"{direct_cnt} category field, {group_cnt} in groups.")
+                )
+                return HttpResponseRedirect(
+                    reverse("admin:core_matcher_changelist")
+                )
+            else:
+                # 폼은 invalid지만 old_category 값이 있으면 미리보기 수치 계산
+                old = request.POST.get("old_category")
+                if old:
+                    direct_cnt = Matcher.objects.filter(category=old).count()
+                    group_cnt  = Matcher.objects.filter(groups__contains=[old]).count()
+
+        else:  # GET
+            form = CategoryBulkForm(request.GET or None)
+            if form.is_valid():                           # old_category 쿠키로 미리보기
+                old = form.cleaned_data["old_category"]
+                direct_cnt = Matcher.objects.filter(category=old).count()
+                group_cnt  = Matcher.objects.filter(groups__contains=[old]).count()
+
+        ctx.update(dict(form=form,
+                        direct_cnt=direct_cnt,
+                        group_cnt=group_cnt))
+        return TemplateResponse(request,
+                                "admin/bulk_change_category.html",
+                                ctx)

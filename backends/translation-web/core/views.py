@@ -26,6 +26,8 @@ def _to_dict(m: Matcher) -> dict:
         )
     if m.groups:
         d["groups"] = m.groups
+    if m.ignore_part_translated:
+        d["ignorePartTranslated"] = m.ignore_part_translated
     d["priority"] = m.priority
     return d
 

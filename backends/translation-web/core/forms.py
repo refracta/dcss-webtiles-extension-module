@@ -1,5 +1,7 @@
 # core/forms.py
 from django import forms
+from django.core.exceptions import ValidationError
+
 from .models  import Matcher
 from .widgets import ReplaceValueWidget, CategoryAutoCompleteWidget
 
@@ -59,7 +61,8 @@ class MatcherForm(forms.ModelForm):
             "replace_value",
             "groups",
             "memo",
-            "priority"
+            "priority",
+            "ignore_part_translated"
         )
         widgets = {
             "replace_value": ReplaceValueWidget,
@@ -128,3 +131,32 @@ class TranslationDataForm(forms.ModelForm):
         )
         if "sources" in self.fields:
             self.fields["source"].widget = CategoryAutoCompleteWidget(cats)
+
+class CategoryChangeForm(forms.Form):
+    new_category = forms.CharField(label="New category", max_length=50)
+
+class CategoryBulkForm(forms.Form):
+    old_category = forms.CharField(
+        label="Old category", max_length=50,
+        widget=forms.TextInput(attrs={
+            "class": "vTextField", "style": "width:100%;",
+            "placeholder": "Current category", "autofocus": "autofocus",
+        })
+    )
+    new_category = forms.CharField(
+        label="New category", max_length=50,
+        widget=forms.TextInput(attrs={
+            "class": "vTextField", "style": "width:100%;",
+            "placeholder": "New category",
+        })
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        old = cleaned.get("old_category")
+        new = cleaned.get("new_category")
+        if old and new and old == new:
+            raise ValidationError(
+                "Old and new categories are identical. Nothing to change."
+            )
+        return cleaned

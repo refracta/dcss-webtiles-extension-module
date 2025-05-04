@@ -1,0 +1,45 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+
+<div style="float:none;clear:both;max-width:420px">
+    <h1>{% trans "Change category" %}</h1>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        {# ── 비필드 오류 ― 목록 위에 한번만 ── #}
+        {% if form.non_field_errors %}
+        <ul class="errorlist nonfield">
+            {% for err in form.non_field_errors %}<li>{{ err }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+
+        <p>
+            {{ form.old_category.label_tag }}<br>
+            {{ form.old_category }}
+            {{ form.old_category.errors }}
+        </p>
+
+        <p>
+            {{ form.new_category.label_tag }}<br>
+            {{ form.new_category }}
+            {{ form.new_category.errors }}
+        </p>
+
+        {% if direct_cnt is not None %}
+        <p style="margin-top:1em">
+            <strong>{{ direct_cnt }}</strong> matchers have category
+            “<code>{{ form.cleaned_data.old_category }}</code>”.<br>
+            <strong>{{ group_cnt }}</strong> matchers contain it in groups.
+        </p>
+        {% endif %}
+
+        <p style="margin-top:1.5em">
+            <input type="submit" value="{% trans 'Apply' %}" class="default">
+            <a href="{% url 'admin:core_matcher_changelist' %}">{% trans "Cancel" %}</a>
+        </p>
+    </form>
+</div>
+{% endblock %}
