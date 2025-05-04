@@ -89,13 +89,12 @@ export default class Translator {
             result.totalStatus = 'translated';
             return result;
         }
-
         /* 2. 정규식 매치 순회 */
         let translations = [];        // 하위 번역 모음(여기엔 totalStatus 제거본만 저장)
         for (const matcher of cat.matchers) {
             const matchResults = target.match(matcher.regexp);
-            if (!matchResults) continue;
 
+            if (!matchResults) continue;
             if (this.debug) {
                 result.matcher = matcher;
             }
@@ -109,7 +108,11 @@ export default class Translator {
             /* ── 캡처 그룹별 재귀 번역 ───────────────────── */
             for (let i = 1; i < matchResults.length; i++) {
                 const capture = matchResults[i];
-                const groupCatNames = matcher.groups[i - 1] || [];
+                const groupCatNames = matcher.groups[i - 1];
+                if (!groupCatNames) {
+                    translations.push({target: capture, translation: capture, status: 'translated'});
+                    continue;
+                }
 
                 let done = false;
                 for (const name of groupCatNames) {
