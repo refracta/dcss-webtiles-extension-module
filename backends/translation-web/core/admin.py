@@ -410,8 +410,11 @@ class MatcherAdmin(admin.ModelAdmin):
     def memo_display(self, obj):
         if not obj.memo:
             return _wrap_link(obj, "–")
-        preview = escape(obj.memo.strip().replace("\n", " ⏎ ")[:40])
-        return _wrap_link(obj, preview)
+
+            # ② 개행 → <br> 변환 후 monospace 스타일
+        safe_txt = escape(obj.memo).replace("\n", "<br>")
+        mono = f'<span style="">{safe_txt}</span>'
+        return _wrap_link(obj, mono)
 
     memo_display.short_description = "Memo"
     memo_display.admin_order_field = "memo"
