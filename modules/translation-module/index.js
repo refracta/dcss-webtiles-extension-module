@@ -218,7 +218,7 @@ export default class TranslationModule {
                         console.log('[TranslationModule] Messages:', messages);
                         console.log(`[TranslationModule] Matchers file loaded (${this.matchers.length}):`, this.matchers);
                     }
-                    this.translator = new Translator(this.matchers, DataManager.functions);
+                    this.translator = new Translator(this.matchers, DataManager.functions, this.config.translationDebug);
                     IOHook.handle_message.before.addHandler('translation-handler', (data) => {
 
                         if (this.config.translationDebug) {

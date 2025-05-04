@@ -1,7 +1,8 @@
 export default class Translator {
-    constructor(matchers, functions) {
+    constructor(matchers, functions, debug = false) {
         this.matchers = matchers;
         this.functions = functions;
+        this.debug = debug;
 
         this.categories = {};
         for (const matcher of this.matchers) {
@@ -76,6 +77,9 @@ export default class Translator {
         /* 1. O(1) 완전 일치(raw) 매치 */
         const rawMatcher = cat.rawMap[target];
         if (rawMatcher) {
+            if (this.debug) {
+                result.matched = rawMatcher;
+            }
             const rawValue = typeof rawMatcher.replaceValue === 'string'
                 ? rawMatcher.replaceValue
                 : rawMatcher.replaceValue?.[language] ?? target;
@@ -91,6 +95,10 @@ export default class Translator {
         for (const matcher of cat.matchers) {
             const matchResults = target.match(matcher.regexp);
             if (!matchResults) continue;
+
+            if (this.debug) {
+                result.matched = matcher;
+            }
 
             const baseReplace = typeof matcher.replaceValue === 'string'
                 ? matcher.replaceValue
