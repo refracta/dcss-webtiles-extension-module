@@ -78,7 +78,7 @@ export default class Translator {
         const rawMatcher = cat.rawMap[target];
         if (rawMatcher) {
             if (this.debug) {
-                result.matched = rawMatcher;
+                result.matcher = rawMatcher;
             }
             const rawValue = typeof rawMatcher.replaceValue === 'string'
                 ? rawMatcher.replaceValue
@@ -97,7 +97,7 @@ export default class Translator {
             if (!matchResults) continue;
 
             if (this.debug) {
-                result.matched = matcher;
+                result.matcher = matcher;
             }
 
             const baseReplace = typeof matcher.replaceValue === 'string'
