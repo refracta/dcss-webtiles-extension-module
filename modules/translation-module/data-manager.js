@@ -258,8 +258,8 @@ export default class DataManager {
             return w + (hasBatchim(w) ? withBatchim : withoutBatchim);
         };
 
-        /* ===== 헬퍼: 유니코드 문자 크기 고려한 padEnd ===== */
-        const padString = (originalStr, size) => {
+        /* ===== 헬퍼: 유니코드 문자 크기 고려한 padding ===== */
+        const padString = padStart => (originalStr, size) => {
             size = parseInt(size);
             if (size <= 0) return originalStr;
 
@@ -270,7 +270,11 @@ export default class DataManager {
 
             let result = originalStr;
             for (let i = 0; i < size - currentSize; i++) {
-                result += ' '
+                if (padStart) {
+                    result = ' ' + result;
+                } else {
+                    result += ' ';
+                }
             }
 
             return result;
@@ -342,7 +346,9 @@ export default class DataManager {
                 return w + ((j === 0 || j === 8 || j === -1) ? '로' : '으로');
             },
             /* 문자열 길이 정렬 */
-            'PAD_STRING': padString
+            'PAD_STRING': padString(false),
+            'PAD_STRING_START': padString(true),
+            'PAD_STRING_END': padString(false)
         };
     }
 }
