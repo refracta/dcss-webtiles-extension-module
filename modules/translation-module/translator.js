@@ -25,7 +25,7 @@ export default class Translator {
                 this.categories[matcher.category].matchers.push(matcher);
             }
             for (const category in this.categories) {
-                this.categories[category].sort((m1, m2) => (m1.priority ?? 0) - (m2.priority ?? 0));
+                this.categories[category].matchers.sort((m1, m2) => (m1.priority ?? 0) - (m2.priority ?? 0));
             }
         }
     }
