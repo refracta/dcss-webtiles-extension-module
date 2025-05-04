@@ -97,7 +97,7 @@ class Matcher(models.Model):
         constraints = [
             # 1. raw 값이 있을 때는 같은 raw 를 하나만
             models.UniqueConstraint(
-                fields=["raw"],
+                fields=["category", "raw"],
                 condition=~Q(raw=""),  # raw ≠ ''  (빈칸 제외)
                 name="uniq_raw_not_blank",
             ),

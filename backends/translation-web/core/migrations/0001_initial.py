@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='matcher',
-            constraint=models.UniqueConstraint(condition=models.Q(('raw', ''), _negated=True), fields=('raw',), name='uniq_raw_not_blank'),
+            constraint=models.UniqueConstraint(condition=models.Q(('raw', ''), _negated=True), fields=('category', 'raw',), name='uniq_raw_not_blank'),
         ),
         migrations.AddConstraint(
             model_name='matcher',
