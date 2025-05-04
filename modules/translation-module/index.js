@@ -82,7 +82,14 @@ export default class TranslationModule {
                         const species_god_TR = translate(player.species + " of " + player.god, 'interface@stats.species_god');
                         $("#stats_species_god").text(species_god_TR);
                     }
-                    if (player.god === translate("Gozag", 'interface@stats.gozag')) {
+                    const gozag_TR = translate("Gozag", 'interface@stats.gozag');
+                    if ((player.piety_rank > 0 || player.god != "")
+                        && player.god != gozag_TR)
+                    {
+                        $("#stats_piety").text(repeat_string("*", player.piety_rank)
+                            + repeat_string(".", 6-player.piety_rank));
+                    }
+                    if (player.god === gozag_TR) {
                         $("#stats_gozag_gold_label").text(" " + translate("Gold: ", 'interface@stats.text'));
                         $("#stats_gozag_gold_label").css("padding-left", "0.5em");
                         $("#stats_gozag_gold").text(player.gold);
