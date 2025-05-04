@@ -82,6 +82,11 @@ export default class TranslationModule {
                         const species_god_TR = translate(player.species + " of " + player.god, 'interface@stats.species_god');
                         $("#stats_species_god").text(species_god_TR);
                     }
+                    if (player.god === translate("Gozag", 'interface@stats.gozag')) {
+                        $("#stats_gozag_gold_label").text(" " + translate("Gold: ", 'interface@stats.text'));
+                        $("#stats_gozag_gold_label").css("padding-left", "0.5em");
+                        $("#stats_gozag_gold").text(player.gold);
+                    }
 
                     const hp_TR = translate("HP:", 'ui-panel@stats');
                     const health_TR = translate("Health:", 'ui-panel@stats');
@@ -100,6 +105,7 @@ export default class TranslationModule {
                     $("#stats_rightcolumn span:contains('Dex:')").text(translate("Dex:", 'interface@stats.text'))
                     $("#stats_rightcolumn span:contains('Place:')").text(translate("Place:", 'interface@stats.text'))
                     $("#stats_rightcolumn span:contains('Time:')").text(translate("Time:", 'interface@stats.text'))
+                    $("#stats_rightcolumn span:contains('Gold:')").text(translate("Gold:", 'interface@stats.text'))
                 }
             }
         }
