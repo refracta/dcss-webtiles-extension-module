@@ -209,45 +209,58 @@ export default class TranslationModule {
         const actionPanelMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${actionPanelInjector.toString()}()`);
         SMR.add('./action_panel', actionPanelMapper);
 
+
         // const adder = DataManager.makeAdder(s => typeof s === 'string');
         RCManager.addHandlers('translation-handler', {
             onGameInitialize: async (rcfile) => {
-                this.config = this.#getTranslationConfig(rcfile);
-                if (this.config.translationLanguage) {
-                    this.loadTranslationFont(this.config.translationLanguage);
-                    const {
-                        matchers,
-                        time,
-                        messages
-                    } = await fetch(this.config.translationFile, {cache: "no-store"}).then((r) => r.json());
-                    this.matchers = matchers;
-                    if (this.config.translationDebug) {
-                        console.log('[TranslationModule] Config:', this.config);
-                        console.log('[TranslationModule] Build time:', new Date(time));
-                        console.log('[TranslationModule] Messages:', messages);
-                        console.log(`[TranslationModule] Matchers file loaded (${this.matchers.length}):`, this.matchers);
-                    }
-                    this.translator = new Translator(this.matchers, DataManager.functions, this.config.translationDebug);
-                    IOHook.handle_message.before.addHandler('translation-handler', (data) => {
+                try {
+                    this.config = this.#getTranslationConfig(rcfile);
+                    if (this.config.translationLanguage) {
+                        this.loadTranslationFont(this.config.translationLanguage);
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 5_000); // 10초 후 abort
+                        const {
+                            matchers,
+                            time,
+                            messages
+                        } = await fetch(this.config.translationFile, {
+                            cache: "no-store",
+                            signal: controller.signal
+                        }).then((r) => r.json());
+                        clearTimeout(timeoutId);
 
+                        this.matchers = matchers;
                         if (this.config.translationDebug) {
-                            console.log('[TranslationModule] data received:', JSON.parse(JSON.stringify(data)));
+                            console.log('[TranslationModule] Config:', this.config);
+                            console.log('[TranslationModule] Build time:', new Date(time));
+                            console.log('[TranslationModule] Messages:', messages);
+                            console.log(`[TranslationModule] Matchers file loaded (${this.matchers.length}):`, this.matchers);
                         }
-                        for (const key in DataManager.processors) {
-                            const {match, extract, restore} = DataManager.processors[key];
-                            if (match(data)) {
-                                const list = extract(data);
-                                const translatedList = list.map((unitText) => this.translator.translate(unitText, this.config.translationLanguage, key));
-                                if (this.config.translationDebug) {
-                                    for (let i = 0; i < list.length; i++) {
-                                        console.log(`%c<${key} [${i}]:ORIGINAL>%c\n${list[i]}\n%c<${key} [${i}]:TRANSLATED>%c\n${translatedList[i].translation}\n%c<${key} [${i}]:RESULT>%c\n${JSON.stringify(translatedList[i], null, 4)}`, 'font-weight: bold; color: red', '', 'font-weight: bold; color: blue', '', 'font-weight: bold; color: grey', '');
-                                        console.log(`Translation result:`, translatedList[i]);
-                                    }
-                                }
-                                restore(data, translatedList.map(result => result.translation));
+                        this.translator = new Translator(this.matchers, DataManager.functions, this.config.translationDebug);
+                        IOHook.handle_message.before.addHandler('translation-handler', (data) => {
+
+                            if (this.config.translationDebug) {
+                                console.log('[TranslationModule] data received:', JSON.parse(JSON.stringify(data)));
                             }
-                        }
-                    });
+                            for (const key in DataManager.processors) {
+                                const {match, extract, restore} = DataManager.processors[key];
+                                if (match(data)) {
+                                    const list = extract(data);
+                                    const translatedList = list.map((unitText) => this.translator.translate(unitText, this.config.translationLanguage, key));
+                                    if (this.config.translationDebug) {
+                                        for (let i = 0; i < list.length; i++) {
+                                            console.log(`%c<${key} [${i}]:ORIGINAL>%c\n${list[i]}\n%c<${key} [${i}]:TRANSLATED>%c\n${translatedList[i].translation}\n%c<${key} [${i}]:RESULT>%c\n${JSON.stringify(translatedList[i], null, 4)}`, 'font-weight: bold; color: red', '', 'font-weight: bold; color: blue', '', 'font-weight: bold; color: grey', '');
+                                            console.log(`Translation result:`, translatedList[i]);
+                                        }
+                                    }
+                                    restore(data, translatedList.map(result => result.translation));
+                                }
+                            }
+                        });
+                    }
+                } catch (e) {
+                    this.translator = {translate: (text) => ({translation: text})};
+                    console.error(e);
                 }
             }, onGameEnd: () => {
                 this.unloadTranslationFont();
