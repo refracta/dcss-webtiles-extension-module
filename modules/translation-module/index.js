@@ -64,6 +64,7 @@ export default class TranslationModule {
     onLoad() {
         const {IOHook, RCManager} = DWEM.Modules;
         const {SourceMapperRegistry: SMR} = DWEM;
+        this.DataManager = DataManager;
 
         function playerUIInjector() {
             const original_update_stats_pane = update_stats_pane;
