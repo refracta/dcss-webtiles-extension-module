@@ -113,7 +113,7 @@ def _matcher_embed(instance, action):
     if instance.memo:
         lines.append("memo: ```\n" + instance.memo + "\n```")
 
-    lines.append("priority: " + str(instance.priority))
+    lines.append(f"priority: ```\n{str(instance.priority)}\n```")
 
         # 메모
     if instance.ignore_part_translated:
