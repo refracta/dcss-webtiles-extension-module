@@ -226,13 +226,15 @@ export default class DataManager {
         "ui-push@text",
         "ui-push@text#lines",
         "ui-push@text#tokenize",
+        "ui-push@feats[].title",
+        "ui-push@teats[].body",
         "ui-push@title",
         "ui-state@highlight",
         "ui-state@text",
         "update_menu@alt_more",
         "update_menu@more",
         "update_menu@title.text",
-        "update_menu_items@items[].text"
+        "update_menu_items@items[].text",
     ]);
 
     static {

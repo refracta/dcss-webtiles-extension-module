@@ -234,6 +234,8 @@ func processors() []processor {
 		"ui-push@text#lines",
 		"ui-push@text#tokenize",
 		"ui-push@title",
+		"ui-push@feats[].title",
+		"ui-push@teats[].body",
 		"ui-state@highlight",
 		"ui-state@text",
 		"update_menu@alt_more",
