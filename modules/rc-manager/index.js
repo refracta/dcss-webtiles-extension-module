@@ -70,6 +70,7 @@ export default class RCManager {
 
     locations = {
         'crawl.nemelex.cards': 'https://archive.nemelex.cards/rcfiles',
+        'test.nemelex.cards': 'https://test-archive.nemelex.cards/rcfiles',
         'crawl.dcss.io': 'https://crawl.dcss.io/crawl/rcfiles',
         'crawl.akrasiac.org:8443': 'https://crawl.akrasiac.org/rcfiles',
         'underhound.eu:8080': 'https://underhound.eu/crawl/rcfiles',
@@ -108,6 +109,7 @@ export default class RCManager {
 
     generators = {
         'crawl.nemelex.cards': this.cncGenerator,
+        'test.nemelex.cards': this.cncGenerator,
         'crawl.dcss.io': this.cncGenerator,
         'crawl.akrasiac.org:8443': this.cncGenerator,
         'underhound.eu:8080': this.cncGenerator,

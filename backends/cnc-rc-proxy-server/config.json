@@ -1,6 +1,7 @@
 {
   "allowed": [
     "https://archive.nemelex.cards/rcfiles",
+    "https://test-archive.nemelex.cards/rcfiles",
     "https://crawl.dcss.io/crawl/rcfiles",
     "https://crawl.akrasiac.org/rcfiles",
     "https://underhound.eu/crawl/rcfiles",
