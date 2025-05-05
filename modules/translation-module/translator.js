@@ -134,7 +134,7 @@ export default class Translator {
                     }
                 }
                 if (!done) {
-                    translations.push({target: capture, status: 'untranslated'});
+                    translations.push({target: capture, status: 'untranslated', totalStatus: 'untranslated'});
                 }
             }
 
