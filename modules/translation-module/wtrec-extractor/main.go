@@ -219,6 +219,7 @@ func processors() []processor {
 		"ui-push@highlight",
 		"ui-push@main-items.buttons[].description",
 		"ui-push@main-items.buttons[].labels[]",
+		"ui-push@main-items.labels[].label",
 		"ui-push@more",
 		"ui-push@prompt",
 		"ui-push@quote",
