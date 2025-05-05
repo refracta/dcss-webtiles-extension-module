@@ -251,7 +251,7 @@ export default class TranslationModule {
                                             return this.translator.translate(unitText, this.config.translationLanguage, key)
                                         } catch (e) {
                                             if (this.config.translationDebug) {
-                                                console.log(`[TranslationModule] ErrorKey: ${JSON.stringify(key)}, ErrorText: ${JSON.stringify(unitText)}`);
+                                                console.error(`[TranslationModule] ErrorKey: ${JSON.stringify(key)}, ErrorText: ${JSON.stringify(unitText)}`);
                                             }
                                             throw e;
                                         }
