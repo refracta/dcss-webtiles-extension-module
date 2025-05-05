@@ -29,6 +29,7 @@ def _to_dict(m: Matcher) -> dict:
     if m.ignore_part_translated:
         d["ignorePartTranslated"] = m.ignore_part_translated
     d["priority"] = m.priority
+    d["id"] = m.pk
     return d
 
 from collections import Counter
