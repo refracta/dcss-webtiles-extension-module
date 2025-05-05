@@ -259,13 +259,30 @@ export default class DataManager {
         };
 
         /* ===== 헬퍼: 유니코드 문자 크기 고려한 padding ===== */
-        const padString = padStart => (originalStr, size) => {
+        const padString = padStart => (originalStr, size, shouldEscape = false) => {
             size = parseInt(size);
             if (size <= 0) return originalStr;
 
+            let strForCount;
+
+            if (typeof shouldEscape === "string") {
+                shouldEscape = (shouldEscape.toLowerCase() === "true");
+            }
+
+            if (shouldEscape) {
+                // Considering HTML special character expression
+                strForCount = originalStr.replace(/&amp;/g, '&')
+                                         .replace(/&lt;/g, '<')
+                                         .replace(/&gt;/g, '>')
+                                         .replace(/&quot;/g, '"');
+            } else {
+                strForCount = originalStr;
+            }
+
             let currentSize = 0;
-            for (let i = 0; i < originalStr.length; i++) {
-                currentSize += (isUnicode(originalStr[i]) ? 2 : 1);
+
+            for (let i = 0; i < strForCount.length; i++) {
+                currentSize += (isUnicode(strForCount[i]) ? 2 : 1);
             }
 
             let result = originalStr;
