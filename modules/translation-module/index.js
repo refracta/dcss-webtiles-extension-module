@@ -246,7 +246,16 @@ export default class TranslationModule {
                                 const {match, extract, restore} = DataManager.processors[key];
                                 if (match(data)) {
                                     const list = extract(data);
-                                    const translatedList = list.map((unitText) => this.translator.translate(unitText, this.config.translationLanguage, key));
+                                    const translatedList = list.map((unitText) => {
+                                        try {
+                                            return this.translator.translate(unitText, this.config.translationLanguage, key)
+                                        } catch (e) {
+                                            if (this.config.translationDebug) {
+                                                console.log(`[TranslationModule] ErrorKey: ${JSON.stringify(key)}, ErrorText: ${JSON.stringify(unitText)}`);
+                                            }
+                                            throw e;
+                                        }
+                                    });
                                     if (this.config.translationDebug) {
                                         for (let i = 0; i < list.length; i++) {
                                             console.log(`%c<${key} [${i}]:ORIGINAL>%c\n${list[i]}\n%c<${key} [${i}]:TRANSLATED>%c\n${translatedList[i].translation}\n%c<${key} [${i}]:RESULT>%c\n%o\n${JSON.stringify(translatedList[i], null, 4)}\nhttps://translation.nemelex.cards/admin/core/matcher/add/?category=${encodeURIComponent(key)}&raw=${encodeURIComponent(list[i])}&priority=0`, 'font-weight: bold; color: red', '', 'font-weight: bold; color: blue', '', 'font-weight: bold; color: grey', '', translatedList[i]);
