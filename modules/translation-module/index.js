@@ -249,9 +249,7 @@ export default class TranslationModule {
                                     const translatedList = list.map((unitText) => this.translator.translate(unitText, this.config.translationLanguage, key));
                                     if (this.config.translationDebug) {
                                         for (let i = 0; i < list.length; i++) {
-                                            console.log(`%c<${key} [${i}]:ORIGINAL>%c\n${list[i]}\n%c<${key} [${i}]:TRANSLATED>%c\n${translatedList[i].translation}\n%c<${key} [${i}]:RESULT>%c\n${JSON.stringify(translatedList[i], null, 4)}`, 'font-weight: bold; color: red', '', 'font-weight: bold; color: blue', '', 'font-weight: bold; color: grey', '');
-                                            console.log(`https://translation.nemelex.cards/admin/core/matcher/add/?category=${encodeURIComponent(key)}&raw=${encodeURIComponent(list[i])}`);
-                                            console.log(`Translation result:`, translatedList[i]);
+                                            console.log(`%c<${key} [${i}]:ORIGINAL>%c\n${list[i]}\n%c<${key} [${i}]:TRANSLATED>%c\n${translatedList[i].translation}\n%c<${key} [${i}]:RESULT>%c\n${JSON.stringify(translatedList[i], null, 4)}\nhttps://translation.nemelex.cards/admin/core/matcher/add/?category=${encodeURIComponent(key)}&raw=${encodeURIComponent(list[i])}`, 'font-weight: bold; color: red', '', 'font-weight: bold; color: blue', '', 'font-weight: bold; color: grey', '');
                                         }
                                     }
                                     restore(data, translatedList.map(result => result.translation));
