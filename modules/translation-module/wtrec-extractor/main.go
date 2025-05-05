@@ -242,6 +242,7 @@ func processors() []processor {
 		"update_menu@more",
 		"update_menu@title.text",
 		"update_menu_items@items[].text",
+		"init_input@prompt",
 	}
 
 	ps := make([]processor, 0, len(specs))

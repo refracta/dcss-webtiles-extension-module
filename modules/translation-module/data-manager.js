@@ -235,6 +235,7 @@ export default class DataManager {
         "update_menu@more",
         "update_menu@title.text",
         "update_menu_items@items[].text",
+        "init_input@prompt"
     ]);
 
     static {
