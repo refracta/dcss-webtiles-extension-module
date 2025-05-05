@@ -274,9 +274,9 @@ export default class DataManager {
             if (shouldEscape) {
                 // Considering HTML special character expression
                 strForCount = originalStr.replace(/&amp;/g, '&')
-                                         .replace(/&lt;/g, '<')
-                                         .replace(/&gt;/g, '>')
-                                         .replace(/&quot;/g, '"');
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"');
             } else {
                 strForCount = originalStr;
             }
@@ -297,6 +297,77 @@ export default class DataManager {
             }
 
             return result;
+        }
+
+        const toKoreanRune = (rune) => {
+            const lines = Array.isArray(rune) ? rune : String(rune).split(/\r?\n/);
+
+            /* ---------- Mappings ---------- */
+            const MAP = {
+                A: 'ㅏ', B: 'ㅂ', C: 'ㅋ', D: 'ㄷ', E: 'ㅔ', F: 'ㅍ',
+                G: 'ㄱ', H: 'ㅎ', I: 'ㅣ', J: 'ㅈ', K: 'ㅋ', L: 'ㄹ',
+                M: 'ㅁ', N: 'ㄴ', O: 'ㅗ', P: 'ㅍ', Q: 'ㅋ', R: 'ㄹ',
+                S: 'ㅅ', T: 'ㅌ', U: 'ㅜ', V: 'ㅂ', W: 'ㅈ', X: 'ㅅ',
+                Y: 'ㅡ', Z: 'ㅈ',
+            };
+            const CHO = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+            const JUNG = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'];
+            const JONG = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+            // 허용 종성 인덱스: '', ㄱ(1), ㄴ(4), ㄹ(8), ㅁ(16), ㅂ(17), ㅅ(19), ㅇ(21)
+            const ALLOWED_JONG_IDX = new Set([0, 1, 4, 8, 16, 17, 19, 21]);
+
+            /* ---------- Helpers ---------- */
+            const runeCharToJamo = (ch) => {
+                const upper = ch.toUpperCase();
+                return MAP[upper] || ch; // keep spaces & punctuation
+            };
+
+            function composeSegment(seg) {
+                let out = '';
+                for (let i = 0; i < seg.length - 1;) {
+                    const ci = CHO.indexOf(seg[i]);
+                    const vi = JUNG.indexOf(seg[i + 1]);
+                    if (ci !== -1 && vi !== -1) {
+                        let ti = 0;
+                        const candIdx = JONG.indexOf(seg[i + 2]);
+                        if (candIdx !== -1 && ALLOWED_JONG_IDX.has(candIdx)) {
+                            ti = candIdx;
+                            i++; // consume jong
+                        }
+                        out += String.fromCharCode(0xac00 + (ci * 21 + vi) * 28 + ti);
+                        i += 2; // consume cho+jung
+                    } else {
+                        i += 1;
+                    }
+                }
+                return out;
+            }
+
+            /* ---------- Conversion ---------- */
+            return lines
+                .map((raw) => {
+                    const line = raw.trim();
+                    if (!line) return null;
+
+                    // 룬 문자 부분 추출 ("|" 전) or 전체 라인
+                    const m = line.match(/-\s*[^A-Za-z]*([A-Za-z\s]+?)\|/);
+                    const rune = (m ? m[1] : line).replace(/["',]/g, '');
+
+                    // 1) 문자 단위 매핑 → 자모 문자열 (공백 유지)
+                    const jamoLine = Array.from(rune).map(runeCharToJamo).join('');
+
+                    // 2) 단어별 조합(공백 delimiter 유지)
+                    const words = jamoLine.split(/(\s+)/); // split + keep spaces
+                    const converted = words
+                        .map(w => (/\s/.test(w) ? w : composeSegment(w)))
+                        .join('');
+
+                    // 3) 여러 공백 → 한 칸 공백
+                    const normalized = converted.replace(/\s{2,}/g, ' ');
+                    return normalized;
+                })
+                .filter(Boolean)
+                .join('\n');
         }
 
         /* ===== this.functions ===== */
@@ -367,7 +438,8 @@ export default class DataManager {
             /* 문자열 길이 정렬 */
             'PAD_STRING': padString(false),
             'PAD_STRING_START': padString(true),
-            'PAD_STRING_END': padString(false)
+            'PAD_STRING_END': padString(false),
+            'TO_KOREAN_RUNE': toKoreanRune
         };
     }
 }
