@@ -7,7 +7,7 @@ const matchers = [{
     groups: [
         ['one', 'two']
     ],
-    ignorePartTranslated: false
+    ignorePartTranslated: true
 }, {
     'category': 'root',
     "regex": '(.+) (.+)',
@@ -89,7 +89,7 @@ const matchers = [{
     }
 ];
 const translator = new Translator(matchers, {}, true);
-console.log(translator.translate("Welcome back, labter the Deep Elf Fire Elementalist.", 'ko', "msgs@messages[].text#tokenize"));
-// console.log(translator.translate('one three', 'ko', 'root'));
-// console.log(translator.translate('one two', 'ko', 'root'));
-// console.log(translator.translate("~ or Ctrl-D\n", 'ko', 'update_menu_items@items[].text'));
+// console.log(translator.translate("Welcome back, labter the Deep Elf Fire Elementalist.", 'ko', "msgs@messages[].text#tokenize"));
+console.log(translator.translate('one three', 'ko', 'root'));
+console.log(translator.translate('one two', 'ko', 'root'));
+console.log(translator.translate("~ or Ctrl-D\n", 'ko', 'update_menu_items@items[].text'));

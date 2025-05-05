@@ -110,7 +110,12 @@ export default class Translator {
                 const capture = matchResults[i];
                 const groupCatNames = matcher.groups[i - 1];
                 if (!groupCatNames) {
-                    translations.push({target: capture, translation: capture, status: 'translated'});
+                    translations.push({
+                        target: capture,
+                        translation: capture,
+                        status: 'translated',
+                        totalStatus: 'translated'
+                    });
                     continue;
                 }
 
@@ -121,12 +126,9 @@ export default class Translator {
 
                     const subRes = this.translate(capture, language, name);
 
-                    // ── totalStatus 제거 후 translations 에 push ──
-                    const {totalStatus: _omit, ...clean} = subRes;
-
                     if (subRes.status === 'translated') {
                         replaced = replaced.replace(capture, subRes.translation);
-                        translations.push(clean);
+                        translations.push(subRes);
                         done = true;
                         break;
                     }
@@ -140,7 +142,7 @@ export default class Translator {
             result.status = 'translated';
 
             /* ── (A) totalStatus 계산 ─────────────────────── */
-            const translatedCnt = translations.filter(t => t.status === 'translated').length;
+            const translatedCnt = translations.filter(t => t.totalStatus === 'translated').length;
             result.totalStatus = translations.length >= 0 && translatedCnt === translations.length ? 'translated' : 'part-translated';
             result.translations = translations;
 
