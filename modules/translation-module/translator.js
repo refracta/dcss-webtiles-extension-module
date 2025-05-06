@@ -110,12 +110,16 @@ export default class Translator {
                 const capture = matchResults[i];
                 const groupCatNames = matcher.groups[i - 1];
                 if (!groupCatNames || capture === undefined) {
-                    translations.push({
+                    let currentResult = {
                         target: capture,
                         translation: capture,
                         status: 'translated',
                         totalStatus: 'translated'
-                    });
+                    };
+                    if (this.debug) {
+                        currentResult = {category: null, ...currentResult};
+                    }
+                    translations.push(currentResult);
                     continue;
                 }
 
@@ -124,9 +128,9 @@ export default class Translator {
                     // if (name === category) continue;
                     if (!this.categories[name]) continue;
 
-                    const subRes = this.translate(capture, language, name);
+                    let subRes = this.translate(capture, language, name);
                     if (this.debug) {
-                        subRes.group = name;
+                        subRes = {category: name, ...subRes};
                     }
                     if (subRes.status === 'translated') {
                         replaced = replaced.replace(capture, subRes.translation);
