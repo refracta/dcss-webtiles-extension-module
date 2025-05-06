@@ -31,35 +31,6 @@ export default class Translator {
         }
     }
 
-    escapeMacroParam(str) {
-        return str
-            .replace(/\\/g, '\\\\')
-            .replace(/[${},:]/g, '\\$&');   //  ←  $ 추가!
-    }
-
-    getReplacer(baseReplace) {
-        return (...args) => {
-            const caps = args;
-
-            // 1단계: 매크로 블록만 찾아 내부 토큰 처리
-            const out = baseReplace.replace(
-                /\{((?:\\.|[^{}])+?):([\p{L}\p{N}_]+)\}/gsu,
-                (macro, params, fnName) => {
-                    const safeParams = params.replace(/\$(\d+)/g, (_, idx) =>
-                        this.escapeMacroParam(caps[idx] ?? `$${idx}`)   // 없으면 그대로
-                    );
-                    return `{${safeParams}:${fnName}}`;
-                }
-            );
-
-            // 2단계: “중괄호 밖” $n 치환
-            return out.replace(
-                /(?<!\{[^{}]*?)\$(\d+)(?![^{}]*?})/g,   // look-behind/ahead
-                (_, idx) => caps[idx] ?? `$${idx}`
-            );
-        };
-    }
-
     replaceSpecialPattern(text) {
         return text.replace(/\{((?:\\.|[^{}])+?):([\p{L}\p{N}_]+)\}/gsu, (match, paramsStr, funcName) => {
             if (this.functions[funcName]) {
@@ -132,7 +103,7 @@ export default class Translator {
                 ? matcher.replaceValue
                 : matcher.replaceValue?.[language] ?? target;
 
-            let replaced = target.replace(matcher.regexp, this.getReplacer(baseReplace));
+            let replaced = target.replace(matcher.regexp, baseReplace);
 
             /* ── 캡처 그룹별 재귀 번역 ───────────────────── */
             for (let i = 1; i < matchResults.length; i++) {
@@ -155,7 +126,7 @@ export default class Translator {
                     const subRes = this.translate(capture, language, name);
 
                     if (subRes.status === 'translated') {
-                        replaced = replaced.replace(capture, this.getReplacer(subRes.translation));
+                        replaced = replaced.replace(capture, subRes.translation);
                         translations.push(subRes);
                         done = true;
                         break;
