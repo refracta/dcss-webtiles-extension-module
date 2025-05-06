@@ -1,0 +1,49 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.2
+    container_name: es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m        # ← 1 GB 메모리 예시
+    ports:
+      - "9200:9200"
+    volumes:
+      # ── ① 인덱스 영속화 ──
+      - ./data:/usr/share/elasticsearch/data   # <project>/data → ES data 디렉터리
+    healthcheck:
+      test: curl -fs http://localhost:9200/ || exit 1
+      interval: 10s
+      retries: 10
+
+  app:
+    image: node:20-alpine
+    container_name: app
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./packs:/app/packs:ro
+      - ./data:/usr/share/elasticsearch/data      # ES 데이터 영속화
+      - ./flags/:/flags
+      - ./app:/app
+    ports:
+      - "43039:3000"
+
+    # ← 한 줄 배열 대신 파이프를 써서 sh 스크립트를 바로 적습니다
+    command: |
+      /bin/sh -c '
+        cd app
+        
+        if [ -f /flags/.inited ]; then
+          echo "🛈  .inited not found → skipping bulk import"
+        else
+          echo "♻️  Bulk indexing packs …"
+          node init.js
+          touch /flags/.inited
+        fi
+  
+        # 이 줄은 조건과 무관하게 항상 실행
+        npm install
+        node search-server.js
+      '

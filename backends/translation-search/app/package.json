@@ -1,0 +1,11 @@
+{
+  "name": "es-demo",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "express": "^4.19.2",
+    "request": "^2.88.2",
+    "glob": "^10.3.10",
+    "stream-json": "^1.9.1"
+  }
+}
