@@ -138,8 +138,8 @@ export default class Translator {
                 const groupCatNames = matcher.groups[i - 1];
                 if (!groupCatNames || capture === undefined) {
                     translations.push({
-                        target: capture || '',
-                        translation: capture,
+                        target: capture,
+                        translation: capture || '',
                         status: 'translated',
                         totalStatus: 'translated'
                     });
