@@ -33,29 +33,31 @@ export default class Translator {
 
     escapeMacroParam(str) {
         return str
-            .replace(/\\/g, '\\\\')      // 백슬래시 → 두 개
-            .replace(/[{},:]/g, '\\$&'); // { } , : 앞에 백슬래시
+            .replace(/\\/g, '\\\\')
+            .replace(/[${},:]/g, '\\$&');   //  ←  $ 추가!
     }
 
     getReplacer(baseReplace) {
         return (...args) => {
-            const caps = args;                 // 가독성을 위해 별명
+            const caps = args;
 
-            let out = baseReplace.replace(
+            // 1단계: 매크로 블록만 찾아 내부 토큰 처리
+            const out = baseReplace.replace(
                 /\{((?:\\.|[^{}])+?):([\p{L}\p{N}_]+)\}/gsu,
                 (macro, params, fnName) => {
-                    // 매크로 파라미터 안의 $n 을 찾아 이스케이프
                     const safeParams = params.replace(/\$(\d+)/g, (_, idx) =>
-                        this.escapeMacroParam(caps[idx] || '')
+                        this.escapeMacroParam(caps[idx] ?? `$${idx}`)   // 없으면 그대로
                     );
                     return `{${safeParams}:${fnName}}`;
                 }
             );
 
-            out = out.replace(/\$(\d+)/g, (_, idx) => caps[idx] || '');
-
-            return out;
-        }
+            // 2단계: “중괄호 밖” $n 치환
+            return out.replace(
+                /(?<!\{[^{}]*?)\$(\d+)(?![^{}]*?})/g,   // look-behind/ahead
+                (_, idx) => caps[idx] ?? `$${idx}`
+            );
+        };
     }
 
     replaceSpecialPattern(text) {
