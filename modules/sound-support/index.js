@@ -293,9 +293,9 @@ export default class SoundSupport {
         RCManager.addHandlers('sound-support-rc-handler', {
             onGameInitialize: (rcfile) => {
                 const queue = [];
-                IOHook.handle_message.after.addHandler('sound-support-save-msgs', (data) => {
+                IOHook.handle_message.before.addHandler('sound-support-save-msgs', (data) => {
                     if (data.msg === 'msgs') {
-                        queue.push(data);
+                        queue.push(JSON.parse(JSON.stringify(data)));
                     }
                 });
                 this.soundConfig = this.#getSoundConfig(rcfile);
@@ -333,13 +333,13 @@ export default class SoundSupport {
                     }
                 }
                 this.loadSoundPacks().then(() => {
-                    IOHook.handle_message.after.removeHandler('sound-support-save-msgs');
+                    IOHook.handle_message.before.removeHandler('sound-support-save-msgs');
                     if (SiteInformation.current_hash !== '#lobby') {
-                        IOHook.handle_message.after.addHandler('sound-support-sound-handler', async (data) => {
+                        IOHook.handle_message.before.addHandler('sound-support-sound-handler', (data) => {
                             if (data.msg === 'msgs' && data.messages) {
                                 handleSoundMessage(data);
                             }
-                        });
+                        }, 1);
                         for (const data of queue) {
                             handleSoundMessage(data);
                         }
@@ -347,7 +347,7 @@ export default class SoundSupport {
                 });
             },
             onGameEnd: () => {
-                IOHook.handle_message.after.removeHandler('sound-support-sound-handler');
+                IOHook.handle_message.before.removeHandler('sound-support-sound-handler');
             }
         });
     }
