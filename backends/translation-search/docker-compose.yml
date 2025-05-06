@@ -5,7 +5,7 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m        # ← 1 GB 메모리 예시
+      - ES_JAVA_OPTS=-Xms1G -Xmx1G        # ← 1 GB 메모리 예시
     ports:
       - "9200:9200"
     volumes:
