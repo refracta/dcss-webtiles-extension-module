@@ -108,6 +108,7 @@ export default class Translator {
             /* ── 캡처 그룹별 재귀 번역 ───────────────────── */
             for (let i = 1; i < matchResults.length; i++) {
                 const capture = matchResults[i];
+                if (typeof capture !== "string") continue;
                 const groupCatNames = matcher.groups[i - 1];
                 if (!groupCatNames) {
                     translations.push({
