@@ -30,22 +30,6 @@ const STATUS_BADGE = {
     "translated": {cls: "bg-primary", label: "Translated"},
 };
 document.addEventListener("DOMContentLoaded", async () => {
-    const params = new URLSearchParams(location.search);
-    if (params.get("mode") !== "fast") return;      // fast 모드 아닐 때는 패스
-
-    // ➋ 검색 폼(상단 우측) 찾아서 hidden input 주입
-    const form = document.getElementById("changelist-search");   // Django-admin 기본 id
-    if (!form) return;
-
-    // 이미 있으면 중복 추가하지 않음
-    if (!form.querySelector('input[name="mode"]')) {
-        const hidden = document.createElement("input");
-        hidden.type = "hidden";
-        hidden.name = "mode";
-        hidden.value = "fast";
-        form.appendChild(hidden);
-    }
-
     const results = Array.from(document.querySelectorAll(".translation-result"));
     const statuses = Array.from(document.querySelectorAll(".translation-status"));
     const infos = Array.from(document.querySelectorAll(".translation-info"));
@@ -68,5 +52,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             infoTag.textContent = JSON.stringify(translationResult, null, 4);
         } catch (e) {
         }
+    }
+    const params = new URLSearchParams(location.search);
+    if (params.get("mode") !== "fast") return;      // fast 모드 아닐 때는 패스
+
+    // ➋ 검색 폼(상단 우측) 찾아서 hidden input 주입
+    const form = document.getElementById("changelist-search");   // Django-admin 기본 id
+    if (!form) return;
+
+    // 이미 있으면 중복 추가하지 않음
+    if (!form.querySelector('input[name="mode"]')) {
+        const hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.name = "mode";
+        hidden.value = "fast";
+        form.appendChild(hidden);
     }
 });
