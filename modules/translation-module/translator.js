@@ -125,7 +125,9 @@ export default class Translator {
                     if (!this.categories[name]) continue;
 
                     const subRes = this.translate(capture, language, name);
-
+                    if (this.debug) {
+                        subRes.group = name;
+                    }
                     if (subRes.status === 'translated') {
                         replaced = replaced.replace(capture, subRes.translation);
                         translations.push(subRes);
