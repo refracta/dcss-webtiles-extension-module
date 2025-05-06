@@ -34,7 +34,7 @@ services:
     command: |
       /bin/sh -c '
         cd app
-        
+        npm install
         if [ -f /flags/.inited ]; then
           echo "🛈  .inited not found → skipping bulk import"
         else
@@ -44,6 +44,5 @@ services:
         fi
   
         # 이 줄은 조건과 무관하게 항상 실행
-        npm install
         node search-server.js
       '
