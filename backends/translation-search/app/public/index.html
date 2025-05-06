@@ -4,13 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DCSS Translation: Data Searcher</title>
+    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- jQuery & json-viewer -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/jquery.json-viewer@1.5.0/json-viewer/jquery.json-viewer.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/jquery.json-viewer@1.5.0/json-viewer/jquery.json-viewer.min.js"></script>
     <style>
         body{padding-top:1.25rem;padding-bottom:50px}
         .card-header{font-size:.875rem}
         .split-body{display:flex}
-        .split-body>div{width:50%;padding:.75rem;white-space:pre-wrap;word-wrap:break-word}
+        .split-body>div{width:50%;padding:.75rem;white-space:pre-wrap;word-break:break-word}
         .split-body>div:first-child{border-right:1px solid #dee2e6}
+        .json-container{background:#f8f9fa;padding:.5rem;border-top:1px dashed #dee2e6;display:none}
+        .status-badge{min-width:110px;text-align:center}
     </style>
 </head>
 <body>
@@ -18,7 +25,7 @@
     <!-- Search bar -->
     <form class="row gy-2 align-items-center mb-3" onsubmit="return false;">
         <div class="col-auto"><select id="sourceSel" class="form-select form-select-sm"></select></div>
-        <div class="col"><input id="queryInp" class="form-control" placeholder="Type to search…" autocomplete="off"></div>
+        <div class="col"><input id="queryInp" class="form-control" placeholder="Type to search…" autocomplete="off" /></div>
     </form>
 
     <!-- Meta & Pager -->
@@ -35,89 +42,130 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+<!-- Optional Korean monospaced font -->
 <script>
-    /* ---------- Optional Korean font loader ---------- */
     (function loadTranslationFont(lang){
         if(lang.startsWith('ko')){
             window.WebFontConfig={custom:{families:['Nanum Gothic Coding'],urls:['https://fonts.googleapis.com/earlyaccess/nanumgothiccoding.css']}};
-            (function(){const wf=document.createElement('script');wf.src=(location.protocol==='https:'?'https':'http')+'://ajax.googleapis.com/ajax/libs/webfont/1.4.10/webfont.js';wf.async=true;document.head.appendChild(wf);} )();
-            const style=document.createElement('style');style.id='translation_font';style.appendChild(document.createTextNode('*{font-family:"Nanum Gothic Coding",monospace;}'));document.head.appendChild(style);
+            const wf=document.createElement('script');wf.src='https://ajax.googleapis.com/ajax/libs/webfont/1.4.10/webfont.js';wf.async=true;document.head.appendChild(wf);
+            const style=document.createElement('style');style.append('*{font-family:"Nanum Gothic Coding",monospace;}');document.head.appendChild(style);
         }
     })((new URLSearchParams(location.search)).get('language')||navigator.language||'en');
 </script>
 
 <script type="module">
-    /* ---------- Translator loader ---------- */
+    /* ------------ Dynamic loaders ------------- */
     !(async()=>{
         localStorage.SCRIPT_LATEST_DURATION ||= 300;
         localStorage.SCRIPT_LATEST_TIME ||= 0;
         const now=Date.now();
         if(now-+localStorage.SCRIPT_LATEST_TIME > +localStorage.SCRIPT_LATEST_DURATION*1000){
-            try{const sha=(await fetch('https://api.github.com/repos/refracta/dcss-webtiles-extension-module/commits/main').then(r=>r.json())).sha;localStorage.SCRIPT_LATEST=sha;localStorage.SCRIPT_LATEST_TIME=now;}catch{}
+            try{
+                const sha=(await fetch('https://api.github.com/repos/refracta/dcss-webtiles-extension-module/commits/main').then(r=>r.json())).sha;
+                localStorage.SCRIPT_LATEST=sha;
+                localStorage.SCRIPT_LATEST_TIME=now;
+            }catch{}
         }
         localStorage.SCRIPT_LATEST ||= 'latest';
-        window.translatorPromise = import(`https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module@${localStorage.SCRIPT_LATEST}/modules/translation-module/translator.js`);
+        window.translatorPromise  = import(`https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module@${localStorage.SCRIPT_LATEST}/modules/translation-module/translator.js`);
         window.dataManagerPromise = import(`https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module@${localStorage.SCRIPT_LATEST}/modules/translation-module/data-manager.js`);
-        window.fetchPromise = fetch('https://translation.nemelex.cards/build/latest.json',{cache:'no-store'}).then(r=>r.json());
+        window.fetchPromise       = fetch('https://translation.nemelex.cards/build/latest.json',{cache:'no-store'}).then(r=>r.json());
     })();
 
-    /* ---------- Globals & helpers ---------- */
+    /* ------------ Constants & helpers ------------- */
     const perPage=50;
     const STATUS={untranslated:{cls:'bg-danger',label:'Untranslated'},'part-translated':{cls:'bg-warning',label:'Part-Translated'},translated:{cls:'bg-primary',label:'Translated'}};
 
-    const $=id=>document.getElementById(id);
-    const sourceSel=$("sourceSel"), queryInp=$("queryInp"), results=$("results"), meta=$("meta"), prevBtn=$("prevBtn"), nextBtn=$("nextBtn");
+    const dom=id=>document.getElementById(id);
+    const jq=window.jQuery;
 
-    const esc=s=>s.replace(/[&<>'"`=]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;','`':'&#x60;','=':'&#x3D;'}[c]));
-    const urlP=()=>new URLSearchParams(location.search);
-    const setP=p=>history.replaceState({},'',`${location.pathname}?${p}`);
+    const sourceSel=dom('sourceSel');
+    const queryInp =dom('queryInp');
+    const results  =dom('results');
+    const meta     =dom('meta');
+    const prevBtn  =dom('prevBtn');
+    const nextBtn  =dom('nextBtn');
 
+    const esc=s=>s.replace(/[&<>'"`=]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;','`':'&#x60;', '=':'&#x3D;'}[c]));
+    const urlP = ()=>new URLSearchParams(location.search);
+    const setP = p => history.replaceState({},'',`${location.pathname}?${p}`);
     const userLang=urlP().get('language')||navigator.language||'en';
 
-    /* ---------- Load sources ---------- */
-    (async()=>{const list=await (await fetch('/sources')).json();sourceSel.innerHTML='<option value="all">-- All --</option>'+list.map(s=>`<option value="${s}">${s}</option>`).join('');const sp=urlP().get('source');if(sp) sourceSel.value=sp;})();
+    /* ------------ Delegated toggle for JSON viewer ------------- */
+    results.addEventListener('click',e=>{
+        const btn=e.target.closest('[data-toggle-json]');
+        if(!btn) return;
+        const id=btn.getAttribute('data-toggle-json');
+        const box=dom('json-'+id);
+        if(box) box.style.display=box.style.display==='none'||!box.style.display?'block':'none';
+    });
 
-    /* ---------- Events ---------- */
-    let debounce; queryInp.addEventListener('input',()=>{clearTimeout(debounce);debounce=setTimeout(()=>search(1),200)});
+    /* ------------ Load source list ------------- */
+    (async()=>{
+        const list=await (await fetch('/sources')).json();
+        sourceSel.innerHTML='<option value="all">-- All --</option>'+list.map(s=>`<option value="${s}">${s}</option>`).join('');
+        const sp=urlP().get('source'); if(sp) sourceSel.value=sp;
+    })();
+
+    /* ------------ Input & pager events ------------- */
+    let debounce;
+    queryInp.addEventListener('input',()=>{clearTimeout(debounce);debounce=setTimeout(()=>search(1),200)});
     sourceSel.addEventListener('change',()=>search(1));
     prevBtn.addEventListener('click',()=>{const p=+(urlP().get('page')||1); if(p>1) search(p-1)});
     nextBtn.addEventListener('click',()=>{const p=+(urlP().get('page')||1); search(p+1)});
 
-    /* ---------- Search ---------- */
+    /* ------------ Search & render ------------- */
     async function search(page=1){
-        const q=queryInp.value.trim(); const source=sourceSel.value;
+        const q=queryInp.value.trim();
+        const source=sourceSel.value;
         if(!q){results.innerHTML='';meta.textContent='Type to search…';prevBtn.disabled=nextBtn.disabled=true;return;}
         const from=(page-1)*perPage;
         const body=new URLSearchParams({q,source,from,size:perPage});
         const res=await fetch('/search',{method:'POST',body});
         const {hits,total}=await res.json();
-
-        const displayTotal = total>=10000 ? '10000+' : total;
-
-        const p=urlP(); p.set('q',q); p.set('source',source); p.set('page',page); setP(p);
+        const displayTotal=total>=10000?'10000+':total;
+        const p=urlP();p.set('q',q);p.set('source',source);p.set('page',page);setP(p);
         meta.textContent=`Showing ${from+1} – ${from+hits.length} of ${displayTotal} results`;
-        prevBtn.disabled=page<=1; nextBtn.disabled=hits.length<perPage;
+        prevBtn.disabled=page<=1;
+        nextBtn.disabled=hits.length<perPage;
         render(hits);
     }
-
-    /* ---------- Render ---------- */
     async function render(hits){
-        const [{default:Translator},{default:DataManager},{matchers}]=await Promise.all([window.translatorPromise,window.dataManagerPromise,window.fetchPromise]);
+        const [{default:Translator},{default:DataManager},{matchers}]=await Promise.all([
+            window.translatorPromise,window.dataManagerPromise,window.fetchPromise]);
         const translator=new Translator(matchers,DataManager.functions,true);
         results.innerHTML='';
         for(const h of hits){
             const {source,content}=h;
-            const r=translator.translate(content,userLang,source);
-            const b=STATUS[r.totalStatus]||{cls:'bg-secondary',label:r.totalStatus};
+            const result=translator.translate(content,userLang,source);
+            const badge=STATUS[result.totalStatus]||{cls:'bg-secondary',label:result.totalStatus};
             const matcherURL=`https://translation.nemelex.cards/admin/core/matcher/add/?category=${encodeURIComponent(source)}&raw=${encodeURIComponent(content)}&type=raw`;
-            const card=document.createElement('div'); card.className='card';
-            card.innerHTML=`<div class="card-header d-flex justify-content-between align-items-center"><div class="text-truncate">Source: <span class=\"fw-semibold\">${esc(source)}</span></div><div class=\"d-flex align-items-center gap-2\"><a href=\"${matcherURL}\" target=\"_blank\" class=\"btn btn-outline-primary btn-sm\">To matcher</a><span class=\"badge ${b.cls}\">${b.label}</span></div></div><div class=\"split-body\"><div>${esc(content)}</div><div>${esc(r.translation)}</div></div>`;
+            const id=Math.random().toString(36).slice(2);
+            const card=document.createElement('div');
+            card.className='card';
+            card.innerHTML=`<div class="card-header d-flex justify-content-between align-items-center">
+          <div class="text-truncate">Source: <span class="fw-semibold">${esc(source)}</span></div>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-secondary btn-sm" data-toggle-json="${id}">Result</button>
+            <a href="${matcherURL}" target="_blank" class="btn btn-outline-primary btn-sm">To matcher</a>
+            <span class="badge status-badge ${badge.cls}">${badge.label}</span>
+          </div>
+        </div>
+        <div class="split-body"><div>${esc(content)}</div><div>${esc(result.translation)}</div></div>
+        <div style="padding-left: 30px" id="json-${id}" class="json-container"></div>`;
             results.appendChild(card);
+            // Initialize json-viewer
+            $(`#json-${id}`).jsonViewer(result,{collapsed:false,withQuotes:true});
         }
     }
 
-    /* ---------- Init ---------- */
-    const init=urlP(); if(init.get('q')) queryInp.value=init.get('q'); search(+init.get('page')||1);
+    window.addEventListener('load', () => {
+        const init = urlP();
+        if (init.get('q')) {
+            queryInp.value = init.get('q');
+            search( +(init.get('page') || 1) );
+        }
+    });
 </script>
 </body>
 </html>
