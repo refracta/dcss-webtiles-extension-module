@@ -272,7 +272,7 @@ export default class TranslationModule {
                 }
             }, onGameEnd: () => {
                 this.unloadTranslationFont();
-                IOHook.handle_message.after.removeHandler('translation-handler');
+                IOHook.handle_message.before.removeHandler('translation-handler');
             }
         });
     }
