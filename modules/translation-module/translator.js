@@ -31,6 +31,33 @@ export default class Translator {
         }
     }
 
+    escapeMacroParam(str) {
+        return str
+            .replace(/\\/g, '\\\\')      // 백슬래시 → 두 개
+            .replace(/[{},:]/g, '\\$&'); // { } , : 앞에 백슬래시
+    }
+
+    getReplacer(baseReplace) {
+        return (...args) => {
+            const caps = args;                 // 가독성을 위해 별명
+
+            let out = baseReplace.replace(
+                /\{((?:\\.|[^{}])+?):([\p{L}\p{N}_]+)\}/gsu,
+                (macro, params, fnName) => {
+                    // 매크로 파라미터 안의 $n 을 찾아 이스케이프
+                    const safeParams = params.replace(/\$(\d+)/g, (_, idx) =>
+                        this.escapeMacroParam(caps[idx])
+                    );
+                    return `{${safeParams}:${fnName}}`;
+                }
+            );
+
+            out = out.replace(/\$(\d+)/g, (_, idx) => caps[idx]);
+
+            return out;
+        }
+    }
+
     replaceSpecialPattern(text) {
         return text.replace(/\{((?:\\.|[^{}])+?):([\p{L}\p{N}_]+)\}/gsu, (match, paramsStr, funcName) => {
             if (this.functions[funcName]) {
@@ -103,13 +130,13 @@ export default class Translator {
                 ? matcher.replaceValue
                 : matcher.replaceValue?.[language] ?? target;
 
-            let replaced = target.replace(matcher.regexp, baseReplace);
+            let replaced = target.replace(matcher.regexp, this.getReplacer(baseReplace));
 
             /* ── 캡처 그룹별 재귀 번역 ───────────────────── */
             for (let i = 1; i < matchResults.length; i++) {
                 const capture = matchResults[i];
                 const groupCatNames = matcher.groups[i - 1];
-                if (!groupCatNames) {
+                if (!groupCatNames || capture === undefined) {
                     translations.push({
                         target: capture,
                         translation: capture,
@@ -126,7 +153,7 @@ export default class Translator {
                     const subRes = this.translate(capture, language, name);
 
                     if (subRes.status === 'translated') {
-                        replaced = replaced.replace(capture, subRes.translation);
+                        replaced = replaced.replace(capture, this.getReplacer(subRes.translation));
                         translations.push(subRes);
                         done = true;
                         break;
