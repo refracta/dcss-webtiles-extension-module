@@ -46,13 +46,13 @@ export default class Translator {
                 (macro, params, fnName) => {
                     // 매크로 파라미터 안의 $n 을 찾아 이스케이프
                     const safeParams = params.replace(/\$(\d+)/g, (_, idx) =>
-                        this.escapeMacroParam(caps[idx])
+                        this.escapeMacroParam(caps[idx] || '')
                     );
                     return `{${safeParams}:${fnName}}`;
                 }
             );
 
-            out = out.replace(/\$(\d+)/g, (_, idx) => caps[idx]);
+            out = out.replace(/\$(\d+)/g, (_, idx) => caps[idx] || '');
 
             return out;
         }
@@ -139,7 +139,7 @@ export default class Translator {
                 if (!groupCatNames || capture === undefined) {
                     translations.push({
                         target: capture,
-                        translation: capture || '',
+                        translation: capture,
                         status: 'translated',
                         totalStatus: 'translated'
                     });
