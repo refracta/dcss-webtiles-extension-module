@@ -121,6 +121,7 @@ export default class Translator {
 
                 let done = false;
                 for (const name of groupCatNames) {
+                    // if (name === category) continue;
                     if (!this.categories[name]) continue;
 
                     const subRes = this.translate(capture, language, name);
