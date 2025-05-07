@@ -156,6 +156,7 @@
     /* ------------ Load source list ------------- */
     (async () => {
         const list = await (await fetch('/sources')).json();
+        list.sort();
         sourceSel.innerHTML = '<option value="all">-- All --</option>' + list.map(s => `<option value="${s}">${s}</option>`).join('');
         const sp = urlP().get('source');
         if (sp) sourceSel.value = sp;
