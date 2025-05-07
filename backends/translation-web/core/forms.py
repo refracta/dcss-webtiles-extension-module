@@ -160,3 +160,21 @@ class CategoryBulkForm(forms.Form):
                 "Old and new categories are identical. Nothing to change."
             )
         return cleaned
+
+# core/forms.py
+from django import forms
+from django.contrib.admin.helpers import ActionForm   # ← 올바른 위치!
+
+# core/forms.py
+from django import forms
+from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
+
+class CategoryChangeConfirmForm(forms.Form):
+    """
+    ▸ 새 category 한 칸
+    ▸ 선택된 객체 PK 들을 숨겨 들고 다니기 위한 _selected_action
+    """
+    new_category = forms.CharField(label="New category", max_length=50)
+
+    # Django-admin 이 선택한 PK 를 넘길 때 쓰는 hidden 필드
+    _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)

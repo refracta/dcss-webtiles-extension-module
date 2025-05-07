@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.template.response import TemplateResponse
 
 admin.site.site_header = "DCSS Translation"  # 상단 굵은 글씨
@@ -299,7 +300,7 @@ from django.db.models.functions import Coalesce, Cast
 from .models import TranslationData, Matcher, AdminFastLink
 from .forms import TranslationDataForm, MatcherForm
 from .utils import NoCountPaginator, SmartPaginator
-
+from .forms import CategoryChangeConfirmForm  # ← 방금 만든 폼
 
 # ──────────────────────────────────────────
 # ModelAdmin
@@ -308,6 +309,51 @@ from .utils import NoCountPaginator, SmartPaginator
 class MatcherAdmin(admin.ModelAdmin):
     form = MatcherForm
     change_list_template = "admin/matcher_change_list.html"
+    actions= ["change_category_confirm"]
+
+    @admin.action(description="Change category…")
+    def change_category_confirm(self, request, queryset):
+        """
+        1) 드롭다운에서 액션 선택 → POST 로 이 함수 호출
+        2) 'apply' 파라미터가 없으면 확인 페이지 렌더
+        3) 'apply' 가 있으면 실제로 DB 업데이트
+        """
+        if "apply" in request.POST:
+            # ── 3) 실제 일괄 변경 ──────────────────────────
+            new_cat = (request.POST.get("new_category") or "").strip()
+            if not new_cat:
+                self.message_user(request,
+                                  "Please enter a new category.",
+                                  level=messages.ERROR)
+                return
+
+            pks = request.POST.getlist("_selected_action")
+            updated = Matcher.objects.filter(pk__in=pks).update(category=new_cat)
+
+            self.message_user(
+                request,
+                f"{updated} matcher(s) moved to “{new_cat}”.",
+                level=messages.SUCCESS,
+            )
+            return None          # changelist 로 리다이렉트
+
+        # ── 2) 확인 페이지 ─────────────────────────────────
+        pks = request.POST.getlist(ACTION_CHECKBOX_NAME)
+        context = dict(
+            self.admin_site.each_context(request),
+            title="Change category of selected matchers",
+            objects=queryset,
+            action="change_category_confirm",
+            pks=pks,
+            opts=self.model._meta,          # ★ 이 한 줄 추가
+        )
+        return TemplateResponse(
+            request,
+            "admin/change_category_confirmation.html",
+            context
+        )
+
+
 
     def save_model(self, request, obj, form, change):
         # ▲ signals 쪽에서 읽을 수 있도록
@@ -503,7 +549,6 @@ class MatcherAdmin(admin.ModelAdmin):
 
     copy_link.short_description = "Copy"
 
-    actions = ["change_category_action"]
 
     def get_urls(self):
         urls = super().get_urls()

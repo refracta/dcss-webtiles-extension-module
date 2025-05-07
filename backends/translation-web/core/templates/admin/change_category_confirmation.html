@@ -1,0 +1,41 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block content %}
+
+<form method="post" novalidate>{% csrf_token %}
+<div>
+    <h1>{{ title }}</h1>
+
+
+
+
+
+    <h2>{% trans "Objects selected:" %}</h2>
+    <ul>
+        {% for obj in objects %}
+        <li>{{ obj }}</li>
+        {% endfor %}
+    </ul>
+
+    {# 선택된 객체 PK들을 hidden input 으로 넘김 #}
+    {% for pk in pks %}
+    <input type="hidden" name="_selected_action" value="{{ pk }}">
+    {% endfor %}
+    <p>Please type a new category and confirm:</p>
+
+    <input type="text" name="new_category" style="width:20rem;" autofocus required>
+
+    <input type="hidden" name="action" value="{{ action }}">
+    <input type="hidden" name="apply"  value="yes">
+
+    <div class="submit-row">
+        <input type="submit" class="default" value="Apply">
+        <a href="{% url opts|admin_urlname:'changelist' %}">{% trans "Cancel" %}</a>
+    </div>
+</div>
+
+</form>
+
+
+{% endblock %}
