@@ -24,13 +24,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function toggle() {
         const mode = typeSelect.value === "regex" ? "regex" : "raw";
-
+        const rawTag = document.querySelector("textarea[name=raw]");
+        const regexpSourceTag = document.querySelector("textarea[name=regexp_source]");
         if (mode === "raw") {
             showRow(rawRow);
             hideRow(srcRow);
             hideRow(flagRow);
             hideRow(groupsRow);
             hideRow(ignorePT);
+            regexpSourceTag.value = rawTag.value;
         } else {
             hideRow(rawRow);
             showRow(srcRow);
@@ -42,6 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             })
             showRow(ignorePT);
+            rawTag.value = regexpSourceTag.value;
         }
     }
 
