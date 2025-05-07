@@ -138,14 +138,14 @@ def matcher_saved(sender, instance, created, **kwargs):
     action = "created" if created else "updated"
     _send_to_discord(_matcher_embed(instance, action))
     payload = build_translation_payload()
-    transaction.on_commit(lambda *args: write_payload(payload, snapshot=True))
+    transaction.on_commit(lambda *args: write_payload(payload, snapshot=False))
 
 
 @receiver(post_delete, sender=Matcher)
 def matcher_deleted(sender, instance, **kwargs):
     _send_to_discord(_matcher_embed(instance, "deleted"))
     payload = build_translation_payload()
-    transaction.on_commit(lambda *args: write_payload(payload, snapshot=True))
+    transaction.on_commit(lambda *args: write_payload(payload, snapshot=False))
 
 # ── TranslationData ───────────────────────────────────────
 @receiver(post_save, sender=TranslationData)
