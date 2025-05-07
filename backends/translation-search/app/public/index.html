@@ -208,7 +208,7 @@
             const {source, content} = h;
             const result = translator.translate(content, userLang, source);
             const badge = STATUS[result.totalStatus] || {cls: 'bg-secondary', label: result.totalStatus};
-            const tdURL = `https://translation.nemelex.cards/admin/core/matcher/translationdata/?source=${encodeURIComponent(source)}&content=${encodeURIComponent(content)}&type=raw`;
+            const tdURL = `https://translation.nemelex.cards/admin/core/translationdata/add/?source=${encodeURIComponent(source)}&content=${encodeURIComponent(content)}&type=raw`;
             const matcherURL = `https://translation.nemelex.cards/admin/core/matcher/add/?category=${encodeURIComponent(source)}&raw=${encodeURIComponent(content)}&type=raw`;
             const id = Math.random().toString(36).slice(2);
             const card = document.createElement('div');
