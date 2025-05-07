@@ -181,12 +181,7 @@
     async function search(page = 1) {
         const q = queryInp.value.trim();
         const source = sourceSel.value;
-        if (!q) {
-            results.innerHTML = '';
-            meta.textContent = 'Type to search…';
-            prevBtn.disabled = nextBtn.disabled = true;
-            return;
-        }
+
         const from = (page - 1) * perPage;
         const body = new URLSearchParams({q, source, from, size: perPage});
         const res = await fetch('/search', {method: 'POST', body});
