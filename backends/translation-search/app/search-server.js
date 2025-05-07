@@ -16,11 +16,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // UI Form 제출 → ES 검색
 app.post('/search', (req, res) => {
-    const { q, source, from = 0, size = 50 } = req.body;
+    const { q = '', source = 'all', from = 0, size = 50 } = req.body;
 
-    const query = source && source !== 'all'
-        ? { bool: { must:[{ match:{ content:q }}], filter:[{ term:{ source } }] } }
-        : { match:{ content:q } };
+    const coreQuery = q.trim()
+        ? { match: { content: q } }   // 검색어가 있을 때
+        : { match_all: {} };          // 검색어가 없을 때
+
+    const query = source !== 'all'
+        ? { bool: { must: [coreQuery], filter: [{ term: { source } }] } }
+        : coreQuery;
 
     request.post(
         `${ES_URL}/${INDEX}/_search`,

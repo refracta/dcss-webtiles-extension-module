@@ -237,7 +237,9 @@
             const init = urlP();
             if (init.get('q')) {
                 queryInp.value = init.get('q');
-                search(+(init.get('page') || 1));
+                search( +(init.get('page') || 1) );
+            } else {
+                search(1);         // 검색어가 없을 때도 전체 목록 1페이지 표시
             }
         }, 1000);
     });
