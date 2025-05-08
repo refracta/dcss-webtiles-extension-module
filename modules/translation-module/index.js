@@ -205,7 +205,7 @@ export default class TranslationModule {
                                 $tooltip.append(`<br /><span>${translate("Left click: ", 'interface@action_panel.text')}`
                                     + item.action_verb.toLowerCase()
                                     + "</span>");
-                            $tooltip.append(`<br /><span>${translate("Right click: describe: ", 'interface@action_panel.text')}</span>`);
+                            $tooltip.append(`<br /><span>${translate("Right click: describe", 'interface@action_panel.text')}</span>`);
                         }
                     }
                     $tooltip.show();
