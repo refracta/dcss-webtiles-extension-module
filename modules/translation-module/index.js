@@ -202,8 +202,7 @@ export default class TranslationModule {
                         $tooltip.append(player.inventory_item_desc(item.slot));
                         if (game.get_input_mode() == enums.mouse_mode.COMMAND) {
                             if (item.action_verb)
-                                $tooltip.append(`<br /><span>${translate("Left click: ", 'interface@action_panel.text')}`
-                                    + item.action_verb.toLowerCase()
+                                $tooltip.append(`<br /><span>${translate("Left click: " + item.action_verb.toLowerCase(), 'interface@action_panel.text')}`
                                     + "</span>");
                             $tooltip.append(`<br /><span>${translate("Right click: describe", 'interface@action_panel.text')}</span>`);
                         }
