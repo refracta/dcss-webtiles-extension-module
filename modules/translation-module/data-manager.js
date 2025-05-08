@@ -253,12 +253,12 @@ export default class DataManager {
         const isUnicode = cp => /[^\u0000-\u00ff]/.test(cp)
 
         /* ===== 헬퍼: 조사 생성 ===== */
-        const josa = (withBatchim, withoutBatchim, paren = false) => w => {
+        const josa = (withBatchim, withoutBatchim, paren = false) => (w, str = '') => {
             const last = w.charCodeAt(w.length - 1);
             if (!isHangul(last)) {
-                return paren ? `${w}${withBatchim}(${withoutBatchim})` : w + withoutBatchim;
+                return paren ? `${w}${str}${withBatchim}(${withoutBatchim})` : w + withoutBatchim;
             }
-            return w + (hasBatchim(w) ? withBatchim : withoutBatchim);
+            return w + str + (hasBatchim(w) ? withBatchim : withoutBatchim);
         };
 
         /* ===== 헬퍼: 유니코드 문자 크기 고려한 padding ===== */
