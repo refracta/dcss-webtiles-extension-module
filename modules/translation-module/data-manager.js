@@ -262,24 +262,20 @@ export default class DataManager {
         };
 
         /* ===== 헬퍼: 유니코드 문자 크기 고려한 padding ===== */
-        const padString = padStart => (originalStr, size, shouldEscape = false) => {
+        const padString = (padStart, isHTMLFormatted) => (originalStr, size) => {
             size = parseInt(size);
             if (size <= 0) return originalStr;
 
-            let strForCount;
+            let strForCount = originalStr;
+            if (isHTMLFormatted) {
+                // Remove HTML tags in the string to retrieve actual characters displayed
+                strForCount = strForCount.replace(/<.+?>/g, '');
 
-            if (typeof shouldEscape === "string") {
-                shouldEscape = (shouldEscape.toLowerCase() === "true");
-            }
-
-            if (shouldEscape) {
                 // Considering HTML special character expression
-                strForCount = originalStr.replace(/&amp;/g, '&')
-                    .replace(/&lt;/g, '<')
-                    .replace(/&gt;/g, '>')
-                    .replace(/&quot;/g, '"');
-            } else {
-                strForCount = originalStr;
+                strForCount = strForCount.replace(/&amp;/g, '&')
+                                         .replace(/&lt;/g, '<')
+                                         .replace(/&gt;/g, '>')
+                                         .replace(/&quot;/g, '"');
             }
 
             let currentSize = 0;
@@ -437,9 +433,10 @@ export default class DataManager {
                 return w + ((j === 0 || j === 8 || j === -1) ? '로' : '으로');
             },
             /* 문자열 길이 정렬 */
-            'PAD_STRING': padString(false),
-            'PAD_STRING_START': padString(true),
-            'PAD_STRING_END': padString(false),
+            'PAD_END': padString(false, false),
+            'PAD_START': padString(true, false),
+            'PAD_END_HTML': padString(false, true),
+            'PAD_START_HTML': padString(true, true),
             'TO_KOREAN_RUNE': toKoreanRune
         };
     }
