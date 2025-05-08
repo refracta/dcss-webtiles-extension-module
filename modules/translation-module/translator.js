@@ -32,7 +32,7 @@ export default class Translator {
     }
 
     replaceSpecialPattern(text) {
-        return text.replace(/\{((?:\\.|[^{}])+?):([\p{L}\p{N}_]+)\}/gsu, (match, paramsStr, funcName) => {
+        return text.replace(/\{((?:\\.|[^{}])+?):([\p{L}\p{N}_]+)\}/gu, (match, paramsStr, funcName) => {
             if (this.functions[funcName]) {
                 const params = [];
                 let currParam = '';
@@ -64,9 +64,7 @@ export default class Translator {
 
     translate(target, language, category) {
         const result = {
-            target,
-            translation: target,
-            status: 'untranslated',      // 주(直) 번역 결과
+            target, translation: target, status: 'untranslated',      // 주(直) 번역 결과
             totalStatus: 'untranslated' // 집계 결과(최외곽에만 남김)
         };
 
@@ -80,9 +78,7 @@ export default class Translator {
             if (this.debug) {
                 result.matcher = rawMatcher;
             }
-            const rawValue = typeof rawMatcher.replaceValue === 'string'
-                ? rawMatcher.replaceValue
-                : rawMatcher.replaceValue?.[language] ?? target;
+            const rawValue = typeof rawMatcher.replaceValue === 'string' ? rawMatcher.replaceValue : rawMatcher.replaceValue?.[language] ?? target;
 
             result.translation = this.replaceSpecialPattern(rawValue);
             result.status = 'translated';
@@ -99,11 +95,10 @@ export default class Translator {
                 result.matcher = matcher;
             }
 
-            const baseReplace = typeof matcher.replaceValue === 'string'
-                ? matcher.replaceValue
-                : matcher.replaceValue?.[language] ?? target;
+            const baseReplace = typeof matcher.replaceValue === 'string' ? matcher.replaceValue : matcher.replaceValue?.[language] ?? target;
 
             let replaced = target.replace(matcher.regexp, baseReplace);
+            console.log(matcher.regexp, baseReplace, replaced);
 
             /* ── 캡처 그룹별 재귀 번역 ───────────────────── */
             for (let i = 1; i < matchResults.length; i++) {
@@ -111,10 +106,7 @@ export default class Translator {
                 const groupCatNames = matcher.groups[i - 1];
                 if (!groupCatNames || capture === undefined) {
                     let currentResult = {
-                        target: capture,
-                        translation: capture,
-                        status: 'translated',
-                        totalStatus: 'translated'
+                        target: capture, translation: capture, status: 'translated', totalStatus: 'translated'
                     };
                     if (this.debug) {
                         currentResult = {category: null, ...currentResult};
@@ -133,7 +125,17 @@ export default class Translator {
                         subRes = {category: name, ...subRes};
                     }
                     if (subRes.status === 'translated') {
-                        replaced = replaced.replace(capture, subRes.translation);
+                        let escaped = false;
+                        replaced = replaced.replace(/\{((?:\\.|[^{}])+?):([\p{L}\p{N}_]+)\}/gu, (match, paramsStr, funcName) => {
+                            if (paramsStr.includes(capture) && escaped === false) {
+                                escaped = true;
+                                return `{${paramsStr.replace(capture, subRes.translation.replace(/([\\{}:,])/g, '\\$1'))}:${funcName}}`;
+                            }
+                            return `{${paramsStr}:${funcName}}`;
+                        });
+                        if (!escaped) {
+                            replaced = replaced.replace(capture, subRes.translation);
+                        }
                         translations.push(subRes);
                         done = true;
                         break;
