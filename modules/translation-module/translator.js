@@ -98,7 +98,6 @@ export default class Translator {
             const baseReplace = typeof matcher.replaceValue === 'string' ? matcher.replaceValue : matcher.replaceValue?.[language] ?? target;
 
             let replaced = target.replace(matcher.regexp, baseReplace);
-            console.log(matcher.regexp, baseReplace, replaced);
 
             /* ── 캡처 그룹별 재귀 번역 ───────────────────── */
             for (let i = 1; i < matchResults.length; i++) {
