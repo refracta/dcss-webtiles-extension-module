@@ -272,7 +272,7 @@ export default class TranslationModule {
                                 }
                             }
                         });
-                        this.sendMessage(`<cyan>[TranslationModule]</cyan> ${matchers.length} match data loaded successfully. / Thanks to ${messages[0]}`)
+                        this.sendMessage(`<cyan>[TranslationModule]</cyan> ${matchers.length} match data loaded successfully. (${new Date(time).toLocaleString()}) / Thanks to ${messages[0]}`)
                     }
                 } catch (e) {
                     this.translator = {translate: (text) => ({translation: text})};
