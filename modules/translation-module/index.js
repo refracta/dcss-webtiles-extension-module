@@ -233,6 +233,7 @@ export default class TranslationModule {
                             cache: "no-store",
                             signal: controller.signal
                         }).then((r) => r.json());
+
                         clearTimeout(timeoutId);
 
                         this.matchers = matchers;
@@ -271,7 +272,37 @@ export default class TranslationModule {
                                 }
                             }
                         });
-                        this.sendMessage(`<cyan>[TranslationModule]</cyan> ${matchers.length} match data loaded successfully. (${new Date(time).toLocaleString()}) / Thanks to ${messages[0]}`)
+                        this.sendMessage(`<cyan>[TranslationModule]</cyan> ${matchers.length} matcher data loaded successfully. (${new Date(time).toLocaleString()}) / Thanks to ${messages[0]}`)
+
+                        if (this.config.translationDebug) {
+                            let stamp = null;
+                            const runChangeDetector = async () => {
+                                const res = await fetch(this.config.translationFile, {
+                                    method: "HEAD",
+                                    mode: "cors",
+                                    cache: "no-store",
+                                });
+                                const lm = res.headers.get("last-modified") ?? "";
+                                const cl = res.headers.get("content-length") ?? "";
+                                const newStamp = `${lm}|${cl}`;
+                                if (stamp && newStamp !== stamp) {
+                                    const {
+                                        matchers,
+                                        time,
+                                        messages
+                                    } = await fetch(this.config.translationFile, {
+                                        cache: "no-store",
+                                        signal: controller.signal
+                                    }).then((r) => r.json());
+                                    this.matchers = matchers;
+                                    this.translator = new Translator(this.matchers, DataManager.functions, this.config.translationDebug);
+                                    this.sendMessage(`<cyan>[TranslationModule]</cyan> DebugAutoReload: ${matchers.length} matcher data loaded successfully. (${new Date(time).toLocaleString()})`);
+                                }
+                                stamp = newStamp;
+                            }
+                            runChangeDetector();
+                            setInterval(runChangeDetector, 1000);
+                        }
                     }
                 } catch (e) {
                     this.translator = {translate: (text) => ({translation: text})};
