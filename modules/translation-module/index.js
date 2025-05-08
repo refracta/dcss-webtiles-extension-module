@@ -7,6 +7,13 @@ export default class TranslationModule {
     static dependencies = ['IOHook', 'RCManager', 'SiteInformation'];
     static description = '(Beta) This module provides i18n feature.';
 
+    sendMessage(text) {
+        const {IOHook} = DWEM.Modules;
+        IOHook.handle_message({
+            msg: 'msgs', messages: [{text}]
+        });
+    }
+
     escapeHTML(str) {
         return str.replace(/[&<>"']/g, function (match) {
             const escapeMap = {
@@ -265,6 +272,7 @@ export default class TranslationModule {
                                 }
                             }
                         });
+                        this.sendMessage(`<cyan>[TranslationModule]</cyan> ${matchers.length} match data loaded successfully. / Thanks to ${messages[0]}.`)
                     }
                 } catch (e) {
                     this.translator = {translate: (text) => ({translation: text})};
