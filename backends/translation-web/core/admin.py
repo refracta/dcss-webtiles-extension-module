@@ -9,6 +9,12 @@ from django.http import HttpResponseRedirect
 from django.forms.models import model_to_dict
 from .models import TranslationData, Matcher, AdminFastLink
 
+# ──────────────────────────────────────────────────────────────
+# 보조 함수: groups 가 None 일 때 [] 로 대체
+# ──────────────────────────────────────────────────────────────
+def groups_or_empty(groups):
+    """ArrayField 값이 None 이면 빈 리스트 반환"""
+    return groups or []
 
 def _change_url(obj):
     """해당 객체의 admin change URL"""
@@ -561,23 +567,20 @@ class MatcherAdmin(admin.ModelAdmin):
         ]
         return my + urls
 
+
+    # ──────────────────────────────────────────────────────────────
+    # 관리자: 카테고리 일괄 변경 뷰
+    # ──────────────────────────────────────────────────────────────
     def bulk_change_category_view(self, request):
-        """
-        ① category 필드에 old → new
-        ② groups = [["foo", …], …] 안에 old → new
-           └ 모든 중첩-리스트를 순회하며 정확히 일치하는 항목만 치환
-        """
         ctx = dict(self.admin_site.each_context(request),
                    title=_("Change category"))
 
-        # ── 미리보기용 카운트 초기화
-        direct_cnt: int | None = None   # category 필드에서 old 값 개수
-        group_cnt: int | None = None    # groups 안에서 old 값이 들어있는 개수
-        updated = 0                     # 실제로 수정된 Matcher 개수
+        direct_cnt = group_cnt = None  # 미리보기 숫자
+        updated = 0                    # 실제 변경된 객체 수
 
-        # ==================================================================
-        # POST  ─ 실제 업데이트
-        # ==================================================================
+        # ==========================================================
+        # POST : 실제 업데이트 수행
+        # ==========================================================
         if request.method == "POST":
             form = CategoryBulkForm(request.POST)
 
@@ -585,47 +588,35 @@ class MatcherAdmin(admin.ModelAdmin):
                 old = form.cleaned_data["old_category"]
                 new = form.cleaned_data["new_category"]
 
-                # ------------------------------------------------------------------
-                # (1) category 필드 미리 카운트
-                # ------------------------------------------------------------------
+                # (1) category 필드
                 direct_q = Q(category=old)
                 direct_cnt = Matcher.objects.filter(direct_q).count()
 
-                # ------------------------------------------------------------------
-                # (2) groups 안 old 포함 여부는 Python으로 직접 계산
-                #     → ArrayField 에서는 부분 문자열 매칭이 힘들기 때문
-                # ------------------------------------------------------------------
-                group_candidates = Matcher.objects.all()
-                group_cnt = 0
-                for m in group_candidates:
-                    if any(old in sub for sub in m.groups):
-                        group_cnt += 1
+                # (2) groups 안 old 포함 여부 카운트
+                group_cnt = sum(
+                    1 for m in Matcher.objects.all()
+                    if any(old in sub for sub in groups_or_empty(m.groups))
+                )
 
-                # ================================ 실제 UPDATE ======================
+                # ---------- 실제 UPDATE ----------
                 with transaction.atomic():
-                    # (1) category 필드
+                    # ① category 필드 일괄 업데이트
                     updated += Matcher.objects.filter(direct_q).update(category=new)
 
-                    # (2) groups 중첩 리스트
-                    for m in group_candidates:
-                        changed = False
-                        new_groups = []
+                    # ② groups 중첩 리스트 치환
+                    for m in Matcher.objects.all():
+                        groups_list = groups_or_empty(m.groups)
+                        if not any(old in sub for sub in groups_list):
+                            continue  # 바꿀 항목 없음
 
-                        for sub in m.groups:
-                            if old in sub:
-                                # 정확히 old 와 일치하는 항목만 new 로 교체
-                                new_sub = [new if item == old else item for item in sub]
-                                changed = True
-                            else:
-                                new_sub = sub
-                            new_groups.append(new_sub)
+                        new_groups = [
+                            [new if item == old else item for item in sub]
+                            for sub in groups_list
+                        ]
+                        m.groups = new_groups
+                        m.save(update_fields=["groups"])
+                        updated += 1
 
-                        if changed:
-                            m.groups = new_groups
-                            m.save(update_fields=["groups"])
-                            updated += 1
-
-                # ============================= 결과 메시지 & 리다이렉트 ==============
                 messages.success(
                     request,
                     _(f"Updated {updated} matcher(s): "
@@ -635,33 +626,30 @@ class MatcherAdmin(admin.ModelAdmin):
                     reverse("admin:core_matcher_changelist")
                 )
 
-            # ------------------------------------------------------------------
-            # 폼이 invalid 인 경우에도 old_category 가 입력되어 있으면
-            # 미리보기 카운트를 보여 주기 위해 계산
-            # ------------------------------------------------------------------
+            # 폼 invalid → 미리보기용 카운트
             else:
                 old = request.POST.get("old_category")
                 if old:
                     direct_cnt = Matcher.objects.filter(category=old).count()
                     group_cnt = sum(
                         1 for m in Matcher.objects.all()
-                        if any(old in sub for sub in m.groups)
+                        if any(old in sub for sub in groups_or_empty(m.groups))
                     )
 
-        # ==================================================================
-        # GET  ─ 미리보기(Preview)
-        # ==================================================================
+        # ==========================================================
+        # GET : 미리보기(Preview)
+        # ==========================================================
         else:
             form = CategoryBulkForm(request.GET or None)
-            if form.is_valid():         # 쿠키/쿼리스트링 old_category 있을 때
+            if form.is_valid():
                 old = form.cleaned_data["old_category"]
                 direct_cnt = Matcher.objects.filter(category=old).count()
                 group_cnt = sum(
                     1 for m in Matcher.objects.all()
-                    if any(old in sub for sub in m.groups)
+                    if any(old in sub for sub in groups_or_empty(m.groups))
                 )
 
-        # ── 컨텍스트 후처리 & 렌더링
+        # ---- 컨텍스트 & 렌더링 ----
         ctx.update(dict(form=form,
                         direct_cnt=direct_cnt,
                         group_cnt=group_cnt))
