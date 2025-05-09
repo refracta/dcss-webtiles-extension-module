@@ -581,19 +581,19 @@ class MatcherAdmin(admin.ModelAdmin):
         return my + urls
 
 
-    # ──────────────────────────────────────────────────────────────
-    # 관리자: 카테고리 일괄 변경 뷰
-    # ──────────────────────────────────────────────────────────────
+        # ──────────────────────────────────────────────────────────────
+        # 관리자: 카테고리 일괄 변경 뷰
+        # ──────────────────────────────────────────────────────────────
     def bulk_change_category_view(self, request):
         ctx = dict(self.admin_site.each_context(request),
                    title=_("Change category"))
 
-        direct_cnt = group_cnt = None  # 미리보기 숫자
-        updated = 0                    # 실제 변경된 객체 수
+        direct_cnt = group_cnt = None
+        updated = 0
 
-        # ==========================================================
-        # POST : 실제 업데이트 수행
-        # ==========================================================
+        # ==============================================================
+        # POST ─ 실제 업데이트
+        # ==============================================================
         if request.method == "POST":
             form = CategoryBulkForm(request.POST)
 
@@ -601,68 +601,68 @@ class MatcherAdmin(admin.ModelAdmin):
                 old = form.cleaned_data["old_category"]
                 new = form.cleaned_data["new_category"]
 
-                # (1) category 필드
+                # (1) category 필드 카운트
                 direct_q = Q(category=old)
                 direct_cnt = Matcher.objects.filter(direct_q).count()
 
-                # (2) groups 안 old 포함 여부 카운트
-                group_cnt = sum(
-                    1 for m in Matcher.objects.all()
-                    if any(old in sub for sub in groups_or_empty(m.groups))
-                )
+                # (2) groups 안 old 포함 여부 카운트 (안전 검사 사용)
+                all_matchers = Matcher.objects.all()
+                group_cnt = sum(1 for m in all_matchers if contains_old(m.groups, old))
 
-                # ---------- 실제 UPDATE ----------
                 with transaction.atomic():
                     # ① category 필드 일괄 업데이트
                     updated += Matcher.objects.filter(direct_q).update(category=new)
 
                     # ② groups 중첩 리스트 치환
-                    for m in Matcher.objects.all():
-                        groups_list = groups_or_empty(m.groups)
-                        if not any(old in sub for sub in groups_list):
-                            continue  # 바꿀 항목 없음
+                    for m in all_matchers:
+                        if not contains_old(m.groups, old):
+                            continue
 
-                        new_groups = [
-                            [new if item == old else item for item in sub]
-                            for sub in groups_list
-                        ]
-                        m.groups = new_groups
-                        m.save(update_fields=["groups"])
-                        updated += 1
+                        new_groups = []
+                        changed = False
+
+                        for sub in groups_or_empty(m.groups):
+                            if isinstance(sub, Iterable) and not isinstance(sub, (str, bytes)):
+                                replaced = [new if item == old else item for item in sub]
+                                if replaced != sub:
+                                    changed = True
+                                new_groups.append(replaced)
+                            else:
+                                new_groups.append(sub)   # None / 스칼라는 그대로
+
+                        if changed:
+                            m.groups = new_groups
+                            m.save(update_fields=["groups"])
+                            updated += 1
 
                 messages.success(
                     request,
                     _(f"Updated {updated} matcher(s): "
                       f"{direct_cnt} in 'category', {group_cnt} inside 'groups'.")
                 )
-                return HttpResponseRedirect(
-                    reverse("admin:core_matcher_changelist")
-                )
+                return HttpResponseRedirect(reverse("admin:core_matcher_changelist"))
 
-            # 폼 invalid → 미리보기용 카운트
+            # 폼 invalid → 미리보기
             else:
                 old = request.POST.get("old_category")
                 if old:
                     direct_cnt = Matcher.objects.filter(category=old).count()
                     group_cnt = sum(
-                        1 for m in Matcher.objects.all()
-                        if any(old in sub for sub in groups_or_empty(m.groups))
+                        1 for m in Matcher.objects.all() if contains_old(m.groups, old)
                     )
 
-        # ==========================================================
-        # GET : 미리보기(Preview)
-        # ==========================================================
+        # ==============================================================
+        # GET ─ 미리보기(Preview)
+        # ==============================================================
         else:
             form = CategoryBulkForm(request.GET or None)
             if form.is_valid():
                 old = form.cleaned_data["old_category"]
                 direct_cnt = Matcher.objects.filter(category=old).count()
                 group_cnt = sum(
-                    1 for m in Matcher.objects.all()
-                    if any(old in sub for sub in groups_or_empty(m.groups))
+                    1 for m in Matcher.objects.all() if contains_old(m.groups, old)
                 )
 
-        # ---- 컨텍스트 & 렌더링 ----
         ctx.update(dict(form=form,
                         direct_cnt=direct_cnt,
                         group_cnt=group_cnt))
