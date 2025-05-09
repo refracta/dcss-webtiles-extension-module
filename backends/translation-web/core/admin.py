@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from django.contrib import admin
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.template.response import TemplateResponse
@@ -15,6 +17,17 @@ from .models import TranslationData, Matcher, AdminFastLink
 def groups_or_empty(groups):
     """ArrayField 값이 None 이면 빈 리스트 반환"""
     return groups or []
+
+def contains_old(groups, old):
+    """
+    groups (list | None) 안에 old 가 포함돼 있으면 True.
+    - 하위 항목이 None / 스칼라여도 안전하게 처리
+    """
+    for sub in groups_or_empty(groups):
+        if isinstance(sub, Iterable) and not isinstance(sub, (str, bytes)):
+            if old in sub:
+                return True
+    return False
 
 def _change_url(obj):
     """해당 객체의 admin change URL"""
