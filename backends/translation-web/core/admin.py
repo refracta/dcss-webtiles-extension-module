@@ -11,13 +11,46 @@ from django.http import HttpResponseRedirect
 from django.forms.models import model_to_dict
 from .models import TranslationData, Matcher, AdminFastLink
 
+# 유틸 1) groups 가 None → [] 로
+def groups_or_empty(groups):
+    return groups or []
+
+# 유틸 2) 주어진 구조 안에 old 가 하나라도 있으면 True
+def any_contains(item, old):
+    if isinstance(item, str):
+        return item == old
+    elif isinstance(item, Iterable) and not isinstance(item, (str, bytes)):
+        return any(any_contains(sub, old) for sub in item)
+    else:
+        return False
 # ──────────────────────────────────────────────────────────────
 # 보조 함수: groups 가 None 일 때 [] 로 대체
 # ──────────────────────────────────────────────────────────────
-def groups_or_empty(groups):
-    """ArrayField 값이 None 이면 빈 리스트 반환"""
-    return groups or []
+# 유틸 3) 구조 전체를 돌며 old → new 로 교체
+def replace_all(item, old, new):
+    """
+    반환: (치환된_item, changed_bool)
+    - item 이 str  → old 와 같으면 new 로, changed = True
+    - item 이 list/tuple → 내부 원소마다 재귀, 하나라도 바뀌면 changed = True
+    - 그 외        → 그대로 반환, changed = False
+    """
+    if isinstance(item, str):
+        if item == old:
+            return new, True
+        return item, False
 
+    elif isinstance(item, Iterable) and not isinstance(item, (str, bytes)):
+        changed = False
+        new_container = []
+        for sub in item:
+            repl, ch = replace_all(sub, old, new)
+            changed |= ch
+            new_container.append(repl)
+        return new_container, changed
+
+    else:
+        return item, False
+# ───────────────────────────────────────────────────────────────
 def contains_old(groups, old):
     """
     groups (list | None) 안에 old 가 포함돼 있으면 True.
@@ -581,9 +614,13 @@ class MatcherAdmin(admin.ModelAdmin):
         return my + urls
 
 
-        # ──────────────────────────────────────────────────────────────
-        # 관리자: 카테고리 일괄 변경 뷰
-        # ──────────────────────────────────────────────────────────────
+    from collections.abc import Iterable
+    # …그 밖의 import 동일…
+
+    # ───────────────────────────────────────────────────────────────
+
+
+
     def bulk_change_category_view(self, request):
         ctx = dict(self.admin_site.each_context(request),
                    title=_("Change category"))
@@ -591,9 +628,9 @@ class MatcherAdmin(admin.ModelAdmin):
         direct_cnt = group_cnt = None
         updated = 0
 
-        # ==============================================================
-        # POST ─ 실제 업데이트
-        # ==============================================================
+        # -----------------------------------------------------------
+        # POST  ― 실제 UPDATE
+        # -----------------------------------------------------------
         if request.method == "POST":
             form = CategoryBulkForm(request.POST)
 
@@ -605,33 +642,23 @@ class MatcherAdmin(admin.ModelAdmin):
                 direct_q = Q(category=old)
                 direct_cnt = Matcher.objects.filter(direct_q).count()
 
-                # (2) groups 안 old 포함 여부 카운트 (안전 검사 사용)
+                # (2) groups 안 old 포함 여부 카운트
                 all_matchers = Matcher.objects.all()
-                group_cnt = sum(1 for m in all_matchers if contains_old(m.groups, old))
+                group_cnt = sum(
+                    1 for m in all_matchers
+                    if any_contains(groups_or_empty(m.groups), old)
+                )
 
+                # ========= 실제 UPDATE =========
                 with transaction.atomic():
-                    # ① category 필드 일괄 업데이트
+                    # ① category 필드
                     updated += Matcher.objects.filter(direct_q).update(category=new)
 
-                    # ② groups 중첩 리스트 치환
+                    # ② groups 재귀 치환
                     for m in all_matchers:
-                        if not contains_old(m.groups, old):
-                            continue
-
-                        new_groups = []
-                        changed = False
-
-                        for sub in groups_or_empty(m.groups):
-                            if isinstance(sub, Iterable) and not isinstance(sub, (str, bytes)):
-                                replaced = [new if item == old else item for item in sub]
-                                if replaced != sub:
-                                    changed = True
-                                new_groups.append(replaced)
-                            else:
-                                new_groups.append(sub)   # None / 스칼라는 그대로
-
+                        grp, changed = replace_all(groups_or_empty(m.groups), old, new)
                         if changed:
-                            m.groups = new_groups
+                            m.groups = grp
                             m.save(update_fields=["groups"])
                             updated += 1
 
@@ -648,19 +675,21 @@ class MatcherAdmin(admin.ModelAdmin):
                 if old:
                     direct_cnt = Matcher.objects.filter(category=old).count()
                     group_cnt = sum(
-                        1 for m in Matcher.objects.all() if contains_old(m.groups, old)
+                        1 for m in Matcher.objects.all()
+                        if any_contains(groups_or_empty(m.groups), old)
                     )
 
-        # ==============================================================
-        # GET ─ 미리보기(Preview)
-        # ==============================================================
+        # -----------------------------------------------------------
+        # GET  ― 미리보기(Preview)
+        # -----------------------------------------------------------
         else:
             form = CategoryBulkForm(request.GET or None)
             if form.is_valid():
                 old = form.cleaned_data["old_category"]
                 direct_cnt = Matcher.objects.filter(category=old).count()
                 group_cnt = sum(
-                    1 for m in Matcher.objects.all() if contains_old(m.groups, old)
+                    1 for m in Matcher.objects.all()
+                    if any_contains(groups_or_empty(m.groups), old)
                 )
 
         ctx.update(dict(form=form,
