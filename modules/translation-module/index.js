@@ -297,6 +297,13 @@ export default class TranslationModule {
                                     this.matchers = matchers;
                                     this.translator = new Translator(this.matchers, DataManager.functions, this.config.translationDebug);
                                     this.sendMessage(`<cyan>[TranslationModule]</cyan> DebugAutoReload: ${matchers.length} matcher data loaded successfully. (${new Date(time).toLocaleString()})`);
+                                    if (this.debugAutoReloadCallback) {
+                                        try {
+                                            this.debugAutoReloadCallback();
+                                        } catch (e) {
+
+                                        }
+                                    }
                                 }
                                 stamp = newStamp;
                             }
