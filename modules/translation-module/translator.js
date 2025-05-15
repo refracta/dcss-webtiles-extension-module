@@ -125,7 +125,7 @@ export default class Translator {
                     }
                     if (subRes.status === 'translated') {
                         let escaped = false;
-                        replaced = replaced.replace(/\{((?:\\.|[^{}])+?):([\p{L}\p{N}_]+)\}/gu, (match, paramsStr, funcName) => {
+                        replaced = replaced.replace(/\{(.+?):([\p{L}\p{N}_]+)\}/gu, (match, paramsStr, funcName) => {
                             if (paramsStr.includes(capture) && escaped === false) {
                                 escaped = true;
                                 return `{${paramsStr.replace(capture, subRes.translation.replace(/([\\{}:,])/g, '\\$1'))}:${funcName}}`;
