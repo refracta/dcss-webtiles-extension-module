@@ -206,6 +206,8 @@ export default class DataManager {
         "player@unarmed_attack",
         "txt@lines[o]",
         "ui-push@actions",
+        "ui-push@title",
+        "ui-push@desc",
         "ui-push@body",
         "ui-push@body#quote",
         "ui-push@body#lines",
