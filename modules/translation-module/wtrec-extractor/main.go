@@ -215,6 +215,8 @@ func processors() []processor {
 		"ui-push@actions",
 		"ui-push@title",
 		"ui-push@desc",
+		"ui-push@desc#quote",
+		"ui-push@desc#lines",
 		"ui-push@body",
 		"ui-push@body#quote",
 		"ui-push@body#lines",
