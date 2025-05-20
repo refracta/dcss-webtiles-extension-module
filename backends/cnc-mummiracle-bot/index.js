@@ -112,7 +112,7 @@ client.on('messageCreate', async (message) => {
             await message.reply({content: 'Your session cleared!'});
             return;
         }
-        console.log(`[${username}] ${content}`);
+        console.log(`[${username} (${smartMode})] ${content}`);
         if (!userSessions[username] || Date.now() - userSessions[username].lastMessageTime > 30 * 60 * 1000) {
             await createNewThread(username, msg);
         }
