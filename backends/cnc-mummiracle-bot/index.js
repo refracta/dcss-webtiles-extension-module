@@ -100,8 +100,13 @@ client.on('messageCreate', async (message) => {
     if (msgSplit.length > 1) {
         content = '~' + msgSplit.slice(1).join(': ~');
     }
+
     if (content.match(/^~[^~]/)) {
         let msg = content.slice(1).trim();
+        const smartMode = config?.adminList?.includes(username) && msg.startsWith('!');
+        if (smartMode) {
+            msg = content.slice(1).trim();
+        }
         if (msg.startsWith('clear')) {
             delete userSessions[username];
             await message.reply({content: 'Your session cleared!'});
@@ -112,9 +117,13 @@ client.on('messageCreate', async (message) => {
             await createNewThread(username, msg);
         }
         const channelName = message.channel.name;
-        let assistantId = config.assistants[channelName] ? config.assistants[channelName] : config.assistants['default'];
+        const smartModeSuffix = smartMode ? '-smart' : '';
+        let assistantId = config.assistants[channelName + smartModeSuffix] ? config.assistants[channelName + smartModeSuffix] : config.assistants['default' + smartModeSuffix];
 
-        const reply = await runThread(userSessions[username].threadId, msg, assistantId);
+        let reply = await runThread(userSessions[username].threadId, msg, assistantId);
+        if (smartMode) {
+            reply = '!🤓! ' + reply;
+        }
         console.log(reply);
         userSessions[username].lastMessageTime = Date.now();
 
