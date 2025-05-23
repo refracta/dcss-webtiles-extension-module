@@ -232,7 +232,7 @@ export default class DataManager {
         "ui-push@text#lines",
         "ui-push@text#tokenize",
         "ui-push@feats[].title",
-        "ui-push@teats[].body",
+        "ui-push@feats[].body",
         "ui-push@title",
         "ui-state@highlight",
         "ui-state@text",
