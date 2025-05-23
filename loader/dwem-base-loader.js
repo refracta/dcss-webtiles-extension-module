@@ -43,6 +43,9 @@
         rjsScript?.remove?.();
 
         const config = (() => {
+            if (localStorage.DWEM_RJS_CONFIG) {
+                return JSON.parse(localStorage.DWEM_RJS_CONFIG);
+            }
             const dataMain = rjsScript.getAttribute('data-main');
             let mainScript = dataMain;
             const src = mainScript.split('/');
