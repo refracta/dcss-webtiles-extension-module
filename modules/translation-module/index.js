@@ -150,7 +150,7 @@ export default class TranslationModule {
                     // `game` force-set in game.js because of circular reference issues
                     if (game.can_target() && map_knowledge.visible(map_cell)) {
                         // XX just looking case has weird behavior
-                        text += translate("Left click: select target", 'interface@mosue.text');
+                        text += translate("Left click: select target", 'interface@mouse.text');
                     }
                     // XX a good left click tooltip for click travel is very hard to
                     // construct on the client side...
@@ -162,7 +162,7 @@ export default class TranslationModule {
                         // tooltip, it's too disruptive otherwise
                         if (text)
                             text += "<br>"; // XX something better than <br>s
-                        text += translate("Right click: describe", 'interface@mosue.text');
+                        text += translate("Right click: describe", 'interface@mouse.text');
                     }
 
                     if (text)
