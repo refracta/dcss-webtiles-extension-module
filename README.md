@@ -40,7 +40,7 @@ server-specific modules, will be loaded by [default](https://github.com/refracta
 <script src="https://cdn.jsdelivr.net/gh/refracta/dcss-webtiles-extension-module/loader/dwem-base-loader.js"></script>
 ```
 
-Modify `webserver/templates/client.html` like the code above. You can define the URLs of the modules you want to load by
+[Modify](https://github.com/refracta/dcss-server/blob/a92995a8ac4a14c08fcc48483f43c871941607e8/server/scripts/utils/setup-cnc-config.sh#L10) `webserver/templates/client.html` like the code above. You can define the URLs of the modules you want to load by
 default in `localStorage.DWEM_MODULES`.
 
 # How to develop Module?

@@ -141,6 +141,14 @@ export default class Translator {
                     }
                 }
                 if (!done) {
+                    let escaped = false;
+                    replaced = replaced.replace(/\{(.+?):([\p{L}\p{N}_]+)\}/gu, (match, paramsStr, funcName) => {
+                        if (paramsStr.includes(capture) && escaped === false) {
+                            escaped = true;
+                            return `{${paramsStr.replace(capture, capture.replace(/([\\{}:,])/g, '\\$1'))}:${funcName}}`;
+                        }
+                        return `{${paramsStr}:${funcName}}`;
+                    });
                     translations.push({target: capture, status: 'untranslated', totalStatus: 'untranslated'});
                 }
             }
