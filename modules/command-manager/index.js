@@ -30,7 +30,11 @@ export default class CommandManager {
             }
 
             const argValue = args[argIndex];
-            if (!argValue) throw new Error(`Missing argument for type: ${argType}`);
+            if (argValue === undefined) {
+                parsedArgs.push(undefined);
+                argIndex++;
+                continue;
+            }
 
             switch (argType) {
                 case 'string':

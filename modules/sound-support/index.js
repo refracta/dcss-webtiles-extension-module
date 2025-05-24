@@ -5,7 +5,7 @@ import JSZip from 'https://cdn.skypack.dev/jszip@3.10.1';
 export default class SoundSupport {
     static name = 'SoundSupport';
     static version = '0.1';
-    static dependencies = ['RCManager', 'IOHook', 'SiteInformation'];
+    static dependencies = ['RCManager', 'IOHook', 'SiteInformation', 'CommandManager'];
     static description = '(Beta) This module implements sound features in the webtiles environment. You can use it by adding a sound pack to the RC configuration.';
 
     constructor() {
@@ -216,78 +216,66 @@ export default class SoundSupport {
     }
 
     onLoad() {
-        const {RCManager, IOHook, SiteInformation} = DWEM.Modules;
-
-        // TODO: Migrate to CommandManager
-        IOHook.send_message.before.addHandler('sound-support-commander', (msg, data) => {
-            if (msg === 'chat_msg') {
-                const {text} = data;
-                if (text.startsWith('/SoundSupport')) {
-                    const args = text.split(' ').slice();
-                    (async () => {
-                        if (args[1] === 'list') {
-                            try {
-                                const soundPacks = await this.getSoundPacks();
-                                const soundPackList = soundPacks.map((pack, index) => `[${index + 1}] ${pack.url}`).join('<br>');
-                                this.sendChatMessage(`<b>[SoundSupport]</b> Local Sound Packs:<br>${soundPackList}`);
-                            } catch (error) {
-                                this.sendChatMessage(`<b>[SoundSupport]</b> Error listing sound packs: ${error.message}`);
-                            }
-                        } else if (args[1] === 'register') {
-                            try {
-                                await this.registerSoundPack();
-                                this.sendChatMessage(`<b>[SoundSupport]</b> Sound pack registered successfully.`);
-                            } catch (error) {
-                                this.sendChatMessage(`<b>[SoundSupport]</b> Error registering sound pack: ${error.message}`);
-                            }
-                        } else if (args[1] === 'remove') {
-                            try {
-                                await this.removeSoundPack(args[2]);
-                                this.sendChatMessage(`<b>[SoundSupport]</b> Sound pack removed: ${args[2]}`);
-                            } catch (error) {
-                                this.sendChatMessage(`<b>[SoundSupport]</b> Error removing sound pack: ${error.message}`);
-                            }
-                        } else if (args[1] === 'clear') {
-                            try {
-                                await this.clearSoundPacks();
-                                this.sendChatMessage(`<b>[SoundSupport]</b> All sound packs cleared.`);
-                            } catch (error) {
-                                this.sendChatMessage(`<b>[SoundSupport]</b> Error clearing sound packs: ${error.message}`);
-                            }
-                        } else if (args[1] === 'volume') {
-                            const newVolume = parseFloat(args[2]);
-                            if (!isNaN(newVolume) && newVolume >= 0 && newVolume <= 1) {
-                                this.soundManager.volume = newVolume;
-                                this.sendChatMessage(`<b>[SoundSupport]</b> Sound volume set to ${newVolume}`);
-                            } else {
-                                this.sendChatMessage(`<b>[SoundSupport]</b> Invalid volume value. Please provide a number between 0 and 1.`);
-                            }
-                        } else if (args[1] === 'reload') {
-                            for (const config of this.soundConfig.soundPackConfigList) {
-                                await this.removeSoundPack(config.url);
-                            }
-                            await this.loadSoundPacks();
-                        } else if (args[1] === 'test') {
-                            const text = args.slice(2).join(' ');
-                            IOHook.handle_message({
-                                msg: 'msgs', messages: [{
-                                    text
-                                }]
-                            });
-                        } else {
-                            this.sendChatMessage(`<b>[SoundSupport v${SoundSupport.version}]</b><br>
-                                /SoundSupport list: List all local sound packs<br>
-                                /SoundSupport register: Register local sound pack<br>
-                                /SoundSupport remove [URL]: Remove local sound pack<br>
-                                /SoundSupport clear: Clear all local sound packs<br>
-                                /SoundSupport volume [0-1]: Set sound volume<br>
-                                /SoundSupport reload: Force reload sound pack<br>
-                                /SoundSupport test [message]: Output a message for sound testing
-                            `);
-                        }
-                    })();
-                    return true;
+        const {RCManager, IOHook, SiteInformation, CommandManager} = DWEM.Modules;
+        CommandManager.addCommand('/SoundSupport', ['text'], async ([argsText]) => {
+            const args = argsText ? argsText.split(' ') : [];
+            if (args[0] === 'list') {
+                try {
+                    const soundPacks = await this.getSoundPacks();
+                    const soundPackList = soundPacks.map((pack, index) => `[${index + 1}] ${pack.url}`).join('<br>');
+                    this.sendChatMessage(`<b>[SoundSupport]</b> Local Sound Packs:<br>${soundPackList}`);
+                } catch (error) {
+                    this.sendChatMessage(`<b>[SoundSupport]</b> Error listing sound packs: ${error.message}`);
                 }
+            } else if (args[0] === 'register') {
+                try {
+                    await this.registerSoundPack();
+                    this.sendChatMessage(`<b>[SoundSupport]</b> Sound pack registered successfully.`);
+                } catch (error) {
+                    this.sendChatMessage(`<b>[SoundSupport]</b> Error registering sound pack: ${error.message}`);
+                }
+            } else if (args[0] === 'remove') {
+                try {
+                    await this.removeSoundPack(args[1]);
+                    this.sendChatMessage(`<b>[SoundSupport]</b> Sound pack removed: ${args[1]}`);
+                } catch (error) {
+                    this.sendChatMessage(`<b>[SoundSupport]</b> Error removing sound pack: ${error.message}`);
+                }
+            } else if (args[0] === 'clear') {
+                try {
+                    await this.clearSoundPacks();
+                    this.sendChatMessage(`<b>[SoundSupport]</b> All sound packs cleared.`);
+                } catch (error) {
+                    this.sendChatMessage(`<b>[SoundSupport]</b> Error clearing sound packs: ${error.message}`);
+                }
+            } else if (args[0] === 'volume') {
+                const newVolume = parseFloat(args[1]);
+                if (!isNaN(newVolume) && newVolume >= 0 && newVolume <= 1) {
+                    this.soundManager.volume = newVolume;
+                    this.sendChatMessage(`<b>[SoundSupport]</b> Sound volume set to ${newVolume}`);
+                } else {
+                    this.sendChatMessage(`<b>[SoundSupport]</b> Invalid volume value. Please provide a number between 0 and 1.`);
+                }
+            } else if (args[0] === 'reload') {
+                for (const config of this.soundConfig.soundPackConfigList) {
+                    await this.removeSoundPack(config.url);
+                }
+                await this.loadSoundPacks();
+            } else if (args[0] === 'test') {
+                const text = args.slice(1).join(' ');
+                IOHook.handle_message({
+                    msg: 'msgs', messages: [{ text }]
+                });
+            } else {
+                this.sendChatMessage(`<b>[SoundSupport v${SoundSupport.version}]</b><br>
+                    /SoundSupport list: List all local sound packs<br>
+                    /SoundSupport register: Register local sound pack<br>
+                    /SoundSupport remove [URL]: Remove local sound pack<br>
+                    /SoundSupport clear: Clear all local sound packs<br>
+                    /SoundSupport volume [0-1]: Set sound volume<br>
+                    /SoundSupport reload: Force reload sound pack<br>
+                    /SoundSupport test [message]: Output a message for sound testing
+                `);
             }
         });
         RCManager.addHandlers('sound-support-rc-handler', {
