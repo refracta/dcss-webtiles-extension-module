@@ -1,7 +1,7 @@
 export default class ConvenienceModule {
     static name = 'ConvenienceModule';
     static version = '0.1';
-    static dependencies = ['IOHook', 'RCManager'];
+    static dependencies = ['IOHook', 'RCManager', 'CommandManager'];
     static description = '(Beta) This module provides convenience features.';
 
     getRCConfig(rcfile) {
@@ -16,7 +16,7 @@ export default class ConvenienceModule {
     }
 
     onLoad() {
-        const {IOHook, RCManager} = DWEM.Modules;
+        const {IOHook, RCManager, CommandManager} = DWEM.Modules;
        /*
                     const {SourceMapperRegistry: SMR} = DWEM;
 
@@ -150,18 +150,15 @@ export default class ConvenienceModule {
             }
         });
 
-        IOHook.send_message.before.addHandler('convenience-module', (msg, data) => {
-            if (msg === 'chat_msg') {
-                const {text} = data;
-                if (text.startsWith('/arc')) {
-                    this.autoReconnect = !this.autoReconnect;
-                    IOHook.handle_message({
-                        msg: 'chat',
-                        content: `Auto reconnect mode is ${this.autoReconnect ? 'enabled' : 'disabled'}.`
-                    });
-                    return true;
-                }
-            }
+        CommandManager.addCommand('/arc', [], () => {
+            this.autoReconnect = !this.autoReconnect;
+            IOHook.handle_message({
+                msg: 'chat',
+                content: `Auto reconnect mode is ${this.autoReconnect ? 'enabled' : 'disabled'}.`
+            });
+        }, {
+            module: ConvenienceModule.name,
+            description: 'Toggle auto reconnect mode'
         });
 
     }

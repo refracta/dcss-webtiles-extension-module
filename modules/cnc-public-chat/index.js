@@ -3,7 +3,7 @@ import gifshot from 'https://cdn.skypack.dev/gifshot@0.4.5';
 export default class CNCPublicChat {
     static name = 'CNCPublicChat';
     static version = '0.1';
-    static dependencies = ['IOHook', 'WebSocketFactory', 'CNCUserinfo', 'CNCChat', 'SiteInformation'];
+    static dependencies = ['IOHook', 'WebSocketFactory', 'CNCUserinfo', 'CNCChat', 'SiteInformation', 'CommandManager'];
     static description = '(Beta) This module provides CNC server public chat.';
     botName = 'CNCPublicChat'
 
@@ -123,7 +123,7 @@ export default class CNCPublicChat {
         const receiveMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${chatInjector.toString()}()`);
         SMR.add('chat', receiveMapper);
 
-        const {IOHook, WebSocketFactory, CNCUserinfo, CNCChat, CNCPublicChat} = DWEM.Modules;
+        const {IOHook, WebSocketFactory, CNCUserinfo, CNCChat, CNCPublicChat, CommandManager} = DWEM.Modules;
 
         (async () => {
             await WebSocketFactory.ready;
@@ -257,77 +257,88 @@ export default class CNCPublicChat {
         });
 
 
-        // Migrate to CommandManager
-        IOHook.send_message.before.addHandler('cnc-public-chat-commander', (msg, data) => {
-            if (msg === 'chat_msg') {
-                const {text} = data;
-                if (text.startsWith('/gif')) {
-                    (async () => {
-                        const los = parseInt(text.split(' ').pop()) || 7;
-                        const frames = [];
-                        const mapQueueCopy = [...CNCChat.mapQueue];
-                        let canvasWidth, canvasHeight;
-                        if (mapQueueCopy.length > CNCChat.prerenderSize) {
-                            for (let i = 0; i < CNCChat.prerenderSize; i++) {
-                                IOHook.handle_message(mapQueueCopy[i]);
-                            }
-                        }
-                        const start = mapQueueCopy.length > CNCChat.prerenderSize ? CNCChat.prerenderSize : 0;
-                        for (let i = start; i < mapQueueCopy.length; i++) {
-                            IOHook.handle_message(mapQueueCopy[i]);
-                            const canvas = await CNCChat.Snapshot.captureGame(los);
-                            if (!canvasWidth || !canvasHeight) {
-                                canvasWidth = canvas.width;
-                                canvasHeight = canvas.height;
-                            }
-                            const dataURL = canvas.toDataURL('image/png');
-                            frames.push(dataURL);
-                        }
-                        gifshot.createGIF(
-                            {
-                                images: frames,
-                                interval: 0.2,
-                                gifWidth: canvasWidth,
-                                gifHeight: canvasHeight,
-                                sampleInterval: 1, // Improves quality by reducing skipped pixels
-                                numWorkers: 4,     // Speeds up processing with multiple web workers
-                            },
-                            async (obj) => {
-                                if (!obj.error) {
-                                    const image = obj.image;
-                                    const response = await fetch(image);
-                                    const gifBlob = await response.blob();
-                                    const {url} = await CNCChat.API.upload({
-                                        file: gifBlob,
-                                        type: 'game',
-                                    }).then((r) => r.json());
-                                    this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
-                                } else {
-                                    console.error('Error creating GIF:', obj.error);
-                                }
-                            }
-                        );
-                    })();
-                    return true;
-                } else if (text.startsWith('/game') || text.startsWith('/g')) {
-                    (async () => {
-                        const los = parseInt(text.split(' ').pop()) || 7;
-                        const canvas = await CNCChat.Snapshot.captureGame(los);
-                        const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-                        const {url} = await CNCChat.API.upload({file, type: 'game'}).then(r => r.json());
-                        this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
-                    })();
-                    return true;
-                } else if (text.startsWith('/menu') || text.startsWith('/m')) {
-                    (async () => {
-                        const canvas = await CNCChat.Snapshot.captureMenu(CNCChat.Snapshot.Menu.POPUP);
-                        const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-                        const {url} = await CNCChat.API.upload({file, type: 'menu'}).then(r => r.json());
-                        this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
-                    })();
-                    return true;
+        CommandManager.addCommand('/gif', ['integer'], async ([los]) => {
+            los = los || 7;
+            const frames = [];
+            const mapQueueCopy = [...CNCChat.mapQueue];
+            let canvasWidth, canvasHeight;
+            if (mapQueueCopy.length > CNCChat.prerenderSize) {
+                for (let i = 0; i < CNCChat.prerenderSize; i++) {
+                    IOHook.handle_message(mapQueueCopy[i]);
                 }
             }
+            const start = mapQueueCopy.length > CNCChat.prerenderSize ? CNCChat.prerenderSize : 0;
+            for (let i = start; i < mapQueueCopy.length; i++) {
+                IOHook.handle_message(mapQueueCopy[i]);
+                const canvas = await CNCChat.Snapshot.captureGame(los);
+                if (!canvasWidth || !canvasHeight) {
+                    canvasWidth = canvas.width;
+                    canvasHeight = canvas.height;
+                }
+                const dataURL = canvas.toDataURL('image/png');
+                frames.push(dataURL);
+            }
+            gifshot.createGIF(
+                {
+                    images: frames,
+                    interval: 0.2,
+                    gifWidth: canvasWidth,
+                    gifHeight: canvasHeight,
+                    sampleInterval: 1,
+                    numWorkers: 4,
+                },
+                async (obj) => {
+                    if (!obj.error) {
+                        const image = obj.image;
+                        const response = await fetch(image);
+                        const gifBlob = await response.blob();
+                        const {url} = await CNCChat.API.upload({
+                            file: gifBlob,
+                            type: 'game',
+                        }).then((r) => r.json());
+                        this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
+                    } else {
+                        console.error('Error creating GIF:', obj.error);
+                    }
+                }
+            );
+        }, {
+            module: CNCPublicChat.name,
+            description: 'Capture game to GIF',
+            argDescriptions: ['los']
+        });
+
+        const captureGame = async (los) => {
+            los = los || 7;
+            const canvas = await CNCChat.Snapshot.captureGame(los);
+            const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+            const {url} = await CNCChat.API.upload({file, type: 'game'}).then(r => r.json());
+            this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
+        };
+        CommandManager.addCommand('/game', ['integer'], captureGame, {
+            module: CNCPublicChat.name,
+            description: 'Capture game screenshot',
+            argDescriptions: ['los']
+        });
+        CommandManager.addCommand('/g', ['integer'], captureGame, {
+            module: CNCPublicChat.name,
+            description: 'Alias of /game',
+            argDescriptions: ['los']
+        });
+
+        const captureMenu = async () => {
+            const canvas = await CNCChat.Snapshot.captureMenu(CNCChat.Snapshot.Menu.POPUP);
+            const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+            const {url} = await CNCChat.API.upload({file, type: 'menu'}).then(r => r.json());
+            this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
+        };
+        CommandManager.addCommand('/menu', [], captureMenu, {
+            module: CNCPublicChat.name,
+            description: 'Capture popup menu'
+        });
+        CommandManager.addCommand('/m', [], captureMenu, {
+            module: CNCPublicChat.name,
+            description: 'Alias of /menu'
         });
         CNCChat.handleRightClickItem = (url) => {
             this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
