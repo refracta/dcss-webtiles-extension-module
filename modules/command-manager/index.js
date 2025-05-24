@@ -52,8 +52,9 @@ export default class CommandManager {
             this.suggestionDiv.id = 'command_suggestions';
             Object.assign(this.suggestionDiv.style, {
                 position: 'absolute',
-                bottom: '35px',
+                bottom: '100%',
                 left: '0',
+                marginBottom: '4px',
                 background: '#222',
                 color: '#fff',
                 padding: '4px',
@@ -63,8 +64,13 @@ export default class CommandManager {
                 border: '1px solid #555',
                 zIndex: 1000
             });
-            const chatBody = document.getElementById('chat_body');
-            chatBody && chatBody.append(this.suggestionDiv);
+            const chat = document.getElementById('chat');
+            if (chat) {
+                if (getComputedStyle(chat).position === 'static') {
+                    chat.style.position = 'relative';
+                }
+                chat.append(this.suggestionDiv);
+            }
         }
         this.suggestionDiv.innerHTML = this.generateHelpHTML(suggestions);
     }
