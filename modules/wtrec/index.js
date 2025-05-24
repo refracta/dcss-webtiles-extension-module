@@ -454,7 +454,10 @@ export default class WTRec {
         });
 
         const params = new URLSearchParams(location.search);
-        const wtrecUrl = params.get('wtrec_url');
+        let wtrecUrl = params.get('wtrec_url');
+        if(!wtrecUrl.startsWith('https://wtrec.nemelex.cards')) {
+            wtrecUrl = false;
+        }
         if (wtrecUrl) {
             const wtrecTime = parseInt(params.get('wtrec_time') || '0', 10);
             const autoplay = params.get('wtrec_autoplay') !== 'false';
