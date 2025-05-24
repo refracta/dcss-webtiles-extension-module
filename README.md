@@ -83,6 +83,8 @@ export default class BasicModule {
 
 - [`ConvenienceModule:0.1`](modules/convenience-module)
     - Description: (Beta) This module provides convenience features.
+- [`SpectatorModule:0.1`](modules/spectator-module)
+    - Description: Simplified spectator-focused interface.
 
 - [`IOHook:1.0`](modules/io-hook)
     - Description: (Library) This module allows users to add hooks before and after sending and receiving WebSocket
