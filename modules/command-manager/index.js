@@ -6,11 +6,72 @@ export default class CommandManager {
 
     constructor() {
         this.commands = [];
+        this.suggestionDiv = null;
     }
 
     // 명령어 등록
-    addCommand(command, argumentTypes, handler) {
-        this.commands.push({ command, argumentTypes, handler });
+    addCommand(command, argumentTypes, handler, options = {}) {
+        const {
+            module = 'Unknown',
+            description = '',
+            argDescriptions = []
+        } = options;
+        this.commands.push({ command, argumentTypes, handler, module, description, argDescriptions });
+    }
+
+    getCommandsByModule(module) {
+        return this.commands.filter(cmd => cmd.module === module);
+    }
+
+    formatArguments(cmd) {
+        if (!cmd.argDescriptions || !cmd.argDescriptions.length) return '';
+        return cmd.argDescriptions.map(d => `[${d}]`).join(' ');
+    }
+
+    generateHelpHTML(commands) {
+        return commands.map(cmd => `/<b>${cmd.command.slice(1)}</b> ${this.formatArguments(cmd)} - ${cmd.description}`).join('<br>');
+    }
+
+    sendChatMessage(content) {
+        const { IOHook } = DWEM.Modules;
+        IOHook.handle_message({ msg: 'chat', content });
+    }
+
+    showSuggestions(prefix) {
+        if (!prefix.startsWith('/')) {
+            this.hideSuggestions();
+            return;
+        }
+        const suggestions = this.commands.filter(cmd => cmd.command.startsWith(prefix.trim()));
+        if (!suggestions.length) {
+            this.hideSuggestions();
+            return;
+        }
+        if (!this.suggestionDiv) {
+            this.suggestionDiv = document.createElement('div');
+            this.suggestionDiv.id = 'command_suggestions';
+            Object.assign(this.suggestionDiv.style, {
+                position: 'absolute',
+                bottom: '35px',
+                left: '0',
+                background: '#222',
+                color: '#fff',
+                padding: '4px',
+                fontSize: '12px',
+                maxHeight: '150px',
+                overflowY: 'auto',
+                border: '1px solid #555',
+                zIndex: 1000
+            });
+            const chatBody = document.getElementById('chat_body');
+            chatBody && chatBody.append(this.suggestionDiv);
+        }
+        this.suggestionDiv.innerHTML = this.generateHelpHTML(suggestions);
+    }
+
+    hideSuggestions() {
+        this.suggestionDiv?.remove();
+        this.suggestionDiv = null;
     }
 
     // 타입별 인자 파싱 함수
@@ -30,7 +91,11 @@ export default class CommandManager {
             }
 
             const argValue = args[argIndex];
-            if (!argValue) throw new Error(`Missing argument for type: ${argType}`);
+            if (argValue === undefined) {
+                parsedArgs.push(undefined);
+                argIndex++;
+                continue;
+            }
 
             switch (argType) {
                 case 'string':
@@ -76,6 +141,22 @@ export default class CommandManager {
                     return true;
                 }
             }
+        });
+
+        const chatInput = document.getElementById('chat_input');
+        if (chatInput) {
+            chatInput.addEventListener('input', () => this.showSuggestions(chatInput.value));
+            chatInput.addEventListener('blur', () => this.hideSuggestions());
+        }
+
+        this.addCommand('/help', ['text'], ([mod]) => {
+            const list = mod ? this.getCommandsByModule(mod) : this.commands;
+            const html = `<b>Available Commands${mod ? ' for ' + mod : ''}</b><br>` + this.generateHelpHTML(list);
+            this.sendChatMessage(html);
+        }, {
+            module: CommandManager.name,
+            description: 'Show command list',
+            argDescriptions: ['module']
         });
     }
 }
