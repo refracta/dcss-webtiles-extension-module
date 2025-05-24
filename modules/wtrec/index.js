@@ -23,19 +23,21 @@ export default class WTRec {
         document.body.removeChild(link);
     }
 
-    async playWTRec(file) {
+    async playWTRec(file, opts = {}) {
         const {IOHook} = DWEM.Modules;
+        const {startTime = 0, autoplay = true, speed = 10} = opts;
         await new Promise(resolve => {
             require(['jquery', 'jquery-ui'], resolve);
         })
         const sleep = async (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         let currentIndex = 0;
-        let currentSpeed = 10;
-        let isPlaying = true;
+        let currentSpeed = speed;
+        let isPlaying = autoplay;
         let stepSize = 100;
         let abortSleep = false;
         let manualStep = false;
+        let reachedLobby = false;
 
         let zip = new JSZip();
         zip = await zip.loadAsync(file);
@@ -58,6 +60,36 @@ export default class WTRec {
             .reduce((a, e) => ({...a, ...e}));
 
         const {data} = wtrec;
+        currentIndex = data.findIndex(d => d.wtrec && d.wtrec.timing >= startTime);
+        if (currentIndex === -1) currentIndex = 0;
+
+        const segments = [];
+        const markers = [];
+        let segStart = 0;
+        let curPlace = null;
+        let curDepth = null;
+        for (let i = 0; i < data.length; i++) {
+            const m = data[i];
+            if (m.msg === 'player' && m.place !== undefined && m.depth !== undefined) {
+                const combo = `${m.place}-${m.depth}`;
+                if (curPlace === null) {
+                    curPlace = combo;
+                    curDepth = m.depth;
+                    segStart = i;
+                } else if (curPlace !== combo) {
+                    segments.push({start: segStart, end: i - 1, place: curPlace.split('-')[0], depth: curDepth});
+                    curPlace = combo;
+                    curDepth = m.depth;
+                    segStart = i;
+                }
+            }
+            if (m.msg === 'game_ended' || m.msg === 'go_lobby') {
+                markers.push(i);
+            }
+        }
+        if (curPlace !== null) {
+            segments.push({start: segStart, end: data.length - 1, place: curPlace.split('-')[0], depth: curDepth});
+        }
 
         // UI creation
         const uiContainer = document.createElement('div');
@@ -125,6 +157,11 @@ export default class WTRec {
         uiContainer.appendChild(document.createTextNode(' Step size: '));
         uiContainer.appendChild(stepInput);
 
+        const lobbyButton = document.createElement('button');
+        lobbyButton.textContent = 'Go Lobby';
+        lobbyButton.onclick = () => { location.href = '/'; };
+        uiContainer.appendChild(lobbyButton);
+
         const leftButton = document.createElement('button');
         leftButton.textContent = '<<';
         leftButton.onclick = () => {
@@ -151,6 +188,101 @@ export default class WTRec {
 
         document.body.appendChild(uiContainer);
         $(uiContainer).draggable();
+
+        document.body.tabIndex = 0;
+        document.addEventListener('keydown', (e) => {
+            if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+            if (e.key === ' ') {
+                e.preventDefault();
+                isPlaying = !isPlaying;
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                leftButton.onclick();
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                rightButton.onclick();
+            } else if (e.key === 'x') {
+                e.preventDefault();
+                currentSpeed = Math.max(0.1, parseFloat((currentSpeed - 0.1).toFixed(1)));
+                speedInput.value = currentSpeed;
+                abortSleep = true;
+            } else if (e.key === 'c') {
+                e.preventDefault();
+                currentSpeed = parseFloat((currentSpeed + 0.1).toFixed(1));
+                speedInput.value = currentSpeed;
+                abortSleep = true;
+            }
+        });
+
+        const progressContainer = document.createElement('div');
+        progressContainer.style.position = 'fixed';
+        progressContainer.style.bottom = '10px';
+        progressContainer.style.left = '50%';
+        progressContainer.style.transform = 'translateX(-50%)';
+        progressContainer.style.width = '95vw';
+        progressContainer.style.zIndex = '10000';
+        progressContainer.style.backgroundColor = 'rgba(0,0,0,0.7)';
+        progressContainer.style.padding = '5px';
+        progressContainer.style.borderRadius = '5px';
+        progressContainer.style.boxSizing = 'border-box';
+
+        const segContainer = document.createElement('div');
+        segContainer.style.position = 'absolute';
+        segContainer.style.top = 0;
+        segContainer.style.left = 0;
+        segContainer.style.height = '100%';
+        segContainer.style.width = '100%';
+        segContainer.style.pointerEvents = 'none';
+        progressContainer.appendChild(segContainer);
+
+        function hashColor(str, depth) {
+            let h = 0;
+            for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
+            const l = Math.max(30 - depth * 2, 10);
+            return `hsl(${h},70%,${l}%)`;
+        }
+
+        segments.forEach(seg => {
+            const div = document.createElement('div');
+            const startPct = seg.start / data.length * 100;
+            const widthPct = (seg.end - seg.start + 1) / data.length * 100;
+            div.style.position = 'absolute';
+            div.style.left = startPct + '%';
+            div.style.width = widthPct + '%';
+            div.style.top = 0;
+            div.style.bottom = 0;
+            div.style.backgroundColor = seg.place ? hashColor(seg.place, seg.depth) : 'black';
+            segContainer.appendChild(div);
+        });
+
+        markers.forEach(idx => {
+            const mk = document.createElement('div');
+            mk.style.position = 'absolute';
+            mk.style.left = (idx / data.length * 100) + '%';
+            mk.style.width = '2px';
+            mk.style.top = 0;
+            mk.style.bottom = 0;
+            mk.style.backgroundColor = 'white';
+            segContainer.appendChild(mk);
+        });
+
+        const progressBar = document.createElement('input');
+        progressBar.type = 'range';
+        progressBar.min = 0;
+        progressBar.max = data.length - 1;
+        progressBar.value = currentIndex;
+        progressBar.style.width = '100%';
+        progressBar.oninput = () => {
+            IOHook.handle_message({msg: 'map', clear: true});
+            IOHook.handle_message({msg: 'close_all_menus'});
+            currentIndex = parseInt(progressBar.value, 10);
+            manualStep = true;
+            abortSleep = true;
+            updateUI(0, 0);
+        };
+        progressContainer.appendChild(progressBar);
+
+        document.body.appendChild(progressContainer);
 
         while (currentIndex < data.length) {
             if (isPlaying || manualStep) {
@@ -198,8 +330,7 @@ export default class WTRec {
                         } else if (current.msg === 'options') {
                             this.inited = true;
                         } else if (current.msg === 'go_lobby') {
-                            location.href = "/";
-                            currentIndex++;
+                            reachedLobby = true;
                         } else {
                             console.log(current);
                         }
@@ -237,6 +368,10 @@ export default class WTRec {
 
                 if (!manualStep) {
                     currentIndex = nextIndex;
+                }
+                progressBar.value = currentIndex;
+                if (reachedLobby) {
+                    break;
                 }
             } else {
                 await sleep(100);
@@ -317,5 +452,16 @@ export default class WTRec {
                 }
             }
         });
+
+        const params = new URLSearchParams(location.search);
+        const wtrecUrl = params.get('wtrec_url');
+        if (wtrecUrl) {
+            const wtrecTime = parseInt(params.get('wtrec_time') || '0', 10);
+            const autoplay = params.get('wtrec_autoplay') !== 'false';
+            const speed = parseFloat(params.get('wtrec_speed') || '10');
+            fetch(wtrecUrl)
+                .then(r => r.blob())
+                .then(b => this.playWTRec(b, {startTime: wtrecTime, autoplay, speed}));
+        }
     }
 }
