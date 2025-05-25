@@ -513,7 +513,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             <br>
             계정 또는 서버 문제의 경우, <a href="https://discord.gg/cFUynNtAVA">서버 디스코드</a>에서 ASCIIPhilia에게 문의할 수 있습니다.
             <br>
-            7/2 업데이트: <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a>에 추가된 <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a> 모듈을 <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a> 모듈을 <a href="https://crawl.nemelex.cards/?arce_append=%23%20Recommended%20settings%0Asound_on%20%3D%20true%0Asound_pack%20%2B%3D%20https%3A%2F%2Fosp.nemelex.cards%2Fbuild%2Flatest.zip%3A%5B%22init.txt%22%5D%0Aone_SDL_sound_channel%20%3D%20true%0Asound_fade_time%20%3D%200.5">사용해보세요!</a>
+            7/2 업데이트: <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a>에 추가된 <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a> 모듈을 <a href="https://crawl.nemelex.cards/?arce_append=%23%20Recommended%20settings%0Asound_on%20%3D%20true%0Asound_pack%20%2B%3D%20https%3A%2F%2Fosp.nemelex.cards%2Fbuild%2Flatest.zip%3A%5B%22init.txt%22%5D%0Aone_SDL_sound_channel%20%3D%20true%0Asound_fade_time%20%3D%200.5">사용해보세요!</a>
             <br>
             DWEM에 <a href="https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing">번역 모듈</a>이 추가되었습니다. 한국어로 게임을 <a href="https://crawl.nemelex.cards/?arce_append=translation_language%20=%20ko">즐겨보세요</a>. 관심이 있다면 번역 작업에도 도움을 주세요!
             <br>
