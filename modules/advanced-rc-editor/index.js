@@ -12,6 +12,18 @@ export default class AdvancedRCEditor {
     onLoad() {
         const {IOHook, SiteInformation} = DWEM.Modules;
 
+        const params = new URLSearchParams(location.search);
+        this.urlRCFile = params.get('are_rcfile');
+        this.urlAppend = params.get('are_append');
+        const gameId = params.get('are_game_id');
+        if (gameId) {
+            IOHook.handle_message.after.addHandler('advanced-rc-editor', (data) => {
+                if (data.msg === 'login_success') {
+                    this.edit_rc(gameId);
+                }
+            })
+        }
+
         ace.config.set('basePath', 'https://cdn.jsdelivr.net/npm/ace-builds@1.36.2/src-noconflict');
         ace.require('ace/ext/language_tools');
         const completionsPath = import.meta.url.substring(0, import.meta.url.lastIndexOf('/')) + '/completions.json';
@@ -71,7 +83,7 @@ export default class AdvancedRCEditor {
         downloadButton.onclick = () => {
             const rcfile = this.editor.getValue();
             const name = `${SiteInformation.current_user}.rc`;
-            const blob = new Blob([rcfile], { type: 'text/plain' });
+            const blob = new Blob([rcfile], {type: 'text/plain'});
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = name;
@@ -84,16 +96,17 @@ export default class AdvancedRCEditor {
         editorParent.append(downloadButton);
 
         const {SourceMapperRegistry: SMR, MatcherRegistry: MR} = DWEM;
+
         function clientInjector() {
             const {AdvancedRCEditor} = DWEM.Modules;
             send_rc = function () {
-                console.log()
                 send_message("set_rc", {
                     game_id: editing_rc, contents: AdvancedRCEditor.editor.getValue()
                 });
                 hide_dialog();
                 return false;
             }
+            AdvancedRCEditor.edit_rc = edit_rc
             $("#rc_edit_form").unbind("submit").bind("submit", send_rc);
         }
 
@@ -140,6 +153,43 @@ export default class AdvancedRCEditor {
                 });
 
                 textarea.style.display = 'none';
+
+                if (this.urlRCFile) {
+                    try {
+                        const fetched = await fetch('https://rc-proxy.nemelex.cards', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({url: this.urlRCFile})
+                        }).then(r => r.text());
+                        this.editor.setValue(fetched);
+                        this.editor.renderer.updateFull(true);
+                        const lastRow = this.editor.session.getLength() - 1;
+                        const lastColumn = this.editor.session.getLine(lastRow).length;
+                        this.editor.gotoLine(lastRow + 1, lastColumn);
+                        this.editor.renderer.scrollCursorIntoView();
+                        this.editor.focus();
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+
+                if (this.urlAppend) {
+                    const Range = ace.require('ace/range').Range;
+                    const lastRow = this.editor.session.getLength() - 1;
+                    const lastColumn = this.editor.session.getLine(lastRow).length;
+                    this.editor.moveCursorTo(lastRow, lastColumn);
+                    this.Range = ace.require('ace/range').Range;
+                    this.editor.renderer.updateFull(true);
+                    this.editor.insert('\n' + this.urlAppend);
+                    const endRow = this.editor.session.getLength() - 1;
+                    const endColumn = this.editor.session.getLine(endRow).length;
+                    this.editor.selection.setSelectionRange(new Range(lastRow + 1, 0, endRow, endColumn));
+                    this.editor.renderer.scrollCursorIntoView();
+                    this.editor.focus();
+                }
+
             }
         });
     }
