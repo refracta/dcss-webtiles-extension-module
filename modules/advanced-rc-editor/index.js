@@ -189,7 +189,7 @@ export default class AdvancedRCEditor {
                     this.editor.renderer.scrollCursorIntoView();
                     this.editor.focus();
                 }
-
+                this.urlRCFile = this.urlAppend = undefined;
             }
         });
     }
