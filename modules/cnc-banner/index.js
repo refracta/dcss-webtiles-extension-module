@@ -566,7 +566,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         <br>
                         For account or server issues, contact ASCIIPhilia on <a href="https://discord.gg/cFUynNtAVA">Server Discord</a>.
                         <br>
-                        7/2 Update: Try the new <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a> module <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a>!
+                        7/2 Update: <a href="https://crawl.nemelex.cards/?arce_append=%23%20Recommended%20settings%0Asound_on%20%3D%20true%0Asound_pack%20%2B%3D%20https%3A%2F%2Fosp.nemelex.cards%2Fbuild%2Flatest.zip%3A%5B%22init.txt%22%5D%0Aone_SDL_sound_channel%20%3D%20true%0Asound_fade_time%20%3D%200.5">Try</a> the new <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a> module <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a>!
                         <br>
                         <a href="https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing">Translation Module</a> has been added to DWEM. If you are interested, please help with the translation work.
                         <br>
