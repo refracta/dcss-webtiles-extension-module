@@ -60,8 +60,17 @@ export default class WTRec {
             .reduce((a, e) => ({...a, ...e}));
 
         const {data} = wtrec;
-        currentIndex = data.findIndex(d => d.wtrec && d.wtrec.timing >= startTime);
-        if (currentIndex === -1) currentIndex = 0;
+        let startIndex = data.findIndex(d => d.wtrec && d.wtrec.timing >= startTime);
+        if (startIndex === -1) startIndex = 0;
+        const gameClientIndex = data.findIndex(d => d.msg === 'game_client');
+        const warmupIndex = Math.max(0, startIndex - 100);
+        let fastForwardTargets = [];
+        if (gameClientIndex !== -1) fastForwardTargets.push(gameClientIndex);
+        if (warmupIndex > (fastForwardTargets[fastForwardTargets.length - 1] || -1)) fastForwardTargets.push(warmupIndex);
+        if (startIndex > (fastForwardTargets[fastForwardTargets.length - 1] || -1)) fastForwardTargets.push(startIndex);
+        let fastForwardIdx = 0;
+        let fastForwardUntil = fastForwardTargets[fastForwardIdx] ?? null;
+        currentIndex = 0;
 
         const segments = [];
         const markers = [];
@@ -157,6 +166,16 @@ export default class WTRec {
         uiContainer.appendChild(document.createTextNode(' Step size: '));
         uiContainer.appendChild(stepInput);
 
+        const showBarCheckbox = document.createElement('input');
+        showBarCheckbox.type = 'checkbox';
+        showBarCheckbox.checked = true;
+        showBarCheckbox.onchange = () => {
+            progressContainer.style.display = showBarCheckbox.checked ? '' : 'none';
+        };
+        uiContainer.appendChild(document.createElement('br'));
+        uiContainer.appendChild(showBarCheckbox);
+        uiContainer.appendChild(document.createTextNode(' Show progress '));
+
         const lobbyButton = document.createElement('button');
         lobbyButton.textContent = 'Go Lobby';
         lobbyButton.onclick = () => { location.href = '/'; };
@@ -171,6 +190,8 @@ export default class WTRec {
             manualStep = true;
             abortSleep = true; // Abort the current sleep
             updateUI(0, 0);
+            progressBar.value = currentIndex;
+            cursorDiv.style.left = (currentIndex / data.length * 100) + '%';
         };
         uiContainer.appendChild(leftButton);
 
@@ -183,6 +204,8 @@ export default class WTRec {
             manualStep = true;
             abortSleep = true;
             updateUI(0, 0);
+            progressBar.value = currentIndex;
+            cursorDiv.style.left = (currentIndex / data.length * 100) + '%';
         };
         uiContainer.appendChild(rightButton);
 
@@ -235,6 +258,15 @@ export default class WTRec {
         segContainer.style.pointerEvents = 'none';
         progressContainer.appendChild(segContainer);
 
+        const cursorDiv = document.createElement('div');
+        cursorDiv.style.position = 'absolute';
+        cursorDiv.style.top = 0;
+        cursorDiv.style.bottom = 0;
+        cursorDiv.style.width = '2px';
+        cursorDiv.style.backgroundColor = 'red';
+        cursorDiv.style.pointerEvents = 'none';
+        segContainer.appendChild(cursorDiv);
+
         function hashColor(str, depth) {
             let h = 0;
             for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
@@ -275,7 +307,11 @@ export default class WTRec {
         progressBar.oninput = () => {
             IOHook.handle_message({msg: 'map', clear: true});
             IOHook.handle_message({msg: 'close_all_menus'});
-            currentIndex = parseInt(progressBar.value, 10);
+            const newIndex = parseInt(progressBar.value, 10);
+            currentIndex = Math.max(0, newIndex - 100);
+            fastForwardTargets = [newIndex];
+            fastForwardIdx = 0;
+            fastForwardUntil = fastForwardTargets[0];
             manualStep = true;
             abortSleep = true;
             updateUI(0, 0);
@@ -283,6 +319,7 @@ export default class WTRec {
         progressContainer.appendChild(progressBar);
 
         document.body.appendChild(progressContainer);
+        cursorDiv.style.left = (currentIndex / data.length * 100) + '%';
 
         while (currentIndex < data.length) {
             if (isPlaying || manualStep) {
@@ -334,7 +371,9 @@ export default class WTRec {
                         } else {
                             console.log(current);
                         }
-                        IOHook.handle_message(current);
+                        if (current.msg !== 'go_lobby') {
+                            IOHook.handle_message(current);
+                        }
                         if (current.msg === 'game_client') {
                             await new Promise(resolve => {
                                 require([`game`], (game) => {
@@ -350,7 +389,8 @@ export default class WTRec {
                 }
 
                 const originalSleep = next.wtrec.timing - current.wtrec.timing;
-                const adjustedSleep = Math.min(originalSleep / currentSpeed, 1000 * 2);
+                const fastMode = fastForwardUntil !== null && currentIndex < fastForwardUntil;
+                const adjustedSleep = fastMode ? 0 : Math.min(originalSleep / currentSpeed, 1000 * 2);
 
                 updateUI(originalSleep, adjustedSleep);
 
@@ -370,6 +410,11 @@ export default class WTRec {
                     currentIndex = nextIndex;
                 }
                 progressBar.value = currentIndex;
+                cursorDiv.style.left = (currentIndex / data.length * 100) + '%';
+                if (fastMode && currentIndex >= fastForwardUntil) {
+                    fastForwardIdx++;
+                    fastForwardUntil = fastForwardTargets[fastForwardIdx] ?? null;
+                }
                 if (reachedLobby) {
                     break;
                 }
@@ -455,7 +500,7 @@ export default class WTRec {
 
         const params = new URLSearchParams(location.search);
         let wtrecUrl = params.get('wtrec_url');
-        if(!wtrecUrl.startsWith('https://wtrec.nemelex.cards')) {
+        if(!wtrecUrl?.startsWith('https://wtrec.nemelex.cards')) {
             wtrecUrl = false;
         }
         if (wtrecUrl) {
