@@ -13,9 +13,9 @@ export default class AdvancedRCEditor {
         const {IOHook, SiteInformation} = DWEM.Modules;
 
         const params = new URLSearchParams(location.search);
-        this.urlRCFile = params.get('are_rcfile');
-        this.urlAppend = params.get('are_append');
-        const gameId = params.get('are_game_id');
+        this.urlRCFile = params.get('arce_rcfile');
+        this.urlAppend = params.get('arce_append');
+        const gameId = params.get('arce_game_id');
         if (gameId) {
             IOHook.handle_message.after.addHandler('advanced-rc-editor', (data) => {
                 if (data.msg === 'login_success') {
