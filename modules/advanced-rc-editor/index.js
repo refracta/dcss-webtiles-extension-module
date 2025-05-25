@@ -114,6 +114,11 @@ export default class AdvancedRCEditor {
         SMR.add('client', clientMapper);
 
         IOHook.handle_message.after.addHandler('rc-manager', async (data) => {
+            if (data.msg === 'set_game_links') {
+                if (!gameId && (this.urlRCFile || this.urlAppend)) {
+                    Array.from(document.querySelectorAll('.edit_rc_link')).forEach(e => e.style.color = 'red');
+                }
+            }
             if (data.msg === 'rcfile_contents') {
                 textarea.style.display = '';
                 const rcfile = data.contents;
@@ -190,6 +195,7 @@ export default class AdvancedRCEditor {
                     this.editor.focus();
                 }
                 this.urlRCFile = this.urlAppend = undefined;
+                Array.from(document.querySelectorAll('.edit_rc_link')).forEach(e => e.style.color = '');
             }
         });
     }
