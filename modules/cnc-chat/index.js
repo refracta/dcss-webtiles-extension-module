@@ -274,7 +274,7 @@ export default class CNCChat {
                 get: function () {
                     return k;
                 },
-                set: function(newK) {
+                set: function (newK) {
                     k = newK;
                 },
                 enumerable: true,
@@ -409,17 +409,18 @@ export default class CNCChat {
 
         const captureGame = async (los) => {
             los = los || 7;
+            console.log('los', los)
             const canvas = await this.Snapshot.captureGame(los);
             const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
             const {url} = await this.API.upload({file, type: 'game'}).then(r => r.json());
             socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
         };
-        CommandManager.addCommand('/ggame', ['integer'], captureGame, {
+        CommandManager.addCommand('/ggame', ['integer'], ([los]) => captureGame(los), {
             module: CNCChat.name,
             description: 'Capture game screenshot',
             argDescriptions: ['los']
         });
-        CommandManager.addCommand('/gg', ['integer'], captureGame, {
+        CommandManager.addCommand('/gg', ['integer'], ([los]) => captureGame(los), {
             module: CNCChat.name,
             description: 'Alias of /ggame',
             argDescriptions: ['los']
