@@ -315,12 +315,12 @@ export default class CNCPublicChat {
             const {url} = await CNCChat.API.upload({file, type: 'game'}).then(r => r.json());
             this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
         };
-        CommandManager.addCommand('/game', ['integer'], captureGame, {
+        CommandManager.addCommand('/game', ['integer'], ([los]) => captureGame(los), {
             module: CNCPublicChat.name,
             description: 'Capture game screenshot',
             argDescriptions: ['los']
         });
-        CommandManager.addCommand('/g', ['integer'], captureGame, {
+        CommandManager.addCommand('/g', ['integer'], ([los]) => captureGame(los), {
             module: CNCPublicChat.name,
             description: 'Alias of /game',
             argDescriptions: ['los']
