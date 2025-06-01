@@ -223,6 +223,13 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             startUTC: new Date(Date.UTC(2025, 2 - 1, 21, 0, 0, 0)),
             endUTC: new Date(Date.UTC(2025, 2 - 1, 21 + 7 * 5, 0, 0, 0)),
             url: 'https://crawlcosplay.dcss.io/cctt/about_cctt'
+        },
+        {
+            id: 'cnc-anniversary-tournament',
+            name: 'CNC 1st Anniversary Tournament',
+            startUTC: new Date(Date.UTC(2025, 6 - 1, 10, 15, 0, 0)),
+            endUTC: new Date(Date.UTC(2025, 6 - 1, 24, 14, 59, 59)),
+            url: 'https://docs.google.com/document/d/e/2PACX-1vSFy2_8ZJeitgui9bAwO9MOxB4D6RLTdeXZr68l9DFFgi9FQgnDhm4JCc7MASSID_5qPpE_yqr1c4np/pub'
         }
     ];
 
