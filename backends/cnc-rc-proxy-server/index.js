@@ -1,61 +1,93 @@
+/**
+ * proxy-server.ts
+ *
+ * ‣ gzip/deflate/br 응답을 node-fetch가 **자동으로 해제**한다는 점을 활용해
+ *   ‘이중(gunzip) 해제’ 오류를 없앤 버전입니다.
+ * ‣ 해제된 뒤에는 Content-Encoding / Content-Length 헤더를 제거하고
+ *   `Content-Encoding: identity`로 바꿔 클라이언트에 전달합니다.
+ */
+
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import fetch from 'node-fetch';
+import fetch from 'node-fetch';          // v3.x  (공식 ESM)
 import fs from 'fs';
-import zlib from 'zlib';
 import { pipeline } from 'stream/promises';
 
-const configPath = 'config.json';
-const { allowed = [] } = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+const CONFIG_PATH = 'config.json';
+let allowed = [];
+
+try {
+    const { allowed: allowList = [] } = JSON.parse(
+        fs.readFileSync(CONFIG_PATH, 'utf-8'),
+    );
+    allowed = allowList;
+} catch (err) {
+    console.error('Error reading config.json:', err);
+    process.exit(1);
+}
 
 const app = express();
+const PORT = 3000;
+
 app.use(bodyParser.json());
 app.use(cors());
 
+app.get('/', (_req, res) => {
+    res.type('html').send('<html></html>');
+});
+
+/**
+ * POST /  { url: "https://example.com/foo.json" }
+ */
 app.post('/', async (req, res) => {
     const { url } = req.body;
-    if (!url) return res.status(400).json({ error: 'No URL provided.' });
-    if (!allowed.some((base) => url.startsWith(base)))
+
+    /* 1. 입력 검증 ---------------------------------------------------------- */
+    if (!url) {
+        return res.status(400).json({ error: 'No URL provided.' });
+    }
+    if (!allowed.some((base) => url.startsWith(base))) {
         return res.status(403).json({ error: 'URL is not allowed.' });
+    }
 
+    /* 2. 원본 서버에 요청 ---------------------------------------------------- */
     try {
-        console.log(`PROXY: ${url}`);
+        console.log(`PROXY → ${url}`);
 
-        // 1) node-fetch는 기본적으로 알아서 gunzip 합니다.
-        //    필요하다면 { decompress: false }로 끄고 직접 해제해도 됩니다.
+        /** node-fetch v3: 기본값 { decompress:true } → gzip/br/deflate 자동 해제 */
         const upstream = await fetch(url, {
-            // 헤더를 명시해 두면 서버가 gzip 을 줄 확률이 높아집니다.
-            headers: { 'accept-encoding': 'gzip, deflate, br' },
-            // decompress: false  // 직접 해제하려면 주석을 풀어 주세요
+            // 원한다면 accept-encoding 헤더를 명시적으로 지정할 수도 있음
+            // headers: { 'accept-encoding': 'gzip, deflate, br' },
         });
 
-        if (!upstream.ok)
-            return res.status(upstream.status).json({ error: 'Fetch failed.' });
+        if (!upstream.ok) {
+            return res
+                .status(upstream.status)
+                .json({ error: `Upstream returned ${upstream.status}` });
+        }
 
-        /** ---------- 공통 헤더 처리 ---------- */
+        /* 3. 헤더 복사/정리 --------------------------------------------------- */
         upstream.headers.forEach((value, name) => {
             const n = name.toLowerCase();
-            // gzip 을 풀어서 보내므로 content-encoding/length 는 제거
+            // 압축을 이미 풀었으므로, 인코딩/길이 헤더는 제거
             if (n === 'content-encoding' || n === 'content-length') return;
             res.setHeader(name, value);
         });
-        // 브라우저에서 다시 압축하지 말라는 의미로 identity 지정
+        // “이 데이터는 압축돼 있지 않다”는 의미
         res.setHeader('Content-Encoding', 'identity');
+        // CORS 허용 (필요에 따라 조정)
         res.setHeader('Access-Control-Allow-Origin', '*');
 
-        /** ---------- 본문 스트림 처리 ---------- */
-        const enc = upstream.headers.get('content-encoding');
-        if (enc === 'gzip' /* && decompress:false 일 때만 필요 */) {
-            await pipeline(upstream.body, zlib.createGunzip(), res);
-        } else {
-            // 이미 풀린 스트림이면 그대로 전달
-            await pipeline(upstream.body, res);
-        }
+        /* 4. 본문 스트림 전달 -------------------------------------------------- */
+        // upstream.body 는 이미 평문 스트림 (gunzip 완료 상태)
+        await pipeline(upstream.body, res);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Proxy error.' });
+        console.error('Proxy error:', err);
+        res.status(500).json({ error: 'Internal proxy error.' });
     }
 });
 
-app.listen(3000, () => console.log('Server running on :3000'));
+app.listen(PORT, () => {
+    console.log(`Proxy server running at http://localhost:${PORT}/`);
+});
