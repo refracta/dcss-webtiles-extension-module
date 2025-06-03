@@ -1,19 +1,19 @@
 // ==UserScript==
 // @name         DCSS Webtiles Extension Module Loader
 // @description  Load the DWEM from other Webtiles sites as well.
-// @version      1.11
+// @version      1.12
 // @author       refracta
-// @match        http://webzook.net:8080/*
-// @match        https://crawl.kelbi.org/*
-// @match        https://crawl.dcss.io/*
-// @match        https://crawl.akrasiac.org:8443/*
-// @match        https://underhound.eu:8080/*
-// @match        https://cbro.berotato.org:8443/*
-// @match        http://lazy-life.ddo.jp:8080/*
-// @match        http://lazy-life.ddo.jp:8000/*
-// @match        https://crawl.xtahua.com/*
-// @match        https://crawl.project357.org/*
-// @match        http://joy1999.codns.com:8081/*
+// @match        http://webzook.net:8080/
+// @match        https://crawl.kelbi.org/
+// @match        https://crawl.dcss.io/
+// @match        https://crawl.akrasiac.org:8443/
+// @match        https://underhound.eu:8080/
+// @match        https://cbro.berotato.org:8443/
+// @match        http://lazy-life.ddo.jp:8080/
+// @match        http://lazy-life.ddo.jp:8000/
+// @match        https://crawl.xtahua.com/
+// @match        https://crawl.project357.org/
+// @match        http://joy1999.codns.com:8081/
 // @grant        none
 // @run-at document-start
 // @namespace https://greasyfork.org/users/467840
