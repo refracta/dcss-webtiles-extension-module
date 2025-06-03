@@ -29,26 +29,47 @@ export default class TranslationModule {
 
 
     loadTranslationFont(language) {
-        if (language === 'ko') {
-            window.WebFontConfig = {
-                custom: {
-                    families: ['Nanum Gothic Coding'],
-                    urls: ['https://fonts.googleapis.com/earlyaccess/nanumgothiccoding.css']
-                }
-            };
-            (function () {
-                const wf = document.createElement('script');
-                wf.src = ('https:' == document.location.protocol ? 'https' : 'http') + '://ajax.googleapis.com/ajax/libs/webfont/1.4.10/webfont.js';
-                wf.type = 'text/javascript';
-                wf.async = 'true';
-                const s = document.getElementsByTagName('script')[0];
-                s.parentNode.insertBefore(wf, s);
-            })();
-            const fontStyle = document.createElement("style");
-            fontStyle.setAttribute("id", "translation_font");
-            fontStyle.appendChild(document.createTextNode('* {font-family: "Nanum Gothic Coding", monospace;}'));
-            document.getElementsByTagName("head")[0].appendChild(fontStyle);
+        document.querySelector('#translation_font')?.remove();
+
+        const HEAD = document.head || document.getElementsByTagName('head')[0];
+        let fontFamily;
+        let needsWebFont = false;
+
+        switch (language) {
+            case 'ko':
+                window.WebFontConfig = {
+                    custom: {
+                        families: ['Nanum Gothic Coding'],
+                        urls: ['https://fonts.googleapis.com/earlyaccess/nanumgothiccoding.css']
+                    }
+                };
+                fontFamily = '"Nanum Gothic Coding", monospace';
+                needsWebFont = true;
+                break;
+
+            case 'ja':
+                fontFamily = '"MS Gothic", monospace';
+                break;
+
+            default:
+                return;
         }
+
+        if (needsWebFont) {
+            const wf = document.createElement('script');
+            wf.src = (location.protocol === 'https:' ? 'https' : 'http') +
+                '://ajax.googleapis.com/ajax/libs/webfont/1.4.10/webfont.js';
+            wf.type = 'text/javascript';
+            wf.async = true;
+            HEAD.insertBefore(wf, HEAD.firstChild);
+        }
+
+        const fontStyle = document.createElement('style');
+        fontStyle.id = 'translation_font';
+        fontStyle.appendChild(
+            document.createTextNode(`* { font-family: ${fontFamily}; }`)
+        );
+        HEAD.appendChild(fontStyle);
     }
 
     unloadTranslationFont() {
