@@ -16,7 +16,7 @@ export default class CommandManager {
             description = '',
             argDescriptions = []
         } = options;
-        this.commands.push({ command, argumentTypes, handler, module, description, argDescriptions });
+        this.commands.push({command, argumentTypes, handler, module, description, argDescriptions});
     }
 
     getCommandsByModule(module) {
@@ -33,8 +33,8 @@ export default class CommandManager {
     }
 
     sendChatMessage(content) {
-        const { IOHook } = DWEM.Modules;
-        IOHook.handle_message({ msg: 'chat', content });
+        const {IOHook} = DWEM.Modules;
+        IOHook.handle_message({msg: 'chat', content});
     }
 
     showSuggestions(prefix) {
@@ -82,6 +82,8 @@ export default class CommandManager {
 
     // 타입별 인자 파싱 함수
     parseArguments(args, argumentTypes) {
+        args = ['', ...args]
+        // temp
         const parsedArgs = [];
         let textStarted = false;
 
@@ -127,19 +129,19 @@ export default class CommandManager {
     }
 
     onLoad() {
-        const { IOHook } = DWEM.Modules;
+        const {IOHook} = DWEM.Modules;
 
         IOHook.send_message.before.addHandler('command-manager', (msg, data) => {
             if (msg === 'chat_msg') {
-                const { text } = data;
+                const {text} = data;
                 const fullCommand = text.trim();
                 const args = fullCommand.split(' ');
                 const command = args[0];
                 const matchedCommand = this.commands.find(cmd => fullCommand.startsWith(cmd.command));
+                const params = fullCommand.replace(matchedCommand.command, '').trim().split(' ');
                 if (matchedCommand) {
                     try {
-                        console.log(matchedCommand, this.commands);
-                        const parsedArgs = this.parseArguments(args, matchedCommand.argumentTypes);
+                        const parsedArgs = this.parseArguments(params, matchedCommand.argumentTypes);
                         matchedCommand.handler(parsedArgs);
                     } catch (error) {
                         console.error(`Error executing command: ${error.message}`);
