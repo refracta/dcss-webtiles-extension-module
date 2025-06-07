@@ -132,13 +132,13 @@ export default class CommandManager {
         IOHook.send_message.before.addHandler('command-manager', (msg, data) => {
             if (msg === 'chat_msg') {
                 const { text } = data;
-                const args = text.trim().split(' ');
+                const fullCommand = text.trim();
+                const args = fullCommand.split(' ');
                 const command = args[0];
-
-                const matchedCommand = this.commands.find(cmd => command.startsWith(cmd.command));
-
+                const matchedCommand = this.commands.find(cmd => fullCommand.startsWith(cmd.command));
                 if (matchedCommand) {
                     try {
+                        console.log(matchedCommand, this.commands);
                         const parsedArgs = this.parseArguments(args, matchedCommand.argumentTypes);
                         matchedCommand.handler(parsedArgs);
                     } catch (error) {
