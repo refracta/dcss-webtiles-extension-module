@@ -33,7 +33,6 @@ export default class TranslationModule {
 
         const HEAD = document.head || document.getElementsByTagName('head')[0];
         let fontFamily;
-        let needsWebFont = false;
 
         switch (language) {
             case 'ko':
@@ -44,24 +43,49 @@ export default class TranslationModule {
                     }
                 };
                 fontFamily = '"Nanum Gothic Coding", monospace';
-                needsWebFont = true;
+                const wf = document.createElement('script');
+                wf.src = (location.protocol === 'https:' ? 'https' : 'http') +
+                    '://ajax.googleapis.com/ajax/libs/webfont/1.4.10/webfont.js';
+                wf.type = 'text/javascript';
+                wf.async = true;
+                HEAD.insertBefore(wf, HEAD.firstChild);
                 break;
 
             case 'ja':
-                fontFamily = '"MS Gothic", monospace';
+                const preconnect = document.createElement('link');
+                preconnect.rel = 'preconnect';
+                preconnect.href = 'https://cdn.jsdelivr.net';
+                HEAD.appendChild(preconnect);
+
+                const fontFace = document.createElement('style');
+                fontFace.setAttribute('data-noto-mono', 'true');
+                fontFace.textContent = `
+@font-face{
+  font-family:"Noto Sans Mono CJK JP";
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:local("NotoSansMonoCJKjp-Regular"),
+      local("Noto Sans Mono CJK JP Regular"),
+      url("https://cdn.jsdelivr.net/gh/notofonts/noto-cjk/Sans/Mono/NotoSansMonoCJKjp-Regular.otf") format("opentype");
+}
+@font-face{
+  font-family:"Noto Sans Mono CJK JP";
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:local("NotoSansMonoCJKjp-Bold"),
+      local("Noto Sans Mono CJK JP Bold"),
+      url("https://cdn.jsdelivr.net/gh/notofonts/noto-cjk/Sans/Mono/NotoSansMonoCJKjp-Bold.otf") format("opentype");
+}`;
+                HEAD.appendChild(fontFace);
+
+
+                fontFamily = '"Noto Sans Mono CJK JP", "MS Gothic", monospace';
                 break;
 
             default:
                 return;
-        }
-
-        if (needsWebFont) {
-            const wf = document.createElement('script');
-            wf.src = (location.protocol === 'https:' ? 'https' : 'http') +
-                '://ajax.googleapis.com/ajax/libs/webfont/1.4.10/webfont.js';
-            wf.type = 'text/javascript';
-            wf.async = true;
-            HEAD.insertBefore(wf, HEAD.firstChild);
         }
 
         const fontStyle = document.createElement('style');
