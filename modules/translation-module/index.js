@@ -78,9 +78,6 @@ export default class TranslationModule {
       local("Noto Sans Mono CJK JP Bold"),
       url("https://cdn.jsdelivr.net/gh/notofonts/noto-cjk/Sans/Mono/NotoSansMonoCJKjp-Bold.otf") format("opentype");
 }
-#stats {
-  line-height: 1.1;
-}
 `;
                 HEAD.appendChild(fontFace);
 
@@ -95,6 +92,9 @@ export default class TranslationModule {
         fontStyle.id = 'translation_font';
         fontStyle.appendChild(
             document.createTextNode(`* { font-family: ${fontFamily}; }`)
+        );
+        fontStyle.appendChild(
+            document.createTextNode(`#stats .bar > * { height: 1.2em; !important }`)
         );
         HEAD.appendChild(fontStyle);
     }
