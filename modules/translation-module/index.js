@@ -77,9 +77,12 @@ export default class TranslationModule {
   src:local("NotoSansMonoCJKjp-Bold"),
       local("Noto Sans Mono CJK JP Bold"),
       url("https://cdn.jsdelivr.net/gh/notofonts/noto-cjk/Sans/Mono/NotoSansMonoCJKjp-Bold.otf") format("opentype");
-}`;
+}
+#stats {
+  line-height: 1.1;
+}
+`;
                 HEAD.appendChild(fontFace);
-
 
                 fontFamily = '"Noto Sans Mono CJK JP", "MS Gothic", monospace';
                 break;
