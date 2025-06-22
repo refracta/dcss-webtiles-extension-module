@@ -94,7 +94,7 @@ export default class TranslationModule {
             document.createTextNode(`* { font-family: ${fontFamily}; }`)
         );
         fontStyle.appendChild(
-            document.createTextNode(`#stats .bar > * { height: 1.2em; !important }`)
+            document.createTextNode(`#stats .bar > *, #stats .bar { height: 1.2em !important; }`)
         );
         HEAD.appendChild(fontStyle);
     }
