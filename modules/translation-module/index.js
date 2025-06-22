@@ -131,7 +131,7 @@ export default class TranslationModule {
                 if (language) {
                     const translate = (text, category) => TranslationModule.escapeHTML(TranslationModule.translator.translate(text, language, category).translation);
                     if (language === 'ja') {
-                        $('#stats_timeline').text(player.title.replace(',', '').trim() + '『' + player.name + '』');
+                        $('#stats_titleline').text(player.title.replace(',', '').trim() + '『' + player.name + '』');
                     }
 
                     const wizard_TR = translate("*WIZARD*", 'interface@stats.mode');
