@@ -1,10 +1,15 @@
 export default class DataManager {
     /* ---------- 공통 유틸 ---------- */
     /** `<tag>`를 보존하면서 텍스트 토큰화 */
-    static tokenize = (s) =>
-        [...s.matchAll(/(<\/?[a-z]+>)|([^<]+)/gi)].map((m) =>
-            m[1] ? {type: "tag", content: m[1]} : {type: "text", content: m[2]}
-        );
+    static tokenize = (str) => {
+        const TAG = /<\/?[A-Za-z0-9_]+>/;              // 태그 판별용
+        return str
+            .split(/(<\/?[A-Za-z0-9_]+>)/)               // ① 태그 기준 자르기
+            .filter(Boolean)                             // ② 빈 조각 제거
+            .map(seg => TAG.test(seg)                    // ③ 태그 / ④ 텍스트 구분
+                ? { type: 'tag',  content: seg }
+                : { type: 'text', content: seg });
+    };
 
     /** 깊은 복사(브라우저·노드 공통) */
     static clone = (o) => structuredClone(o);
