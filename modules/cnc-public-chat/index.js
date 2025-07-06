@@ -316,16 +316,6 @@ export default class CNCPublicChat {
             this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
         };
 
-        CommandManager.addCommand('/game', [], () => captureGame(7), {
-            module: CNCPublicChat.name,
-            description: 'Capture game screenshot',
-            argDescriptions: []
-        });
-        CommandManager.addCommand('/g', [], () => captureGame(7), {
-            module: CNCPublicChat.name,
-            description: 'Alias of /game',
-            argDescriptions: []
-        });
         CommandManager.addCommand('/game', ['integer'], (los) => captureGame(los), {
             module: CNCPublicChat.name,
             description: 'Capture game screenshot',
@@ -336,7 +326,16 @@ export default class CNCPublicChat {
             description: 'Alias of /game',
             argDescriptions: ['los']
         });
-
+        CommandManager.addCommand('/game', [], () => captureGame(7), {
+            module: CNCPublicChat.name,
+            description: 'Capture game screenshot',
+            argDescriptions: []
+        });
+        CommandManager.addCommand('/g', [], () => captureGame(7), {
+            module: CNCPublicChat.name,
+            description: 'Alias of /game',
+            argDescriptions: []
+        });
         const captureMenu = async () => {
             const canvas = await CNCChat.Snapshot.captureMenu(CNCChat.Snapshot.Menu.POPUP);
             const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
