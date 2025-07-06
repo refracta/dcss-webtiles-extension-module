@@ -355,7 +355,7 @@ export default class CNCChat {
                 }
             }
         });
-        CommandManager.addCommand('/ggif', ['integer'], async ([los]) => {
+        CommandManager.addCommand('/ggif', ['integer'], async (los) => {
             los = los || 7;
             const frames = [];
             const mapQueueCopy = [...this.mapQueue];
@@ -425,12 +425,12 @@ export default class CNCChat {
             description: 'Alias of /ggame',
             argDescriptions: []
         });
-        CommandManager.addCommand('/ggame', ['integer'], ([los]) => captureGame(los), {
+        CommandManager.addCommand('/ggame', ['integer'], (los) => captureGame(los), {
             module: CNCChat.name,
             description: 'Capture game screenshot',
             argDescriptions: ['los']
         });
-        CommandManager.addCommand('/gg', ['integer'], ([los]) => captureGame(los), {
+        CommandManager.addCommand('/gg', ['integer'], (los) => captureGame(los), {
             module: CNCChat.name,
             description: 'Alias of /ggame',
             argDescriptions: ['los']
