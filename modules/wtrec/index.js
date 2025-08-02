@@ -1679,7 +1679,15 @@ export default class WTRec {
         input.type = 'file';
         input.accept = '.zip,.wtrec';
         input.onchange = async (event) => {
-            this.playWTRec(event.target.files[0]);
+            const file = event.target.files[0];
+            if (file) {
+                // Check if file is 10MB or larger (10 * 1024 * 1024 bytes)
+                if (file.size >= 10 * 1024 * 1024) {
+                    this.playWTRec(file);
+                } else {
+                    alert(`File is too small (${(file.size / 1024 / 1024).toFixed(2)}MB). Please select a file that is 10MB or larger.`);
+                }
+            }
         };
         input.click();
     }
