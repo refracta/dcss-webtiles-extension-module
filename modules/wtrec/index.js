@@ -157,6 +157,18 @@ export default class WTRec {
                 console.warn('Already seeking, ignoring request');
                 return;
             }
+            
+            // Remember playing state before seeking
+            const wasPlayingBeforeSeek = isPlaying;
+            isPlaying = false; // Pause during seek
+            abortSleep = true; // Abort current sleep
+            
+            // Reset reachedLobby if seeking backwards
+            if (targetIndex < currentIndex && reachedLobby) {
+                reachedLobby = false;
+                console.log('Reset reachedLobby flag');
+            }
+            
             window.isSeeking = true;
             
             // Show loading indicator
@@ -361,6 +373,16 @@ export default class WTRec {
                 
                 // Final cursor update to ensure it's correct
                 updateCursor();
+                
+                // Restore playing state if it was playing before seek
+                if (wasPlayingBeforeSeek) {
+                    isPlaying = true;
+                    console.log('Restoring playback after seek');
+                }
+                
+                // Always force wake up the playback loop after seeking
+                abortSleep = true;
+                manualStep = true;
             }
         };
         
@@ -453,22 +475,59 @@ export default class WTRec {
 
         // UI creation
         const uiContainer = document.createElement('div');
-        uiContainer.style.position = 'fixed';
-        uiContainer.style.top = '10px';
-        uiContainer.style.left = '10px';
-        uiContainer.style.zIndex = '10000';
-        uiContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        uiContainer.style.color = 'white';
-        uiContainer.style.padding = '10px';
-        uiContainer.style.borderRadius = '5px';
-        uiContainer.style.fontSize = '12px';
-        uiContainer.style.width = '200px';
+        uiContainer.style.cssText = `
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 10000;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(20, 20, 20, 0.9) 100%);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 10px;
+            width: 180px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-family: monospace;
+        `;
 
+        // Create title
+        const titleDiv = document.createElement('div');
+        titleDiv.style.cssText = `
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            text-align: center;
+            color: #00ff00;
+            text-shadow: 0 0 3px rgba(0, 255, 0, 0.5);
+        `;
+        titleDiv.textContent = 'WTREC Player';
+        uiContainer.appendChild(titleDiv);
+        
+        // Create status section
+        const statusSection = document.createElement('div');
+        statusSection.style.cssText = `
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 3px;
+            margin-bottom: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        `;
+        
         const currentMsgDisplay = document.createElement('div');
+        currentMsgDisplay.style.marginBottom = '2px';
         const currentIndexDisplay = document.createElement('div');
+        currentIndexDisplay.style.marginBottom = '2px';
         const totalLengthDisplay = document.createElement('div');
+        totalLengthDisplay.style.marginBottom = '2px';
         const progressDisplay = document.createElement('div');
+        progressDisplay.style.cssText = `
+            margin-bottom: 2px;
+            font-weight: bold;
+            color: #ffff00;
+        `;
         const sleepTimeDisplay = document.createElement('div');
+        sleepTimeDisplay.style.cssText = 'color: #888; line-height: 1.2;';
 
         // Declare updateCursor as a variable first
         let updateCursor;
@@ -478,7 +537,7 @@ export default class WTRec {
             currentIndexDisplay.textContent = `Current index: ${currentIndex}`;
             totalLengthDisplay.textContent = `Total length: ${data.length}`;
             progressDisplay.textContent = `Progress: ${((currentIndex / data.length) * 100).toFixed(2)}%`;
-            sleepTimeDisplay.textContent = `Sleep: ${originalSleep.toFixed(2)}ms (Adjusted: ${adjustedSleep.toFixed(2)}ms)`;
+            sleepTimeDisplay.innerHTML = `Sleep: ${originalSleep.toFixed(0)}ms<br><span style="color:#888; font-size: 9px">(Adjusted: ${adjustedSleep.toFixed(0)}ms)</span>`;
             
             // Update cursor position if available
             if (updateCursor) {
@@ -488,18 +547,54 @@ export default class WTRec {
 
         updateUI(0, 0);
 
-        uiContainer.appendChild(currentMsgDisplay);
-        uiContainer.appendChild(currentIndexDisplay);
-        uiContainer.appendChild(totalLengthDisplay);
-        uiContainer.appendChild(progressDisplay);
-        uiContainer.appendChild(sleepTimeDisplay);
+        statusSection.appendChild(currentMsgDisplay);
+        statusSection.appendChild(currentIndexDisplay);
+        statusSection.appendChild(totalLengthDisplay);
+        statusSection.appendChild(progressDisplay);
+        statusSection.appendChild(sleepTimeDisplay);
+        uiContainer.appendChild(statusSection);
+        
+        // Create controls section
+        const controlsSection = document.createElement('div');
+        controlsSection.style.cssText = `
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 3px;
+            margin-bottom: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        `;
 
         const playPauseButton = document.createElement('button');
-        playPauseButton.textContent = 'Play/Pause';
+        playPauseButton.style.cssText = `
+            width: 100%;
+            padding: 3px;
+            margin-bottom: 5px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 10px;
+        `;
+        playPauseButton.onmouseover = () => playPauseButton.style.background = '#3a3a3a';
+        playPauseButton.onmouseout = () => playPauseButton.style.background = '#2a2a2a';
+        playPauseButton.innerHTML = isPlaying ? '⏸ Pause <span style="color:#888; font-size: 9px">(Space)</span>' : '▶ Play <span style="color:#888; font-size: 9px">(Space)</span>';
+        playPauseButton.title = 'Play/Pause (Space)';
         playPauseButton.onclick = () => {
             isPlaying = !isPlaying;
+            playPauseButton.innerHTML = isPlaying ? '⏸ Pause <span style="color:#888; font-size: 9px">(Space)</span>' : '▶ Play <span style="color:#888; font-size: 9px">(Space)</span>';
+            if (isPlaying) {
+                // Reset reachedLobby if at the end and trying to play
+                if ((reachedLobby || currentIndex >= data.length - 1) && currentIndex < data.length - 1) {
+                    reachedLobby = false;
+                    console.log('Reset reachedLobby, resuming playback');
+                }
+                abortSleep = true;
+                manualStep = true;
+            }
         };
-        uiContainer.appendChild(playPauseButton);
+        controlsSection.appendChild(playPauseButton);
 
         const speedInput = document.createElement('input');
         speedInput.type = 'number';
@@ -511,19 +606,27 @@ export default class WTRec {
             currentSpeed = parseFloat(speedInput.value);
             abortSleep = true; // Abort the current sleep
         };
-        uiContainer.appendChild(document.createTextNode(' Speed: '));
-        uiContainer.appendChild(speedInput);
-
+        const speedControl = document.createElement('div');
+        speedControl.style.cssText = 'margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;';
+        speedControl.innerHTML = '<span>Speed <span style="color:#888; font-size: 9px">(X/C)</span>:</span>';
+        speedInput.style.cssText = 'width: 45px; background: #1a1a1a; border: 1px solid #444; color: white; padding: 2px; border-radius: 3px; font-size: 10px;';
+        speedControl.appendChild(speedInput);
+        controlsSection.appendChild(speedControl);
+        
         const stepInput = document.createElement('input');
         stepInput.type = 'number';
         stepInput.value = stepSize;
         stepInput.min = '1';
-        stepInput.style.width = '50px';
         stepInput.onchange = () => {
             stepSize = parseInt(stepInput.value, 10);
         };
-        uiContainer.appendChild(document.createTextNode(' Step size: '));
-        uiContainer.appendChild(stepInput);
+        
+        const stepControl = document.createElement('div');
+        stepControl.style.cssText = 'margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;';
+        stepControl.innerHTML = '<span>Step:</span>';
+        stepInput.style.cssText = 'width: 45px; background: #1a1a1a; border: 1px solid #444; color: white; padding: 2px; border-radius: 3px; font-size: 10px;';
+        stepControl.appendChild(stepInput);
+        controlsSection.appendChild(stepControl);
 
         const showBarCheckbox = document.createElement('input');
         showBarCheckbox.type = 'checkbox';
@@ -531,22 +634,49 @@ export default class WTRec {
         showBarCheckbox.onchange = () => {
             progressContainer.style.display = showBarCheckbox.checked ? '' : 'none';
         };
-        uiContainer.appendChild(document.createElement('br'));
-        uiContainer.appendChild(showBarCheckbox);
-        uiContainer.appendChild(document.createTextNode(' Show progress '));
+        const checkboxControl = document.createElement('div');
+        checkboxControl.style.cssText = 'margin-bottom: 5px; display: flex; align-items: center;';
+        const checkboxLabel = document.createElement('label');
+        checkboxLabel.style.cssText = 'display: flex; align-items: center; cursor: pointer; font-size: 10px;';
+        showBarCheckbox.style.cssText = 'margin-right: 5px; width: 12px; height: 12px;';
+        checkboxLabel.appendChild(showBarCheckbox);
+        checkboxLabel.innerHTML += 'Progress bar <span style="color:#888; font-size: 9px">(P)</span>';
+        checkboxControl.appendChild(checkboxLabel);
+        controlsSection.appendChild(checkboxControl);
 
-        const lobbyButton = document.createElement('button');
-        lobbyButton.textContent = 'Go Lobby';
-        lobbyButton.onclick = () => { location.href = '/'; };
-        uiContainer.appendChild(lobbyButton);
+        // Navigation buttons
+        const navButtons = document.createElement('div');
+        navButtons.style.cssText = 'display: flex; gap: 3px; margin-bottom: 5px;';
+        
+        const buttonStyle = `
+            flex: 1;
+            padding: 3px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 10px;
+        `;
 
         const leftButton = document.createElement('button');
-        leftButton.textContent = '<<';
+        leftButton.style.cssText = buttonStyle;
+        leftButton.innerHTML = '◀◀ <span style="color:#888; font-size: 9px">(←)</span>';
+        leftButton.title = 'Step Backward (← Arrow)';
+        leftButton.onmouseover = () => leftButton.style.background = '#3a3a3a';
+        leftButton.onmouseout = () => leftButton.style.background = '#2a2a2a';
         leftButton.onclick = async () => {
             const newIndex = Math.max(0, currentIndex - stepSize);
             const wasPlaying = isPlaying;
             isPlaying = false;
             abortSleep = true;
+            
+            // Reset reachedLobby if going backwards
+            if (newIndex < currentIndex && reachedLobby) {
+                reachedLobby = false;
+                console.log('Reset reachedLobby flag (left button)');
+            }
             
             await seekToIndex(newIndex);
             
@@ -556,10 +686,14 @@ export default class WTRec {
             manualStep = true;
             progressBar.value = currentIndex;
         };
-        uiContainer.appendChild(leftButton);
-
+        navButtons.appendChild(leftButton);
+        
         const rightButton = document.createElement('button');
-        rightButton.textContent = '>>';
+        rightButton.style.cssText = buttonStyle;
+        rightButton.innerHTML = '<span style="color:#888; font-size: 9px">(→)</span> ▶▶';
+        rightButton.title = 'Step Forward (→ Arrow)';
+        rightButton.onmouseover = () => rightButton.style.background = '#3a3a3a';
+        rightButton.onmouseout = () => rightButton.style.background = '#2a2a2a';
         rightButton.onclick = async () => {
             const newIndex = Math.min(data.length - 1, currentIndex + stepSize);
             const wasPlaying = isPlaying;
@@ -574,7 +708,68 @@ export default class WTRec {
             manualStep = true;
             progressBar.value = currentIndex;
         };
-        uiContainer.appendChild(rightButton);
+        navButtons.appendChild(rightButton);
+        controlsSection.appendChild(navButtons);
+        
+        const lobbyButton = document.createElement('button');
+        lobbyButton.style.cssText = buttonStyle + 'width: 100%;';
+        lobbyButton.textContent = '🏠 Go to Lobby';
+        lobbyButton.onclick = () => { location.href = '/'; };
+        lobbyButton.onmouseover = () => lobbyButton.style.background = '#3a3a3a';
+        lobbyButton.onmouseout = () => lobbyButton.style.background = '#2a2a2a';
+        controlsSection.appendChild(lobbyButton);
+        
+        uiContainer.appendChild(controlsSection);
+        
+        // Create help section (collapsible)
+        const helpSection = document.createElement('div');
+        helpSection.style.cssText = `
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0;
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            transition: all 0.3s;
+        `;
+        
+        const helpTitle = document.createElement('div');
+        helpTitle.style.cssText = `
+            padding: 5px;
+            cursor: pointer;
+            background: rgba(40, 40, 40, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+        `;
+        helpTitle.innerHTML = '<span>⌨️ Keyboard Shortcuts</span><span id="help-toggle">▼</span>';
+        
+        const helpContent = document.createElement('div');
+        helpContent.style.cssText = `
+            padding: 5px;
+            display: none;
+            font-size: 9px;
+            line-height: 1.4;
+        `;
+        helpContent.innerHTML = `
+            <div style="margin-bottom: 4px"><b>Space</b> - Play/Pause</div>
+            <div style="margin-bottom: 4px"><b>← / →</b> - Step backward/forward</div>
+            <div style="margin-bottom: 4px"><b>X / C</b> - Decrease/Increase speed</div>
+            <div style="margin-bottom: 4px"><b>0-9</b> - Jump to 0%-90% position</div>
+            <div style="margin-bottom: 4px"><b>P</b> - Toggle progress bar</div>
+            <div style="margin-bottom: 4px"><b>H</b> - Toggle this UI</div>
+            <div style="margin-bottom: 4px"><b>Click bar</b> - Seek to position</div>
+        `;
+        
+        helpTitle.onclick = () => {
+            const isOpen = helpContent.style.display === 'block';
+            helpContent.style.display = isOpen ? 'none' : 'block';
+            document.getElementById('help-toggle').textContent = isOpen ? '▼' : '▲';
+        };
+        
+        helpSection.appendChild(helpTitle);
+        helpSection.appendChild(helpContent);
+        uiContainer.appendChild(helpSection);
 
         document.body.appendChild(uiContainer);
         $(uiContainer).draggable();
@@ -584,7 +779,7 @@ export default class WTRec {
             if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
             if (e.key === ' ') {
                 e.preventDefault();
-                isPlaying = !isPlaying;
+                playPauseButton.onclick();
             } else if (e.key === 'ArrowLeft') {
                 e.preventDefault();
                 leftButton.onclick();
@@ -601,6 +796,23 @@ export default class WTRec {
                 currentSpeed = parseFloat((currentSpeed + 0.1).toFixed(1));
                 speedInput.value = currentSpeed;
                 abortSleep = true;
+            } else if (e.key === 'p' || e.key === 'P') {
+                e.preventDefault();
+                showBarCheckbox.checked = !showBarCheckbox.checked;
+                showBarCheckbox.onchange();
+            } else if (e.key === 'h' || e.key === 'H') {
+                e.preventDefault();
+                uiContainer.style.display = uiContainer.style.display === 'none' ? '' : 'none';
+            } else if (e.key >= '0' && e.key <= '9') {
+                e.preventDefault();
+                // Calculate target position (0 = 0%, 1 = 10%, ..., 9 = 90%)
+                const percent = parseInt(e.key) * 0.1;
+                const targetIndex = Math.floor(percent * data.length);
+                // Reset reachedLobby if seeking from the end
+                if (reachedLobby && targetIndex < currentIndex) {
+                    reachedLobby = false;
+                }
+                seekToIndex(targetIndex);
             }
         });
 
@@ -608,29 +820,31 @@ export default class WTRec {
         const progressContainer = document.createElement('div');
         progressContainer.style.cssText = `
             position: fixed;
-            bottom: 20px;
+            bottom: 10px;
             left: 50%;
             transform: translateX(-50%);
-            width: 90vw;
-            height: 140px;
-            background: rgba(0, 0, 0, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
+            width: calc(100vw - 30px);
+            height: 65px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            padding: 5px;
             z-index: 10001;
             overflow: visible;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         `;
         
         // HP graph canvas
         const hpCanvas = document.createElement('canvas');
-        hpCanvas.width = window.innerWidth * 0.9;
-        hpCanvas.height = 60;
+        hpCanvas.width = window.innerWidth - 54; // 30px container margin + 10px container padding + 4px border + 10px canvas margin
+        hpCanvas.height = 25; // HP bar height
         hpCanvas.style.cssText = `
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 60px;
-            pointer-events: none;
+            top: 5px;
+            left: 5px;
+            width: calc(100% - 10px);
+            height: 25px;
+            cursor: pointer;
         `;
         progressContainer.appendChild(hpCanvas);
         const hpCtx = hpCanvas.getContext('2d');
@@ -639,9 +853,9 @@ export default class WTRec {
         const labelContainer = document.createElement('div');
         labelContainer.style.cssText = `
             position: absolute;
-            top: 60px;
-            left: 0;
-            width: 100%;
+            top: 30px;
+            left: 5px;
+            width: calc(100% - 10px);
             height: 40px;
             pointer-events: none;
         `;
@@ -649,13 +863,13 @@ export default class WTRec {
         
         // Canvas for rendering segments
         const canvas = document.createElement('canvas');
-        canvas.width = window.innerWidth * 0.9;
+        canvas.width = window.innerWidth - 54; // 30px container margin + 10px container padding + 4px border + 10px canvas margin
         canvas.height = 40;
         canvas.style.cssText = `
             position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
+            top: 30px;
+            left: 5px;
+            width: calc(100% - 10px);
             height: 40px;
             cursor: pointer;
         `;
@@ -680,6 +894,10 @@ export default class WTRec {
         function drawHpGraph() {
             hpCtx.clearRect(0, 0, hpCanvas.width, hpCanvas.height);
             
+            // Draw background
+            hpCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            hpCtx.fillRect(0, 0, hpCanvas.width, hpCanvas.height);
+            
             // Draw background grid
             hpCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
             hpCtx.lineWidth = 1;
@@ -702,8 +920,8 @@ export default class WTRec {
                     if (!lastHp || hpData[i].hp !== lastHp.hp || hpData[i].hp_max !== lastHp.hp_max) {
                         // Draw bar for the previous HP value range
                         if (lastHp && i > barStartIndex) {
-                            const startX = (barStartIndex / data.length) * hpCanvas.width;
-                            const endX = (i / data.length) * hpCanvas.width;
+                            const startX = Math.floor((barStartIndex / data.length) * hpCanvas.width);
+                            const endX = Math.ceil((i / data.length) * hpCanvas.width);
                             const barWidth = Math.max(1, endX - startX); // Ensure minimum width
                             
                             const hpHeight = (lastHp.hp / maxHp) * hpCanvas.height;
@@ -737,11 +955,6 @@ export default class WTRec {
                             }
                             hpCtx.fillRect(startX, hpCanvas.height - effectiveHeight, barWidth, effectiveHeight);
                             
-                            // Add a thin black outline for clarity
-                            hpCtx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-                            hpCtx.lineWidth = 0.5;
-                            hpCtx.strokeRect(startX, hpCanvas.height - effectiveHeight, barWidth, effectiveHeight);
-                            
                             
                             hpChangeCount++;
                         }
@@ -755,7 +968,7 @@ export default class WTRec {
             
             // Draw the final bar
             if (lastHp && data.length > barStartIndex) {
-                const startX = (barStartIndex / data.length) * hpCanvas.width;
+                const startX = Math.floor((barStartIndex / data.length) * hpCanvas.width);
                 const endX = hpCanvas.width;
                 const barWidth = endX - startX;
                 
@@ -789,11 +1002,6 @@ export default class WTRec {
                     hpCtx.fillStyle = '#ff0000'; // Bright red
                 }
                 hpCtx.fillRect(startX, hpCanvas.height - effectiveHeight, barWidth, effectiveHeight);
-                
-                // Add a thin black outline for clarity
-                hpCtx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-                hpCtx.lineWidth = 0.5;
-                hpCtx.strokeRect(startX, hpCanvas.height - effectiveHeight, barWidth, effectiveHeight);
             }
             
             // Draw scale labels
@@ -809,19 +1017,25 @@ export default class WTRec {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             labelContainer.innerHTML = '';
             
+            // Draw background for progress bar
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
             segments.forEach((seg, idx) => {
-                const x = (seg.start / data.length) * canvas.width;
-                const width = ((seg.end - seg.start + 1) / data.length) * canvas.width;
+                const x = Math.floor((seg.start / data.length) * canvas.width);
+                let width;
+                
+                // Calculate width to prevent gaps
+                if (idx < segments.length - 1) {
+                    const nextX = Math.floor((segments[idx + 1].start / data.length) * canvas.width);
+                    width = nextX - x;
+                } else {
+                    width = canvas.width - x;
+                }
                 
                 // Draw segment
                 ctx.fillStyle = seg.place ? getPlaceColor(seg.place, seg.depth || 0) : '#222';
                 ctx.fillRect(x, 0, width, canvas.height);
-                
-                // Draw black divider
-                if (idx > 0) {
-                    ctx.fillStyle = 'black';
-                    ctx.fillRect(x, 0, 2, canvas.height);
-                }
                 
                 // Add place label
                 if (width > 15) { // Show labels for smaller segments too
@@ -829,7 +1043,7 @@ export default class WTRec {
                     label.style.cssText = `
                         position: absolute;
                         left: ${(x / canvas.width) * 100}%;
-                        top: 20px;
+                        top: 50%;
                         color: white;
                         font-size: 10px;
                         padding: 2px 4px;
@@ -854,6 +1068,9 @@ export default class WTRec {
                         label.style.left = `${((x + width/2) / canvas.width) * 100}%`;
                         label.style.transform = 'translateX(-50%) translateY(-50%)';
                     }
+                    
+                    // Ensure label doesn't overlap with cursor
+                    label.style.zIndex = '8';
                     
                     labelContainer.appendChild(label);
                 }
@@ -893,6 +1110,7 @@ export default class WTRec {
             padding: 4px 8px;
             border-radius: 3px;
             font-size: 12px;
+            font-weight: bold;
             white-space: nowrap;
             pointer-events: none;
             display: none;
@@ -903,7 +1121,28 @@ export default class WTRec {
         const hpDisplay = document.createElement('div');
         hpDisplay.style.cssText = `
             position: absolute;
-            top: 5px;
+            top: 17.5px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            font-weight: bold;
+            font-family: monospace;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 20;
+            display: none;
+        `;
+        
+        // Index display element
+        const indexDisplay = document.createElement('div');
+        indexDisplay.style.cssText = `
+            position: absolute;
+            top: 50px;
+            transform: translateY(-50%);
             background: rgba(0, 0, 0, 0.9);
             color: white;
             padding: 4px 8px;
@@ -918,6 +1157,7 @@ export default class WTRec {
             display: none;
         `;
         progressContainer.appendChild(hpDisplay);
+        progressContainer.appendChild(indexDisplay);
         
         // Update cursor position
         updateCursor = () => {
@@ -926,10 +1166,15 @@ export default class WTRec {
             
             // Update tooltip - find from segments which is more reliable
             let foundPlace = false;
+            let currentPlace = null;
+            let currentDepth = null;
             for (const seg of segments) {
                 if (currentIndex >= seg.start && currentIndex <= seg.end) {
                     if (seg.place) {
+                        currentPlace = seg.place;
+                        currentDepth = seg.depth;
                         tooltip.textContent = (seg.depth && seg.depth !== 0) ? `${seg.place}:${seg.depth}` : seg.place;
+                        tooltip.style.color = getPlaceColor(seg.place, seg.depth || 0);
                         tooltip.style.display = 'block';
                         foundPlace = true;
                         break;
@@ -941,8 +1186,11 @@ export default class WTRec {
             if (!foundPlace) {
                 for (let i = currentIndex; i >= 0; i--) {
                     if (data[i] && data[i].msg === 'player' && data[i].place) {
+                        currentPlace = data[i].place;
+                        currentDepth = data[i].depth;
                         const depth = data[i].depth;
                         tooltip.textContent = (depth && depth !== 0) ? `${data[i].place}:${depth}` : data[i].place;
+                        tooltip.style.color = getPlaceColor(data[i].place, depth || 0);
                         tooltip.style.display = 'block';
                         foundPlace = true;
                         break;
@@ -953,6 +1201,7 @@ export default class WTRec {
             // Show unknown if still not found
             if (!foundPlace) {
                 tooltip.textContent = '(Unknown)';
+                tooltip.style.color = '#666';
                 tooltip.style.display = 'block';
             }
             
@@ -1011,6 +1260,23 @@ export default class WTRec {
             } else {
                 hpDisplay.style.display = 'none';
             }
+            
+            // Update index display
+            indexDisplay.textContent = `#${currentIndex}`;
+            indexDisplay.style.display = 'block';
+            
+            // Position index display to follow cursor
+            let indexDisplayX = (percent * progressContainer.clientWidth);
+            const indexDisplayWidth = indexDisplay.offsetWidth || 80;
+            
+            // Keep display within bounds
+            if (indexDisplayX - indexDisplayWidth/2 < 0) {
+                indexDisplayX = indexDisplayWidth/2;
+            } else if (indexDisplayX + indexDisplayWidth/2 > progressContainer.clientWidth) {
+                indexDisplayX = progressContainer.clientWidth - indexDisplayWidth/2;
+            }
+            
+            indexDisplay.style.left = (indexDisplayX - indexDisplayWidth/2) + 'px';
         };
         
         // Create hover tooltip separate from cursor tooltip
@@ -1023,6 +1289,7 @@ export default class WTRec {
             padding: 4px 8px;
             border-radius: 3px;
             font-size: 12px;
+            font-weight: bold;
             white-space: nowrap;
             pointer-events: none;
             display: none;
@@ -1030,9 +1297,66 @@ export default class WTRec {
         `;
         progressContainer.appendChild(hoverTooltip);
         
-        // Mouse move handler for tooltip preview
-        canvas.onmousemove = (e) => {
-            const rect = canvas.getBoundingClientRect();
+        // Create hover HP display (similar to regular HP display)
+        const hoverHpDisplay = document.createElement('div');
+        hoverHpDisplay.style.cssText = `
+            position: absolute;
+            top: 17.5px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            font-weight: bold;
+            font-family: monospace;
+            white-space: nowrap;
+            pointer-events: none;
+            display: none;
+            z-index: 20;
+        `;
+        
+        // Create hover index display
+        const hoverIndexDisplay = document.createElement('div');
+        hoverIndexDisplay.style.cssText = `
+            position: absolute;
+            top: 50px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            font-weight: bold;
+            font-family: monospace;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 20;
+            display: none;
+        `;
+        progressContainer.appendChild(hoverHpDisplay);
+        progressContainer.appendChild(hoverIndexDisplay);
+        
+        // Create hover cursor line (similar to regular cursor)
+        const hoverCursor = document.createElement('div');
+        hoverCursor.style.cssText = `
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background: yellow;
+            box-shadow: 0 0 5px yellow;
+            pointer-events: none;
+            z-index: 9;
+            display: none;
+        `;
+        progressContainer.appendChild(hoverCursor);
+        
+        // Common mouse move handler for both canvas and HP canvas
+        const handleMouseMove = (e) => {
+            const rect = progressContainer.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const percent = x / rect.width;
             const hoverIndex = Math.floor(percent * data.length);
@@ -1040,6 +1364,24 @@ export default class WTRec {
             // Update hover tooltip position
             hoverTooltip.style.left = (percent * 100) + '%';
             hoverTooltip.style.transform = 'translateX(-50%)';
+            
+            // Update hover cursor position
+            hoverCursor.style.left = (percent * 100) + '%';
+            hoverCursor.style.display = 'block';
+            
+            // Update hover HP display position (same as play display)
+            let hoverDisplayX = (percent * progressContainer.clientWidth);
+            const hoverHpWidth = hoverHpDisplay.offsetWidth || 80;
+            
+            // Keep display within bounds
+            if (hoverDisplayX - hoverHpWidth/2 < 0) {
+                hoverDisplayX = hoverHpWidth/2;
+            } else if (hoverDisplayX + hoverHpWidth/2 > progressContainer.clientWidth) {
+                hoverDisplayX = progressContainer.clientWidth - hoverHpWidth/2;
+            }
+            
+            hoverHpDisplay.style.left = (hoverDisplayX - hoverHpWidth/2) + 'px';
+            hoverHpDisplay.style.right = 'auto';
             
             // Find which segment the mouse is over
             let hoverPlace = null;
@@ -1053,53 +1395,127 @@ export default class WTRec {
                 }
             }
             
-            if (hoverPlace) {
-                hoverTooltip.textContent = (hoverDepth && hoverDepth !== 0) ? `${hoverPlace}:${hoverDepth}` : hoverPlace;
-            } else {
-                hoverTooltip.textContent = '(Unknown)';
+            // Find HP at hover position
+            let hoverHp = null;
+            for (let i = hoverIndex; i >= 0; i--) {
+                if (hpData[i]) {
+                    hoverHp = hpData[i];
+                    break;
+                }
             }
+            
+            // Build tooltip text (without HP)
+            let tooltipText = '';
+            if (hoverPlace) {
+                tooltipText = (hoverDepth && hoverDepth !== 0) ? `${hoverPlace}:${hoverDepth}` : hoverPlace;
+                hoverTooltip.style.color = getPlaceColor(hoverPlace, hoverDepth || 0);
+            } else {
+                tooltipText = '(Unknown)';
+                hoverTooltip.style.color = '#666';
+            }
+            
+            hoverTooltip.textContent = tooltipText;
             hoverTooltip.style.display = 'block';
+            
+            // Update hover HP display
+            if (hoverHp) {
+                const hpText = `${hoverHp.hp}/${hoverHp.hp_max}`;
+                hoverHpDisplay.textContent = hpText;
+                hoverHpDisplay.style.display = 'block';
+                
+                // Color based on HP percentage
+                const hpPercent = hoverHp.hp / (hoverHp.real_hp_max || hoverHp.hp_max);
+                if (hpPercent > 0.75) {
+                    hoverHpDisplay.style.color = '#00ff00';
+                } else if (hpPercent > 0.5) {
+                    hoverHpDisplay.style.color = '#ffff00';
+                } else if (hpPercent > 0.25) {
+                    hoverHpDisplay.style.color = '#ff8800';
+                } else {
+                    hoverHpDisplay.style.color = '#ff0000';
+                }
+                
+                // Show poison indicator if poisoned
+                if (hoverHp.poison_survival < hoverHp.hp) {
+                    hoverHpDisplay.textContent = `${hoverHp.hp}/${hoverHp.hp_max} (→${hoverHp.poison_survival})`;
+                }
+            } else {
+                hoverHpDisplay.style.display = 'none';
+            }
+            
+            // Update hover index display
+            hoverIndexDisplay.textContent = `#${hoverIndex}`;
+            hoverIndexDisplay.style.display = 'block';
+            
+            // Position hover index display (same as play display)
+            let hoverIndexDisplayX = (percent * progressContainer.clientWidth);
+            const hoverIndexDisplayWidth = hoverIndexDisplay.offsetWidth || 80;
+            
+            // Keep display within bounds
+            if (hoverIndexDisplayX - hoverIndexDisplayWidth/2 < 0) {
+                hoverIndexDisplayX = hoverIndexDisplayWidth/2;
+            } else if (hoverIndexDisplayX + hoverIndexDisplayWidth/2 > progressContainer.clientWidth) {
+                hoverIndexDisplayX = progressContainer.clientWidth - hoverIndexDisplayWidth/2;
+            }
+            
+            hoverIndexDisplay.style.left = (hoverIndexDisplayX - hoverIndexDisplayWidth/2) + 'px';
+            hoverIndexDisplay.style.right = 'auto';
+            
+            // Draw hover line on HP graph
+            drawHpGraph();
+            const hoverX = (hoverIndex / data.length) * hpCanvas.width;
+            hpCtx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
+            hpCtx.lineWidth = 1;
+            hpCtx.beginPath();
+            hpCtx.moveTo(hoverX, 0);
+            hpCtx.lineTo(hoverX, hpCanvas.height);
+            hpCtx.stroke();
+            
+            // Redraw current position line
+            const currentX = (currentIndex / data.length) * hpCanvas.width;
+            hpCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+            hpCtx.lineWidth = 2;
+            hpCtx.beginPath();
+            hpCtx.moveTo(currentX, 0);
+            hpCtx.lineTo(currentX, hpCanvas.height);
+            hpCtx.stroke();
         };
         
-        // Hide hover tooltip when mouse leaves
-        canvas.onmouseleave = () => {
+        // Common mouse leave handler
+        const handleMouseLeave = () => {
             hoverTooltip.style.display = 'none';
+            hoverHpDisplay.style.display = 'none';
+            hoverIndexDisplay.style.display = 'none';
+            hoverCursor.style.display = 'none';
+            // Redraw HP graph without hover line
+            drawHpGraph();
+            updateCursor();
         };
         
-        // Click handler
-        canvas.onclick = async (e) => {
-            const rect = canvas.getBoundingClientRect();
+        // Common click handler
+        const handleClick = async (e) => {
+            const rect = progressContainer.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const percent = x / rect.width;
             const targetIndex = Math.floor(percent * data.length);
             
-            // Pause playback during seeking
-            const wasPlaying = isPlaying;
-            isPlaying = false;
-            abortSleep = true;
-            
-            try {
-                await seekToIndex(targetIndex);
-            } catch (e) {
-                console.error('Error during seeking:', e);
-                // Ensure seeking flag is reset even on error
-                window.isSeeking = false;
-            } finally {
-                // Always restore playback state
-                if (wasPlaying) {
-                    isPlaying = true;
-                }
-                manualStep = true;
-                
-                // Force abort sleep again to ensure playback resumes
-                abortSleep = true;
-            }
+            // seekToIndex will handle playing state management
+            await seekToIndex(targetIndex);
         };
+        
+        // Apply handlers to both canvas and HP canvas
+        canvas.onmousemove = handleMouseMove;
+        canvas.onmouseleave = handleMouseLeave;
+        canvas.onclick = handleClick;
+        
+        hpCanvas.onmousemove = handleMouseMove;
+        hpCanvas.onmouseleave = handleMouseLeave;
+        hpCanvas.onclick = handleClick;
         
         // Window resize handler
         window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth * 0.9;
-            hpCanvas.width = window.innerWidth * 0.9;
+            canvas.width = window.innerWidth - 54; // 30px container margin + 10px container padding + 4px border + 10px canvas margin
+            hpCanvas.width = window.innerWidth - 54; // 30px container margin + 10px container padding + 4px border + 10px canvas margin
             drawSegments();
             drawHpGraph();
             updateCursor();
@@ -1125,6 +1541,25 @@ export default class WTRec {
             // Check if seeking is in progress and wait for it to complete
             if (window.isSeeking) {
                 await new Promise(resolve => setTimeout(resolve, 50));
+                continue;
+            }
+            
+            // If not playing and not manual step, wait
+            if (!isPlaying && !manualStep) {
+                await sleep(100);
+                continue;
+            }
+            
+            // Check if reached end
+            if (reachedLobby || currentIndex >= data.length - 1) {
+                if (reachedLobby) {
+                    console.log('Reached lobby, pausing playback');
+                } else {
+                    console.log('Reached end of replay, pausing playback');
+                }
+                isPlaying = false;
+                playPauseButton.innerHTML = '▶ Play <span style="color:#888; font-size: 9px">(Space)</span>';
+                await sleep(100);
                 continue;
             }
             
@@ -1214,6 +1649,12 @@ export default class WTRec {
 
                 // Check if we were interrupted by seeking
                 if (window.isSeeking) {
+                    // Wait for seeking to complete
+                    while (window.isSeeking) {
+                        await sleep(10);
+                    }
+                    // Reset abort flag after seeking completes
+                    abortSleep = false;
                     continue; // Don't increment, let the seek operation set currentIndex
                 }
 
@@ -1227,10 +1668,8 @@ export default class WTRec {
                     fastForwardUntil = fastForwardTargets[fastForwardIdx] ?? null;
                 }
                 if (reachedLobby) {
-                    break;
+                    // Already handled in main loop
                 }
-            } else {
-                await sleep(100);
             }
         }
     }
