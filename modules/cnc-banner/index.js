@@ -603,13 +603,58 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     async playWTRec() {
         let url = prompt("Please enter a URL in the form of \n\"https://wtrec.nemelex.cards/wtrec/*/*.wtrec\".\n\nIf left blank, a random wtrec will be played.");
         if (url) {
-            DWEM.Modules.WTRec.playWTRec(await fetch(url).then(r => r.blob()));
+            const blob = await fetch(url).then(r => r.blob());
+            if (blob.size >= 10 * 1024 * 1024) {
+                DWEM.Modules.WTRec.playWTRec(blob);
+            } else {
+                alert(`File is too small (${(blob.size / 1024 / 1024).toFixed(2)}MB). Please select a file that is 10MB or larger.`);
+            }
         } else {
             const list = await fetch('https://wtrec-json.nemelex.cards/wtrec').then(r => r.json());
-            const user = list[Math.floor(Math.random() * list.length)].name;
-            const files = await fetch(`https://wtrec-json.nemelex.cards/wtrec/${user}`).then(r => r.json());
-            const url = `https://wtrec.nemelex.cards/wtrec/${user}/${files[Math.floor(Math.random() * files.length)].name}`;
-            DWEM.Modules.WTRec.playWTRec(await fetch(url).then(r => r.blob()));
+            
+            // Try up to 30 different users to find one with a large file
+            const maxAttempts = 30;
+            let attempts = 0;
+            let largestFile = null;
+            let largestFileUrl = null;
+            let largestFileSize = 0;
+            
+            while (attempts < maxAttempts) {
+                const user = list[Math.floor(Math.random() * list.length)].name;
+                attempts++;
+                
+                const files = await fetch(`https://wtrec-json.nemelex.cards/wtrec/${user}`).then(r => r.json());
+                
+                // Keep track of the largest file found so far
+                for (const file of files) {
+                    if (file.size > largestFileSize) {
+                        largestFile = file;
+                        largestFileUrl = `https://wtrec.nemelex.cards/wtrec/${user}/${file.name}`;
+                        largestFileSize = file.size;
+                    }
+                }
+                
+                // Filter files that are 10MB or larger
+                const largeFiles = files.filter(file => file.size >= 10 * 1024 * 1024);
+                
+                if (largeFiles.length > 0) {
+                    // Select a random large file
+                    const file = largeFiles[Math.floor(Math.random() * largeFiles.length)];
+                    const url = `https://wtrec.nemelex.cards/wtrec/${user}/${file.name}`;
+                    const blob = await fetch(url).then(r => r.blob());
+                    DWEM.Modules.WTRec.playWTRec(blob);
+                    return;
+                }
+            }
+            
+            // If no file >= 10MB was found, play the largest file found
+            if (largestFileUrl) {
+                console.log(`No file >= 10MB found. Playing largest file found: ${(largestFileSize / 1024 / 1024).toFixed(2)}MB`);
+                const blob = await fetch(largestFileUrl).then(r => r.blob());
+                DWEM.Modules.WTRec.playWTRec(blob);
+            } else {
+                alert('Could not find any wtrec files.');
+            }
         }
     }
 
