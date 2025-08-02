@@ -217,6 +217,21 @@ export default class WTRec {
                     
                     // Ensure message has valid structure
                     const safeCopy = JSON.parse(JSON.stringify(msg));
+                    
+                    // For player messages, ensure stats are properly updated
+                    if (safeCopy.msg === 'player') {
+                        // Ensure numeric values are properly set
+                        const numericFields = ['hp', 'hp_max', 'mp', 'mp_max', 'str', 'str_max', 
+                                               'int', 'int_max', 'dex', 'dex_max', 'ac', 'ev', 'sh',
+                                               'xl', 'progress', 'gold', 'depth', 'time', 'turn'];
+                        
+                        for (const field of numericFields) {
+                            if (safeCopy[field] !== undefined && safeCopy[field] !== null) {
+                                safeCopy[field] = Number(safeCopy[field]) || 0;
+                            }
+                        }
+                    }
+                    
                     IOHook.handle_message(safeCopy);
                 } catch (e) {
                     // Silently ignore errors during state reconstruction
@@ -259,7 +274,7 @@ export default class WTRec {
                 
                 // Replay from checkpoint to target, only critical state messages
                 // Skip non-critical messages during seeking for performance
-                const criticalTypes = ['player', 'map', 'ui_state', 'options', 'inv'];
+                const criticalTypes = ['player', 'map', 'ui_state', 'options', 'inv', 'equip'];
                 const maxIterations = 10000; // Prevent infinite loops
                 let iterations = 0;
                 
@@ -281,7 +296,7 @@ export default class WTRec {
                 }
             } else {
                 // No checkpoint, replay critical state messages from start
-                const criticalTypes = ['player', 'map', 'ui_state', 'options', 'inv'];
+                const criticalTypes = ['player', 'map', 'ui_state', 'options', 'inv', 'equip'];
                 const maxIterations = 10000;
                 let iterations = 0;
                 
@@ -332,6 +347,9 @@ export default class WTRec {
             // Update current index
             currentIndex = targetIndex;
             updateUI(0, 0);
+            
+            // Force cursor update with a small delay to ensure UI is ready
+            await new Promise(resolve => setTimeout(resolve, 50));
             updateCursor();
             
             } catch (e) {
@@ -340,6 +358,9 @@ export default class WTRec {
                 // Remove loading indicator and reset seeking flag
                 loadingDiv.remove();
                 window.isSeeking = false;
+                
+                // Final cursor update to ensure it's correct
+                updateCursor();
             }
         };
         
@@ -357,6 +378,9 @@ export default class WTRec {
 
         const segments = [];
         const markers = [];
+        const hpData = [];
+        let maxHp = 0;
+        let lastHpInfo = null;
         let segStart = 0;
         let curPlace = null;
         let curDepth = null;
@@ -364,28 +388,55 @@ export default class WTRec {
         
         for (let i = 0; i < data.length; i++) {
             const m = data[i];
-            if (m.msg === 'player' && m.place !== undefined) {
-                const combo = `${m.place}-${m.depth || 0}`;
-                
-                // If this is the first place found and we have an unknown segment
-                if (!firstPlaceFound && i > 0) {
-                    segments.push({start: 0, end: i - 1, place: null, depth: null});
-                    firstPlaceFound = true;
+            if (m.msg === 'player') {
+                // Collect HP data - handle all HP-related fields
+                if (m.hp !== undefined || m.hp_max !== undefined || m.poison_survival !== undefined) {
+                    // Update lastHpInfo with new values, keeping previous values for missing fields
+                    if (!lastHpInfo) {
+                        lastHpInfo = {
+                            hp: 0,
+                            hp_max: 0,
+                            poison_survival: 0,
+                            real_hp_max: 0
+                        };
+                    }
+                    
+                    // Update only the fields that are present
+                    if (m.hp !== undefined) lastHpInfo.hp = Number(m.hp) || 0;
+                    if (m.hp_max !== undefined) lastHpInfo.hp_max = Number(m.hp_max) || 0;
+                    if (m.poison_survival !== undefined) lastHpInfo.poison_survival = Number(m.poison_survival) || 0;
+                    if (m.real_hp_max !== undefined) lastHpInfo.real_hp_max = Number(m.real_hp_max) || 0;
+                    
+                    hpData[i] = {...lastHpInfo}; // Store a copy
+                    maxHp = Math.max(maxHp, lastHpInfo.real_hp_max || lastHpInfo.hp_max);
+                } else if (lastHpInfo) {
+                    // If no HP info but we have previous HP data, use that
+                    hpData[i] = {...lastHpInfo};
                 }
                 
-                if (curPlace === null) {
-                    curPlace = combo;
-                    curDepth = m.depth || null;
-                    segStart = i;
-                } else if (curPlace !== combo) {
-                    segments.push({start: segStart, end: i - 1, place: curPlace.split('-')[0], depth: curDepth});
-                    curPlace = combo;
-                    curDepth = m.depth || null;
-                    segStart = i;
-                }
-                
-                if (!firstPlaceFound) {
-                    firstPlaceFound = true;
+                if (m.place !== undefined) {
+                    const combo = `${m.place}-${m.depth || 0}`;
+                    
+                    // If this is the first place found and we have an unknown segment
+                    if (!firstPlaceFound && i > 0) {
+                        segments.push({start: 0, end: i - 1, place: null, depth: null});
+                        firstPlaceFound = true;
+                    }
+                    
+                    if (curPlace === null) {
+                        curPlace = combo;
+                        curDepth = m.depth || null;
+                        segStart = i;
+                    } else if (curPlace !== combo) {
+                        segments.push({start: segStart, end: i - 1, place: curPlace.split('-')[0], depth: curDepth});
+                        curPlace = combo;
+                        curDepth = m.depth || null;
+                        segStart = i;
+                    }
+                    
+                    if (!firstPlaceFound) {
+                        firstPlaceFound = true;
+                    }
                 }
             }
             if (m.msg === 'game_ended' || m.msg === 'go_lobby') {
@@ -493,9 +544,16 @@ export default class WTRec {
         leftButton.textContent = '<<';
         leftButton.onclick = async () => {
             const newIndex = Math.max(0, currentIndex - stepSize);
+            const wasPlaying = isPlaying;
+            isPlaying = false;
+            abortSleep = true;
+            
             await seekToIndex(newIndex);
+            
+            if (wasPlaying) {
+                isPlaying = true;
+            }
             manualStep = true;
-            abortSleep = true; // Abort the current sleep
             progressBar.value = currentIndex;
         };
         uiContainer.appendChild(leftButton);
@@ -504,9 +562,16 @@ export default class WTRec {
         rightButton.textContent = '>>';
         rightButton.onclick = async () => {
             const newIndex = Math.min(data.length - 1, currentIndex + stepSize);
-            await seekToIndex(newIndex);
-            manualStep = true;
+            const wasPlaying = isPlaying;
+            isPlaying = false;
             abortSleep = true;
+            
+            await seekToIndex(newIndex);
+            
+            if (wasPlaying) {
+                isPlaying = true;
+            }
+            manualStep = true;
             progressBar.value = currentIndex;
         };
         uiContainer.appendChild(rightButton);
@@ -547,7 +612,7 @@ export default class WTRec {
             left: 50%;
             transform: translateX(-50%);
             width: 90vw;
-            height: 80px;
+            height: 140px;
             background: rgba(0, 0, 0, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 4px;
@@ -555,11 +620,26 @@ export default class WTRec {
             overflow: visible;
         `;
         
+        // HP graph canvas
+        const hpCanvas = document.createElement('canvas');
+        hpCanvas.width = window.innerWidth * 0.9;
+        hpCanvas.height = 60;
+        hpCanvas.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            pointer-events: none;
+        `;
+        progressContainer.appendChild(hpCanvas);
+        const hpCtx = hpCanvas.getContext('2d');
+        
         // Label container
         const labelContainer = document.createElement('div');
         labelContainer.style.cssText = `
             position: absolute;
-            top: 0;
+            top: 60px;
             left: 0;
             width: 100%;
             height: 40px;
@@ -594,6 +674,134 @@ export default class WTRec {
             const lightness = Math.max(60 - (depth * 4), 20);
             const saturation = Math.min(60 + (depth * 3), 85);
             return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        }
+        
+        // Draw HP graph
+        function drawHpGraph() {
+            hpCtx.clearRect(0, 0, hpCanvas.width, hpCanvas.height);
+            
+            // Draw background grid
+            hpCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            hpCtx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = (i / 4) * hpCanvas.height;
+                hpCtx.beginPath();
+                hpCtx.moveTo(0, y);
+                hpCtx.lineTo(hpCanvas.width, y);
+                hpCtx.stroke();
+            }
+            
+            // Draw HP bars for every HP change
+            let lastHp = null;
+            let barStartIndex = 0;
+            let hpChangeCount = 0;
+            
+            for (let i = 0; i < data.length; i++) {
+                if (hpData[i]) {
+                    // Check if HP changed
+                    if (!lastHp || hpData[i].hp !== lastHp.hp || hpData[i].hp_max !== lastHp.hp_max) {
+                        // Draw bar for the previous HP value range
+                        if (lastHp && i > barStartIndex) {
+                            const startX = (barStartIndex / data.length) * hpCanvas.width;
+                            const endX = (i / data.length) * hpCanvas.width;
+                            const barWidth = Math.max(1, endX - startX); // Ensure minimum width
+                            
+                            const hpHeight = (lastHp.hp / maxHp) * hpCanvas.height;
+                            const hpMaxHeight = ((lastHp.real_hp_max || lastHp.hp_max) / maxHp) * hpCanvas.height;
+                            const poisonSurvivalHeight = (lastHp.poison_survival / maxHp) * hpCanvas.height;
+                            
+                            // Draw max HP background (darker)
+                            hpCtx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+                            hpCtx.fillRect(startX, hpCanvas.height - hpMaxHeight, barWidth, hpMaxHeight);
+                            
+                            // Draw poison bar if poisoned
+                            if (lastHp.poison_survival < lastHp.hp) {
+                                // Purple bar for poison damage
+                                hpCtx.fillStyle = 'rgba(128, 0, 255, 0.6)';
+                                hpCtx.fillRect(startX, hpCanvas.height - hpHeight, barWidth, hpHeight - poisonSurvivalHeight);
+                            }
+                            
+                            // Draw current HP (or poison survival) with colors
+                            const effectiveHp = Math.min(lastHp.hp, lastHp.poison_survival);
+                            const effectiveHeight = (effectiveHp / maxHp) * hpCanvas.height;
+                            const hpPercent = effectiveHp / (lastHp.real_hp_max || lastHp.hp_max);
+                            
+                            if (hpPercent > 0.75) {
+                                hpCtx.fillStyle = '#00ff00'; // Bright green
+                            } else if (hpPercent > 0.5) {
+                                hpCtx.fillStyle = '#ffff00'; // Bright yellow
+                            } else if (hpPercent > 0.25) {
+                                hpCtx.fillStyle = '#ff8800'; // Bright orange
+                            } else {
+                                hpCtx.fillStyle = '#ff0000'; // Bright red
+                            }
+                            hpCtx.fillRect(startX, hpCanvas.height - effectiveHeight, barWidth, effectiveHeight);
+                            
+                            // Add a thin black outline for clarity
+                            hpCtx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                            hpCtx.lineWidth = 0.5;
+                            hpCtx.strokeRect(startX, hpCanvas.height - effectiveHeight, barWidth, effectiveHeight);
+                            
+                            
+                            hpChangeCount++;
+                        }
+                        
+                        lastHp = hpData[i];
+                        barStartIndex = i;
+                    }
+                }
+            }
+            
+            
+            // Draw the final bar
+            if (lastHp && data.length > barStartIndex) {
+                const startX = (barStartIndex / data.length) * hpCanvas.width;
+                const endX = hpCanvas.width;
+                const barWidth = endX - startX;
+                
+                const hpHeight = (lastHp.hp / maxHp) * hpCanvas.height;
+                const hpMaxHeight = ((lastHp.real_hp_max || lastHp.hp_max) / maxHp) * hpCanvas.height;
+                const poisonSurvivalHeight = (lastHp.poison_survival / maxHp) * hpCanvas.height;
+                
+                // Draw max HP background (darker)
+                hpCtx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+                hpCtx.fillRect(startX, hpCanvas.height - hpMaxHeight, barWidth, hpMaxHeight);
+                
+                // Draw poison bar if poisoned
+                if (lastHp.poison_survival < lastHp.hp) {
+                    // Purple bar for poison damage
+                    hpCtx.fillStyle = 'rgba(128, 0, 255, 0.6)';
+                    hpCtx.fillRect(startX, hpCanvas.height - hpHeight, barWidth, hpHeight - poisonSurvivalHeight);
+                }
+                
+                // Draw current HP (or poison survival) with colors
+                const effectiveHp = Math.min(lastHp.hp, lastHp.poison_survival);
+                const effectiveHeight = (effectiveHp / maxHp) * hpCanvas.height;
+                const hpPercent = effectiveHp / (lastHp.real_hp_max || lastHp.hp_max);
+                
+                if (hpPercent > 0.75) {
+                    hpCtx.fillStyle = '#00ff00'; // Bright green
+                } else if (hpPercent > 0.5) {
+                    hpCtx.fillStyle = '#ffff00'; // Bright yellow
+                } else if (hpPercent > 0.25) {
+                    hpCtx.fillStyle = '#ff8800'; // Bright orange
+                } else {
+                    hpCtx.fillStyle = '#ff0000'; // Bright red
+                }
+                hpCtx.fillRect(startX, hpCanvas.height - effectiveHeight, barWidth, effectiveHeight);
+                
+                // Add a thin black outline for clarity
+                hpCtx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                hpCtx.lineWidth = 0.5;
+                hpCtx.strokeRect(startX, hpCanvas.height - effectiveHeight, barWidth, effectiveHeight);
+            }
+            
+            // Draw scale labels
+            hpCtx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            hpCtx.font = '10px monospace';
+            hpCtx.textAlign = 'right';
+            hpCtx.fillText(maxHp.toString(), 35, 10);
+            hpCtx.fillText('0', 35, hpCanvas.height - 2);
         }
         
         // Draw segments and labels
@@ -663,9 +871,9 @@ export default class WTRec {
         const cursor = document.createElement('div');
         cursor.style.cssText = `
             position: absolute;
-            bottom: 0;
+            top: 0;
             width: 3px;
-            height: 40px;
+            height: 100%;
             background: red;
             box-shadow: 0 0 10px red;
             pointer-events: none;
@@ -691,21 +899,136 @@ export default class WTRec {
         `;
         cursor.appendChild(tooltip);
         
+        // HP display element (separate from cursor for better z-index control)
+        const hpDisplay = document.createElement('div');
+        hpDisplay.style.cssText = `
+            position: absolute;
+            top: 5px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            font-weight: bold;
+            font-family: monospace;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 20;
+            display: none;
+        `;
+        progressContainer.appendChild(hpDisplay);
+        
         // Update cursor position
         updateCursor = () => {
             const percent = currentIndex / data.length;
             cursor.style.left = (percent * 100) + '%';
             
-            // Update tooltip
+            // Update tooltip - find from segments which is more reliable
+            let foundPlace = false;
+            for (const seg of segments) {
+                if (currentIndex >= seg.start && currentIndex <= seg.end) {
+                    if (seg.place) {
+                        tooltip.textContent = (seg.depth && seg.depth !== 0) ? `${seg.place}:${seg.depth}` : seg.place;
+                        tooltip.style.display = 'block';
+                        foundPlace = true;
+                        break;
+                    }
+                }
+            }
+            
+            // Fallback to searching through data if segment lookup fails
+            if (!foundPlace) {
+                for (let i = currentIndex; i >= 0; i--) {
+                    if (data[i] && data[i].msg === 'player' && data[i].place) {
+                        const depth = data[i].depth;
+                        tooltip.textContent = (depth && depth !== 0) ? `${data[i].place}:${depth}` : data[i].place;
+                        tooltip.style.display = 'block';
+                        foundPlace = true;
+                        break;
+                    }
+                }
+            }
+            
+            // Show unknown if still not found
+            if (!foundPlace) {
+                tooltip.textContent = '(Unknown)';
+                tooltip.style.display = 'block';
+            }
+            
+            // Draw current position indicator on HP graph
+            drawHpGraph();
+            const x = (currentIndex / data.length) * hpCanvas.width;
+            hpCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+            hpCtx.lineWidth = 2;
+            hpCtx.beginPath();
+            hpCtx.moveTo(x, 0);
+            hpCtx.lineTo(x, hpCanvas.height);
+            hpCtx.stroke();
+            
+            // Update HP display element
+            let currentHp = null;
             for (let i = currentIndex; i >= 0; i--) {
-                if (data[i].msg === 'player' && data[i].place) {
-                    const depth = data[i].depth;
-                    tooltip.textContent = (depth && depth !== 0) ? `${data[i].place}:${depth}` : data[i].place;
-                    tooltip.style.display = 'block';
+                if (hpData[i]) {
+                    currentHp = hpData[i];
                     break;
                 }
             }
+            if (currentHp) {
+                const hpText = `${currentHp.hp}/${currentHp.hp_max}`;
+                hpDisplay.textContent = hpText;
+                hpDisplay.style.display = 'block';
+                
+                // Position HP display
+                let displayX = (percent * progressContainer.clientWidth);
+                const displayWidth = hpDisplay.offsetWidth;
+                
+                // Keep display within bounds
+                if (displayX - displayWidth/2 < 0) {
+                    displayX = displayWidth/2;
+                } else if (displayX + displayWidth/2 > progressContainer.clientWidth) {
+                    displayX = progressContainer.clientWidth - displayWidth/2;
+                }
+                
+                hpDisplay.style.left = (displayX - displayWidth/2) + 'px';
+                
+                // Color the text based on HP percentage
+                const hpPercent = currentHp.hp / (currentHp.real_hp_max || currentHp.hp_max);
+                if (hpPercent > 0.75) {
+                    hpDisplay.style.color = '#00ff00';
+                } else if (hpPercent > 0.5) {
+                    hpDisplay.style.color = '#ffff00';
+                } else if (hpPercent > 0.25) {
+                    hpDisplay.style.color = '#ff8800';
+                } else {
+                    hpDisplay.style.color = '#ff0000';
+                }
+                
+                // Show poison indicator if poisoned
+                if (currentHp.poison_survival < currentHp.hp) {
+                    hpDisplay.textContent = `${currentHp.hp}/${currentHp.hp_max} (→${currentHp.poison_survival})`;
+                }
+            } else {
+                hpDisplay.style.display = 'none';
+            }
         };
+        
+        // Create hover tooltip separate from cursor tooltip
+        const hoverTooltip = document.createElement('div');
+        hoverTooltip.style.cssText = `
+            position: absolute;
+            bottom: 105%;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            display: none;
+            z-index: 11;
+        `;
+        progressContainer.appendChild(hoverTooltip);
         
         // Mouse move handler for tooltip preview
         canvas.onmousemove = (e) => {
@@ -714,16 +1037,33 @@ export default class WTRec {
             const percent = x / rect.width;
             const hoverIndex = Math.floor(percent * data.length);
             
-            // Find place at hover position
-            for (let i = hoverIndex; i >= 0; i--) {
-                if (data[i].msg === 'player' && data[i].place) {
-                    const place = data[i].place;
-                    const depth = data[i].depth;
-                    tooltip.textContent = (depth && depth !== 0) ? `${place}:${depth}` : place;
-                    tooltip.style.display = 'block';
+            // Update hover tooltip position
+            hoverTooltip.style.left = (percent * 100) + '%';
+            hoverTooltip.style.transform = 'translateX(-50%)';
+            
+            // Find which segment the mouse is over
+            let hoverPlace = null;
+            let hoverDepth = null;
+            
+            for (const seg of segments) {
+                if (hoverIndex >= seg.start && hoverIndex <= seg.end) {
+                    hoverPlace = seg.place;
+                    hoverDepth = seg.depth;
                     break;
                 }
             }
+            
+            if (hoverPlace) {
+                hoverTooltip.textContent = (hoverDepth && hoverDepth !== 0) ? `${hoverPlace}:${hoverDepth}` : hoverPlace;
+            } else {
+                hoverTooltip.textContent = '(Unknown)';
+            }
+            hoverTooltip.style.display = 'block';
+        };
+        
+        // Hide hover tooltip when mouse leaves
+        canvas.onmouseleave = () => {
+            hoverTooltip.style.display = 'none';
         };
         
         // Click handler
@@ -733,20 +1073,41 @@ export default class WTRec {
             const percent = x / rect.width;
             const targetIndex = Math.floor(percent * data.length);
             
-            await seekToIndex(targetIndex);
-            manualStep = true;
+            // Pause playback during seeking
+            const wasPlaying = isPlaying;
+            isPlaying = false;
             abortSleep = true;
+            
+            try {
+                await seekToIndex(targetIndex);
+            } catch (e) {
+                console.error('Error during seeking:', e);
+                // Ensure seeking flag is reset even on error
+                window.isSeeking = false;
+            } finally {
+                // Always restore playback state
+                if (wasPlaying) {
+                    isPlaying = true;
+                }
+                manualStep = true;
+                
+                // Force abort sleep again to ensure playback resumes
+                abortSleep = true;
+            }
         };
         
         // Window resize handler
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth * 0.9;
+            hpCanvas.width = window.innerWidth * 0.9;
             drawSegments();
+            drawHpGraph();
             updateCursor();
         });
         
         document.body.appendChild(progressContainer);
         drawSegments();
+        drawHpGraph();
         updateCursor();
         
         // Update references for compatibility
@@ -761,6 +1122,12 @@ export default class WTRec {
         };
 
         while (currentIndex < data.length) {
+            // Check if seeking is in progress and wait for it to complete
+            if (window.isSeeking) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+                continue;
+            }
+            
             if (isPlaying || manualStep) {
                 const current = data[currentIndex];
                 const nextIndex = Math.min(currentIndex + 1, data.length - 1);
@@ -838,12 +1205,17 @@ export default class WTRec {
                 const sleepPromise = sleep(adjustedSleep);
                 await Promise.race([sleepPromise, new Promise((resolve) => {
                     const interval = setInterval(() => {
-                        if (abortSleep) {
+                        if (abortSleep || window.isSeeking) {
                             clearInterval(interval);
                             resolve();
                         }
                     }, 10);
                 })]);
+
+                // Check if we were interrupted by seeking
+                if (window.isSeeking) {
+                    continue; // Don't increment, let the seek operation set currentIndex
+                }
 
                 if (!manualStep) {
                     currentIndex = nextIndex;
