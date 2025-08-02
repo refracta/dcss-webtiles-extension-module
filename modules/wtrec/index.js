@@ -30,6 +30,24 @@ export default class WTRec {
             require(['jquery', 'jquery-ui'], resolve);
         })
         const sleep = async (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        
+        // State message classification
+        const stateMessageTypes = {
+            critical: ['player', 'map', 'ui_state', 'options', 'game_state'],
+            menu: ['menu', 'close_menu', 'close_all_menus', 'update_menu', 'update_menu_items'],
+            display: ['cursor', 'minimap_data', 'layout', 'view_data'],
+            inventory: ['inv', 'equip', 'item_def', 'update_inv'],
+            messages: ['msgs', 'text']
+        };
+        
+        const isStateMessage = (msg) => {
+            if (!msg || !msg.msg) return false;
+            return Object.values(stateMessageTypes).flat().includes(msg.msg);
+        };
+        
+        const isCriticalStateMessage = (msg) => {
+            return stateMessageTypes.critical.includes(msg.msg);
+        };
 
         let currentIndex = 0;
         let currentSpeed = speed;
@@ -60,6 +78,271 @@ export default class WTRec {
             .reduce((a, e) => ({...a, ...e}));
 
         const {data} = wtrec;
+        
+        // Build message indices for fast lookups
+        const messageIndex = {
+            player: [],
+            map: [],
+            menu: [],
+            close_menu: [],
+            close_all_menus: [],
+            update_menu: [],
+            ui_state: [],
+            cursor: [],
+            minimap_data: [],
+            inv: [],
+            msgs: [],
+            options: []
+        };
+        
+        // Index all messages by type
+        data.forEach((msg, idx) => {
+            if (msg.msg && messageIndex[msg.msg] !== undefined) {
+                messageIndex[msg.msg].push(idx);
+            }
+        });
+        
+        // Helper to find last message of type before index
+        const findLastBefore = (indices, targetIdx) => {
+            for (let i = indices.length - 1; i >= 0; i--) {
+                if (indices[i] < targetIdx) {
+                    return indices[i];
+                }
+            }
+            return -1;
+        };
+        
+        // Create state checkpoints for efficient seeking
+        const stateCheckpoints = new Map();
+        const checkpointInterval = 1000; // Every 1000 messages
+        
+        // Build checkpoints during initial scan
+        for (let i = 0; i < data.length; i += checkpointInterval) {
+            const checkpoint = {
+                index: i,
+                lastPlayer: findLastBefore(messageIndex.player, i + 1),
+                lastMap: findLastBefore(messageIndex.map, i + 1),
+                lastUiState: findLastBefore(messageIndex.ui_state, i + 1),
+                lastOptions: findLastBefore(messageIndex.options, i + 1),
+                lastInv: findLastBefore(messageIndex.inv, i + 1),
+                lastMinimap: findLastBefore(messageIndex.minimap_data, i + 1),
+                lastCursor: findLastBefore(messageIndex.cursor, i + 1),
+                activeMenus: [] // Will track open menus at this point
+            };
+            
+            // Track menu state up to this checkpoint
+            let menuStack = [];
+            for (let j = 0; j <= i && j < data.length; j++) {
+                const msg = data[j];
+                if (msg.msg === 'menu') {
+                    menuStack.push(j);
+                } else if (msg.msg === 'close_menu' && menuStack.length > 0) {
+                    menuStack.pop();
+                } else if (msg.msg === 'close_all_menus') {
+                    menuStack = [];
+                }
+            }
+            checkpoint.activeMenus = [...menuStack];
+            
+            stateCheckpoints.set(i, checkpoint);
+        };
+        
+        // Enhanced seeking function with state reconstruction
+        const seekToIndex = async (targetIndex, skipMessages = false) => {
+            // Validate target index
+            targetIndex = Math.max(0, Math.min(targetIndex, data.length - 1));
+            
+            // Prevent seeking if already seeking
+            if (window.isSeeking) {
+                console.warn('Already seeking, ignoring request');
+                return;
+            }
+            window.isSeeking = true;
+            
+            // Show loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 20px;
+                border-radius: 5px;
+                z-index: 10002;
+            `;
+            loadingDiv.textContent = 'Seeking...';
+            document.body.appendChild(loadingDiv);
+            
+            try {
+                // Use setTimeout to let UI update
+                await new Promise(resolve => setTimeout(resolve, 0));
+            
+            // Clear current state - use safe messages only
+            try {
+                IOHook.handle_message({msg: 'close_all_menus'});
+            } catch (e) {}
+            
+            try {
+                IOHook.handle_message({msg: 'map', clear: true});
+            } catch (e) {}
+            
+            // Force clear any lingering UI elements
+            try {
+                if (window.menu_stack) {
+                    window.menu_stack = [];
+                }
+                $('.menu').remove();
+                $('.ui-popup').remove();
+                $('#normal').show();
+                $('#crt').hide();
+            } catch (e) {
+                // Ignore errors if elements don't exist
+            }
+            
+            // Helper function to safely apply a message
+            const safeApplyMessage = (msg) => {
+                if (!msg || !msg.msg) return;
+                
+                try {
+                    // Filter out problematic messages
+                    if (msg.msg === 'game_client' || 
+                        msg.msg === 'version' || 
+                        msg.msg === 'html' ||
+                        msg.msg === 'ping' ||
+                        msg.msg === 'pong') {
+                        return;
+                    }
+                    
+                    // Ensure message has valid structure
+                    const safeCopy = JSON.parse(JSON.stringify(msg));
+                    IOHook.handle_message(safeCopy);
+                } catch (e) {
+                    // Silently ignore errors during state reconstruction
+                    if (this.debugMode) {
+                        console.warn('Failed to apply message during seek:', msg.msg, e);
+                    }
+                }
+            };
+            
+            // Find nearest checkpoint
+            const checkpointIndex = Math.floor(targetIndex / checkpointInterval) * checkpointInterval;
+            const checkpoint = stateCheckpoints.get(checkpointIndex);
+            
+            if (checkpoint) {
+                // Apply critical state from checkpoint
+                const statesToApply = [];
+                
+                if (checkpoint.lastPlayer >= 0) {
+                    statesToApply.push({idx: checkpoint.lastPlayer, msg: data[checkpoint.lastPlayer]});
+                }
+                if (checkpoint.lastMap >= 0) {
+                    statesToApply.push({idx: checkpoint.lastMap, msg: data[checkpoint.lastMap]});
+                }
+                if (checkpoint.lastUiState >= 0) {
+                    statesToApply.push({idx: checkpoint.lastUiState, msg: data[checkpoint.lastUiState]});
+                }
+                if (checkpoint.lastOptions >= 0) {
+                    statesToApply.push({idx: checkpoint.lastOptions, msg: data[checkpoint.lastOptions]});
+                }
+                if (checkpoint.lastInv >= 0) {
+                    statesToApply.push({idx: checkpoint.lastInv, msg: data[checkpoint.lastInv]});
+                }
+                
+                // Apply states in chronological order
+                statesToApply.sort((a, b) => a.idx - b.idx);
+                
+                for (const {msg} of statesToApply) {
+                    safeApplyMessage(msg);
+                }
+                
+                // Replay from checkpoint to target, only critical state messages
+                // Skip non-critical messages during seeking for performance
+                const criticalTypes = ['player', 'map', 'ui_state', 'options', 'inv'];
+                const maxIterations = 10000; // Prevent infinite loops
+                let iterations = 0;
+                
+                for (let i = checkpointIndex; i < targetIndex && i < data.length && iterations < maxIterations; i++) {
+                    iterations++;
+                    const msg = data[i];
+                    if (msg && msg.msg && criticalTypes.includes(msg.msg)) {
+                        safeApplyMessage(msg);
+                    }
+                    
+                    // Yield periodically to prevent blocking
+                    if (iterations % 100 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                }
+                
+                if (iterations >= maxIterations) {
+                    console.warn('Seeking stopped: maximum iterations reached');
+                }
+            } else {
+                // No checkpoint, replay critical state messages from start
+                const criticalTypes = ['player', 'map', 'ui_state', 'options', 'inv'];
+                const maxIterations = 10000;
+                let iterations = 0;
+                
+                for (let i = 0; i < targetIndex && i < data.length && iterations < maxIterations; i++) {
+                    iterations++;
+                    const msg = data[i];
+                    if (msg && msg.msg && criticalTypes.includes(msg.msg)) {
+                        safeApplyMessage(msg);
+                    }
+                    
+                    // Yield periodically to prevent blocking
+                    if (iterations % 100 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                }
+                
+                if (iterations >= maxIterations) {
+                    console.warn('Seeking stopped: maximum iterations reached');
+                }
+            }
+            
+            // Find and apply the last complete menu state if any menu is active
+            const lastMenuIdx = findLastBefore(messageIndex.menu, targetIndex);
+            if (lastMenuIdx >= 0) {
+                // Check if this menu should still be open
+                let menuClosed = false;
+                for (let i = lastMenuIdx + 1; i < targetIndex; i++) {
+                    if (data[i].msg === 'close_menu' || data[i].msg === 'close_all_menus') {
+                        menuClosed = true;
+                        break;
+                    }
+                }
+                
+                if (!menuClosed) {
+                    // Re-apply the menu and all its updates
+                    safeApplyMessage(data[lastMenuIdx]);
+                    
+                    // Apply all menu updates after this menu
+                    for (let i = lastMenuIdx + 1; i < targetIndex && i < data.length; i++) {
+                        const msg = data[i];
+                        if (msg && msg.msg && (msg.msg === 'update_menu' || msg.msg === 'update_menu_items')) {
+                            safeApplyMessage(msg);
+                        }
+                    }
+                }
+            }
+            
+            // Update current index
+            currentIndex = targetIndex;
+            updateUI(0, 0);
+            updateCursor();
+            
+            } catch (e) {
+                console.error('Error during seeking:', e);
+            } finally {
+                // Remove loading indicator and reset seeking flag
+                loadingDiv.remove();
+                window.isSeeking = false;
+            }
+        };
+        
         let startIndex = data.findIndex(d => d.wtrec && d.wtrec.timing >= startTime);
         if (startIndex === -1) startIndex = 0;
         const gameClientIndex = data.findIndex(d => d.msg === 'game_client');
@@ -77,26 +360,43 @@ export default class WTRec {
         let segStart = 0;
         let curPlace = null;
         let curDepth = null;
+        let firstPlaceFound = false;
+        
         for (let i = 0; i < data.length; i++) {
             const m = data[i];
-            if (m.msg === 'player' && m.place !== undefined && m.depth !== undefined) {
-                const combo = `${m.place}-${m.depth}`;
+            if (m.msg === 'player' && m.place !== undefined) {
+                const combo = `${m.place}-${m.depth || 0}`;
+                
+                // If this is the first place found and we have an unknown segment
+                if (!firstPlaceFound && i > 0) {
+                    segments.push({start: 0, end: i - 1, place: null, depth: null});
+                    firstPlaceFound = true;
+                }
+                
                 if (curPlace === null) {
                     curPlace = combo;
-                    curDepth = m.depth;
+                    curDepth = m.depth || null;
                     segStart = i;
                 } else if (curPlace !== combo) {
                     segments.push({start: segStart, end: i - 1, place: curPlace.split('-')[0], depth: curDepth});
                     curPlace = combo;
-                    curDepth = m.depth;
+                    curDepth = m.depth || null;
                     segStart = i;
+                }
+                
+                if (!firstPlaceFound) {
+                    firstPlaceFound = true;
                 }
             }
             if (m.msg === 'game_ended' || m.msg === 'go_lobby') {
                 markers.push(i);
             }
         }
-        if (curPlace !== null) {
+        
+        // Handle the case where no place was ever found
+        if (!firstPlaceFound && data.length > 0) {
+            segments.push({start: 0, end: data.length - 1, place: null, depth: null});
+        } else if (curPlace !== null) {
             segments.push({start: segStart, end: data.length - 1, place: curPlace.split('-')[0], depth: curDepth});
         }
 
@@ -119,12 +419,20 @@ export default class WTRec {
         const progressDisplay = document.createElement('div');
         const sleepTimeDisplay = document.createElement('div');
 
+        // Declare updateCursor as a variable first
+        let updateCursor;
+        
         const updateUI = (originalSleep, adjustedSleep) => {
             currentMsgDisplay.textContent = `Current msg: ${data[currentIndex].msg}`;
             currentIndexDisplay.textContent = `Current index: ${currentIndex}`;
             totalLengthDisplay.textContent = `Total length: ${data.length}`;
             progressDisplay.textContent = `Progress: ${((currentIndex / data.length) * 100).toFixed(2)}%`;
             sleepTimeDisplay.textContent = `Sleep: ${originalSleep.toFixed(2)}ms (Adjusted: ${adjustedSleep.toFixed(2)}ms)`;
+            
+            // Update cursor position if available
+            if (updateCursor) {
+                updateCursor();
+            }
         };
 
         updateUI(0, 0);
@@ -183,29 +491,23 @@ export default class WTRec {
 
         const leftButton = document.createElement('button');
         leftButton.textContent = '<<';
-        leftButton.onclick = () => {
-            IOHook.handle_message({msg: 'map', clear: true});
-            IOHook.handle_message({msg: 'close_all_menus'});
-            currentIndex = Math.max(0, currentIndex - stepSize);
+        leftButton.onclick = async () => {
+            const newIndex = Math.max(0, currentIndex - stepSize);
+            await seekToIndex(newIndex);
             manualStep = true;
             abortSleep = true; // Abort the current sleep
-            updateUI(0, 0);
             progressBar.value = currentIndex;
-            cursorDiv.style.left = (currentIndex / data.length * 100) + '%';
         };
         uiContainer.appendChild(leftButton);
 
         const rightButton = document.createElement('button');
         rightButton.textContent = '>>';
-        rightButton.onclick = () => {
-            IOHook.handle_message({msg: 'map', clear: true});
-            IOHook.handle_message({msg: 'close_all_menus'});
-            currentIndex = Math.min(data.length - 1, currentIndex + stepSize);
+        rightButton.onclick = async () => {
+            const newIndex = Math.min(data.length - 1, currentIndex + stepSize);
+            await seekToIndex(newIndex);
             manualStep = true;
             abortSleep = true;
-            updateUI(0, 0);
             progressBar.value = currentIndex;
-            cursorDiv.style.left = (currentIndex / data.length * 100) + '%';
         };
         uiContainer.appendChild(rightButton);
 
@@ -237,89 +539,226 @@ export default class WTRec {
             }
         });
 
+        // Create new progress bar
         const progressContainer = document.createElement('div');
-        progressContainer.style.position = 'fixed';
-        progressContainer.style.bottom = '10px';
-        progressContainer.style.left = '50%';
-        progressContainer.style.transform = 'translateX(-50%)';
-        progressContainer.style.width = '95vw';
-        progressContainer.style.zIndex = '10000';
-        progressContainer.style.backgroundColor = 'rgba(0,0,0,0.7)';
-        progressContainer.style.padding = '5px';
-        progressContainer.style.borderRadius = '5px';
-        progressContainer.style.boxSizing = 'border-box';
-
-        const segContainer = document.createElement('div');
-        segContainer.style.position = 'absolute';
-        segContainer.style.top = 0;
-        segContainer.style.left = 0;
-        segContainer.style.height = '100%';
-        segContainer.style.width = '100%';
-        segContainer.style.pointerEvents = 'none';
-        progressContainer.appendChild(segContainer);
-
-        const cursorDiv = document.createElement('div');
-        cursorDiv.style.position = 'absolute';
-        cursorDiv.style.top = 0;
-        cursorDiv.style.bottom = 0;
-        cursorDiv.style.width = '2px';
-        cursorDiv.style.backgroundColor = 'red';
-        cursorDiv.style.pointerEvents = 'none';
-        segContainer.appendChild(cursorDiv);
-
-        function hashColor(str, depth) {
-            let h = 0;
-            for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
-            const l = Math.max(30 - depth * 2, 10);
-            return `hsl(${h},70%,${l}%)`;
+        progressContainer.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90vw;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            z-index: 10001;
+            overflow: visible;
+        `;
+        
+        // Label container
+        const labelContainer = document.createElement('div');
+        labelContainer.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 40px;
+            pointer-events: none;
+        `;
+        progressContainer.appendChild(labelContainer);
+        
+        // Canvas for rendering segments
+        const canvas = document.createElement('canvas');
+        canvas.width = window.innerWidth * 0.9;
+        canvas.height = 40;
+        canvas.style.cssText = `
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 40px;
+            cursor: pointer;
+        `;
+        progressContainer.appendChild(canvas);
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Color generator
+        function getPlaceColor(place, depth) {
+            let hash = 0;
+            for (let i = 0; i < place.length; i++) {
+                hash = ((hash << 5) - hash) + place.charCodeAt(i);
+                hash = hash & hash;
+            }
+            const hue = Math.abs(hash) % 360;
+            const lightness = Math.max(60 - (depth * 4), 20);
+            const saturation = Math.min(60 + (depth * 3), 85);
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
         }
-
-        segments.forEach(seg => {
-            const div = document.createElement('div');
-            const startPct = seg.start / data.length * 100;
-            const widthPct = (seg.end - seg.start + 1) / data.length * 100;
-            div.style.position = 'absolute';
-            div.style.left = startPct + '%';
-            div.style.width = widthPct + '%';
-            div.style.top = 0;
-            div.style.bottom = 0;
-            div.style.backgroundColor = seg.place ? hashColor(seg.place, seg.depth) : 'black';
-            segContainer.appendChild(div);
-        });
-
-        markers.forEach(idx => {
-            const mk = document.createElement('div');
-            mk.style.position = 'absolute';
-            mk.style.left = (idx / data.length * 100) + '%';
-            mk.style.width = '2px';
-            mk.style.top = 0;
-            mk.style.bottom = 0;
-            mk.style.backgroundColor = 'white';
-            segContainer.appendChild(mk);
-        });
-
-        const progressBar = document.createElement('input');
-        progressBar.type = 'range';
-        progressBar.min = 0;
-        progressBar.max = data.length - 1;
-        progressBar.value = currentIndex;
-        progressBar.style.width = '100%';
-        progressBar.oninput = () => {
-            IOHook.handle_message({msg: 'map', clear: true});
-            IOHook.handle_message({msg: 'close_all_menus'});
-            const newIndex = parseInt(progressBar.value, 10);
-            currentIndex = Math.max(0, newIndex - 100);
-            fastForwardTargets = [newIndex];
-            fastForwardIdx = 0;
-            fastForwardUntil = fastForwardTargets[0];
+        
+        // Draw segments and labels
+        function drawSegments() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            labelContainer.innerHTML = '';
+            
+            segments.forEach((seg, idx) => {
+                const x = (seg.start / data.length) * canvas.width;
+                const width = ((seg.end - seg.start + 1) / data.length) * canvas.width;
+                
+                // Draw segment
+                ctx.fillStyle = seg.place ? getPlaceColor(seg.place, seg.depth || 0) : '#222';
+                ctx.fillRect(x, 0, width, canvas.height);
+                
+                // Draw black divider
+                if (idx > 0) {
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(x, 0, 2, canvas.height);
+                }
+                
+                // Add place label
+                if (width > 15) { // Show labels for smaller segments too
+                    const label = document.createElement('div');
+                    label.style.cssText = `
+                        position: absolute;
+                        left: ${(x / canvas.width) * 100}%;
+                        top: 20px;
+                        color: white;
+                        font-size: 10px;
+                        padding: 2px 4px;
+                        background: rgba(0, 0, 0, 0.8);
+                        border-radius: 2px;
+                        white-space: nowrap;
+                        transform: translateY(-50%);
+                        border-left: 2px solid ${seg.place ? getPlaceColor(seg.place, seg.depth || 0) : '#666'};
+                    `;
+                    if (seg.place) {
+                        label.textContent = (seg.depth && seg.depth !== 0) ? `${seg.place}:${seg.depth}` : seg.place;
+                    } else {
+                        label.textContent = '(Unknown)';
+                        label.style.fontStyle = 'italic';
+                        label.style.opacity = '0.7';
+                    }
+                    
+                    // Center label in segment if it fits
+                    const labelText = seg.place ? ((seg.depth && seg.depth !== 0) ? `${seg.place}:${seg.depth}` : seg.place) : '(Unknown)';
+                    const labelWidth = labelText.length * 7 + 10; // More accurate estimate
+                    if (labelWidth < width) {
+                        label.style.left = `${((x + width/2) / canvas.width) * 100}%`;
+                        label.style.transform = 'translateX(-50%) translateY(-50%)';
+                    }
+                    
+                    labelContainer.appendChild(label);
+                }
+            });
+            
+            // Draw markers
+            markers.forEach(idx => {
+                const x = (idx / data.length) * canvas.width;
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x, 0, 2, canvas.height);
+            });
+        }
+        
+        // Cursor element
+        const cursor = document.createElement('div');
+        cursor.style.cssText = `
+            position: absolute;
+            bottom: 0;
+            width: 3px;
+            height: 40px;
+            background: red;
+            box-shadow: 0 0 10px red;
+            pointer-events: none;
+            z-index: 10;
+        `;
+        progressContainer.appendChild(cursor);
+        
+        // Tooltip
+        const tooltip = document.createElement('div');
+        tooltip.style.cssText = `
+            position: absolute;
+            bottom: 105%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            display: none;
+        `;
+        cursor.appendChild(tooltip);
+        
+        // Update cursor position
+        updateCursor = () => {
+            const percent = currentIndex / data.length;
+            cursor.style.left = (percent * 100) + '%';
+            
+            // Update tooltip
+            for (let i = currentIndex; i >= 0; i--) {
+                if (data[i].msg === 'player' && data[i].place) {
+                    const depth = data[i].depth;
+                    tooltip.textContent = (depth && depth !== 0) ? `${data[i].place}:${depth}` : data[i].place;
+                    tooltip.style.display = 'block';
+                    break;
+                }
+            }
+        };
+        
+        // Mouse move handler for tooltip preview
+        canvas.onmousemove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percent = x / rect.width;
+            const hoverIndex = Math.floor(percent * data.length);
+            
+            // Find place at hover position
+            for (let i = hoverIndex; i >= 0; i--) {
+                if (data[i].msg === 'player' && data[i].place) {
+                    const place = data[i].place;
+                    const depth = data[i].depth;
+                    tooltip.textContent = (depth && depth !== 0) ? `${place}:${depth}` : place;
+                    tooltip.style.display = 'block';
+                    break;
+                }
+            }
+        };
+        
+        // Click handler
+        canvas.onclick = async (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percent = x / rect.width;
+            const targetIndex = Math.floor(percent * data.length);
+            
+            await seekToIndex(targetIndex);
             manualStep = true;
             abortSleep = true;
-            updateUI(0, 0);
         };
-        progressContainer.appendChild(progressBar);
-
+        
+        // Window resize handler
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth * 0.9;
+            drawSegments();
+            updateCursor();
+        });
+        
         document.body.appendChild(progressContainer);
-        cursorDiv.style.left = (currentIndex / data.length * 100) + '%';
+        drawSegments();
+        updateCursor();
+        
+        // Update references for compatibility
+        let progressBar = { 
+            value: currentIndex,
+            set oninput(fn) {} // Dummy setter
+        };
+        let cursorDiv = { 
+            style: { 
+                set left(val) { updateCursor(); }
+            } 
+        };
 
         while (currentIndex < data.length) {
             if (isPlaying || manualStep) {
@@ -410,7 +849,7 @@ export default class WTRec {
                     currentIndex = nextIndex;
                 }
                 progressBar.value = currentIndex;
-                cursorDiv.style.left = (currentIndex / data.length * 100) + '%';
+                updateCursor();
                 if (fastMode && currentIndex >= fastForwardUntil) {
                     fastForwardIdx++;
                     fastForwardUntil = fastForwardTargets[fastForwardIdx] ?? null;
