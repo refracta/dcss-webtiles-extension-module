@@ -1,10 +1,5 @@
 import html2canvas from './html2canvas.min.js';
 import gifshot from 'https://cdn.skypack.dev/gifshot@0.4.5';
-import { GifGenerator } from './gif-generator.js';
-import { SimpleGifGenerator } from './simple-gif-generator.js';
-import { GifGeneratorV2 } from './gif-generator-v2.js';
-import { ReplayGifGenerator } from './replay-gif-generator.js';
-import { FinalGifGenerator } from './final-gif-generator.js';
 
 export default class CNCChat {
     static name = 'CNCChat';
@@ -26,6 +21,56 @@ export default class CNCChat {
             return await fetch(`${this.API.Entrypoint}/upload`, {
                 method: 'POST',
                 body: formData,
+            });
+        },
+        generateGif: async (los = 7) => {
+            const CNCChat = DWEM.Modules.CNCChat;
+            
+            // Check renderer availability
+            let renderer = CNCChat.dungeon_renderer || window._dwem_dungeon_renderer;
+            if (!renderer || !renderer.element) {
+                throw new Error('Dungeon renderer not available. Make sure you are in game, not in lobby.');
+            }
+            
+            // Get stored game state data
+            const gameStateData = [...CNCChat.gameStateQueue];
+            if (gameStateData.length === 0) {
+                throw new Error('No game state data available for GIF creation');
+            }
+            
+            // Generate frames
+            const frames = await CNCChat.generateGif(gameStateData, los);
+            
+            if (frames.length === 0) {
+                throw new Error('No frames generated');
+            }
+            
+            // Get dimensions from first frame
+            const img = new Image();
+            img.src = frames[0];
+            await new Promise(resolve => img.onload = resolve);
+            
+            // Create GIF
+            return new Promise((resolve, reject) => {
+                gifshot.createGIF(
+                    {
+                        images: frames,
+                        interval: 0.2,
+                        gifWidth: img.width,
+                        gifHeight: img.height,
+                        sampleInterval: 1,
+                        numWorkers: 4,
+                    },
+                    async (obj) => {
+                        if (!obj.error) {
+                            const response = await fetch(obj.image);
+                            const gifBlob = await response.blob();
+                            resolve(gifBlob);
+                        } else {
+                            reject(new Error('Error creating GIF: ' + obj.error));
+                        }
+                    }
+                );
             });
         }
     }
@@ -233,6 +278,156 @@ export default class CNCChat {
         };
     }
 
+    // GIF generation methods (from FinalGifGenerator)
+    async generateGif(gameStateData, los = 7) {
+        const IOHook = DWEM.Modules.IOHook;
+        if (!IOHook) {
+            throw new Error('IOHook module not found');
+        }
+        
+        const frames = [];
+        
+        // Block problematic messages during replay
+        let isReplaying = true;
+        const replayHandler = (data) => {
+            if (!isReplaying) return false;
+            
+            // Block UI-related messages
+            const blockedMessages = [
+                'ui_state', 'update_menu', 'menu',
+                'close_menu', 'msgs'
+            ];
+            
+            return blockedMessages.includes(data.msg);
+        };
+        
+        // Add blocker
+        IOHook.handle_message.before.addHandler('gif-replay-blocker', replayHandler, 99999);
+        
+        try {
+            // Save current map_knowledge
+            const originalMapKnowledge = this.saveMapKnowledge();
+            
+            // Create clean background (without monsters and player)
+            const mapKnowledgePrime = this.createCleanMapKnowledge(originalMapKnowledge);
+            
+            // Get frame range
+            const frameCount = Math.min(gameStateData.length, 20);
+            const startIdx = Math.max(0, gameStateData.length - frameCount);
+            
+            // Render clean background first
+            this.applyMapKnowledge(mapKnowledgePrime);
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            // Apply each state and capture frames
+            for (let i = startIdx; i < gameStateData.length; i++) {
+                const stateData = gameStateData[i];
+                
+                // Apply game state
+                this.applyGameState(stateData, IOHook);
+                
+                // Wait for rendering
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                // Capture frame
+                const canvas = await this.Snapshot.captureGame(los);
+                frames.push(canvas.toDataURL('image/png'));
+            }
+            
+            // Restore original map_knowledge
+            this.applyMapKnowledge(originalMapKnowledge);
+            
+        } finally {
+            isReplaying = false;
+            // Remove blocker
+            IOHook.handle_message.before.removeHandler('gif-replay-blocker');
+            
+            // Refresh display
+            this.refreshDisplay();
+        }
+        
+        return frames;
+    }
+    
+    saveMapKnowledge() {
+        const saved = {};
+        if (window.map_knowledge) {
+            for (const key in window.map_knowledge) {
+                saved[key] = JSON.parse(JSON.stringify(window.map_knowledge[key]));
+            }
+        }
+        return saved;
+    }
+    
+    createCleanMapKnowledge(original) {
+        const clean = {};
+        
+        for (const key in original) {
+            const cell = JSON.parse(JSON.stringify(original[key]));
+            
+            if (cell.t) {
+                // Remove monster data
+                if (cell.t.mon) {
+                    delete cell.t.mon;
+                }
+                
+                // Remove player data (@)
+                if (cell.t.fg && cell.t.fg.value === 64) {
+                    delete cell.t.fg;
+                }
+                
+                // Remove player in mcache
+                if (cell.t.mcache && Array.isArray(cell.t.mcache)) {
+                    cell.t.mcache = cell.t.mcache.filter(item => {
+                        return !(item && item.value === 64);
+                    });
+                }
+                
+                // Remove other player-related overlays
+                if (cell.t.player) {
+                    delete cell.t.player;
+                }
+            }
+            
+            clean[key] = cell;
+        }
+        
+        return clean;
+    }
+    
+    applyMapKnowledge(mapKnowledge) {
+        window.map_knowledge = {};
+        for (const key in mapKnowledge) {
+            window.map_knowledge[key] = JSON.parse(JSON.stringify(mapKnowledge[key]));
+        }
+    }
+    
+    applyGameState(stateData, IOHook) {
+        // Apply player message
+        if (stateData.player) {
+            IOHook.handle_message(stateData.player);
+        }
+        
+        // Apply map message
+        if (stateData.map) {
+            IOHook.handle_message(stateData.map);
+        }
+        
+        // Apply stored map_knowledge if available
+        if (stateData.map_knowledge) {
+            for (const key in stateData.map_knowledge) {
+                window.map_knowledge[key] = JSON.parse(JSON.stringify(stateData.map_knowledge[key]));
+            }
+        }
+    }
+    
+    refreshDisplay() {
+        if (window.comm && window.comm.send_message) {
+            // Request current game state refresh (Ctrl+L)
+            window.comm.send_message('key', { keycode: 12 });
+        }
+    }
+
     onLoad() {
         const {SourceMapperRegistry: SMR} = DWEM;
         const {IOHook, RCManager, CNCChat, CommandManager} = DWEM.Modules;
@@ -395,67 +590,19 @@ export default class CNCChat {
         CommandManager.addCommand('/ggif', ['integer'], async (los) => {
             los = los || 7;
 
-            // Try multiple ways to get the renderer
-            let renderer = CNCChat.dungeon_renderer || window._dwem_dungeon_renderer;
-            
-            console.log('Renderer search:', {
-                CNCChat: CNCChat.dungeon_renderer,
-                window_dwem: window._dwem_dungeon_renderer,
-                canvas_exists: !!document.querySelector('#game canvas')
-            });
-            
-            if (!renderer || !renderer.element) {
-                console.error('Dungeon renderer not available. Make sure you are in game, not in lobby.');
-                return;
-            }
-            
-            // Get stored game state data
-            const gameStateData = [...this.gameStateQueue];
-            if (gameStateData.length === 0) {
-                console.error('No game state data available for GIF creation');
-                return;
-            }
-
             try {
-                // Use final generator - simpler approach
-                const gifGenerator = new FinalGifGenerator(this.Snapshot.captureGame.bind(this.Snapshot));
+                // Generate GIF using API
+                const gifBlob = await CNCChat.API.generateGif(los);
                 
-                // Generate frames
-                const frames = await gifGenerator.generateGif(gameStateData, los);
+                // Upload and send
+                const {url} = await CNCChat.API.upload({
+                    file: gifBlob,
+                    type: 'game',
+                }).then((r) => r.json());
                 
-                if (frames.length > 0) {
-                    // Get dimensions from first frame
-                    const img = new Image();
-                    img.src = frames[0];
-                    await new Promise(resolve => img.onload = resolve);
-                    
-                    gifshot.createGIF(
-                        {
-                            images: frames,
-                            interval: 0.2,
-                            gifWidth: img.width,
-                            gifHeight: img.height,
-                            sampleInterval: 1,
-                            numWorkers: 4,
-                        },
-                        async (obj) => {
-                            if (!obj.error) {
-                                const image = obj.image;
-                                const response = await fetch(image);
-                                const gifBlob = await response.blob();
-                                const {url} = await CNCChat.API.upload({
-                                    file: gifBlob,
-                                    type: 'game',
-                                }).then((r) => r.json());
-                                socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
-                            } else {
-                                console.error('Error creating GIF:', obj.error);
-                            }
-                        }
-                    );
-                }
+                socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
             } catch (error) {
-                console.error('Error during GIF frame generation:', error);
+                console.error('Error during GIF generation:', error);
             }
 
         }, {

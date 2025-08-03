@@ -259,53 +259,32 @@ export default class CNCPublicChat {
 
         CommandManager.addCommand('/gif', ['integer'], async (los) => {
             los = los || 7;
-            const frames = [];
-            const mapQueueCopy = [...CNCChat.mapQueue];
-            let canvasWidth, canvasHeight;
-            if (mapQueueCopy.length > CNCChat.prerenderSize) {
-                for (let i = 0; i < CNCChat.prerenderSize; i++) {
-                    IOHook.handle_message(mapQueueCopy[i]);
-                }
+            const {CNCChat} = DWEM.Modules;
+            
+            // Check if we have the required modules
+            if (!CNCChat) {
+                console.error('CNCChat module not found');
+                return;
             }
-            const start = mapQueueCopy.length > CNCChat.prerenderSize ? CNCChat.prerenderSize : 0;
-            for (let i = start; i < mapQueueCopy.length; i++) {
-                IOHook.handle_message(mapQueueCopy[i]);
-                const canvas = await CNCChat.Snapshot.captureGame(los);
-                if (!canvasWidth || !canvasHeight) {
-                    canvasWidth = canvas.width;
-                    canvasHeight = canvas.height;
-                }
-                const dataURL = canvas.toDataURL('image/png');
-                frames.push(dataURL);
+            
+            try {
+                // Generate GIF using CNCChat API
+                const gifBlob = await CNCChat.API.generateGif(los);
+                
+                // Upload using CNCChat API and send via our socket
+                const {url} = await CNCChat.API.upload({
+                    file: gifBlob,
+                    type: 'game',
+                }).then((r) => r.json());
+                
+                this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
+            } catch (error) {
+                console.error('Error during GIF generation:', error);
             }
-            gifshot.createGIF(
-                {
-                    images: frames,
-                    interval: 0.2,
-                    gifWidth: canvasWidth,
-                    gifHeight: canvasHeight,
-                    sampleInterval: 1,
-                    numWorkers: 4,
-                },
-                async (obj) => {
-                    if (!obj.error) {
-                        const image = obj.image;
-                        const response = await fetch(image);
-                        const gifBlob = await response.blob();
-                        const {url} = await CNCChat.API.upload({
-                            file: gifBlob,
-                            type: 'game',
-                        }).then((r) => r.json());
-                        this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
-                    } else {
-                        console.error('Error creating GIF:', obj.error);
-                    }
-                }
-            );
         }, {
             module: CNCPublicChat.name,
-            description: 'Capture game to GIF',
-            argDescriptions: ['los']
+            description: 'Capture game to GIF with stored game states',
+            argDescriptions: ['los (line of sight radius)']
         });
 
         const captureGame = async (los) => {
