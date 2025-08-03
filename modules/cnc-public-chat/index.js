@@ -143,10 +143,13 @@ export default class CNCPublicChat {
                             const anchor = document.createElement('a');
                             anchor.textContent = `§${sender}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
                             anchor.style.textDecoration = "none";
+                            // PROJECT_A
                             anchor.href = "javascript:void(0);";
                             anchor.onclick = (event) => {
                                 DWEM.Modules.CNCUserinfo.open(sender, event);
                             };
+                            // Apply colorful username
+                            anchor.innerHTML = DWEM.Modules.CNCUserinfo.applyColorfulUsername(anchor.innerHTML, sender);
                             senderSpan.append(anchor);
                             const image = CNCChat.Image.create(data.file);
                             messageSpan.append(image);
@@ -155,10 +158,13 @@ export default class CNCPublicChat {
                             const anchor = document.createElement('a');
                             anchor.textContent = `§${sender}'s Item`;
                             anchor.style.textDecoration = "none";
+                            // PROJECT_A
                             anchor.href = "javascript:void(0);";
                             anchor.onclick = (event) => {
                                 DWEM.Modules.CNCUserinfo.open(sender, event);
                             };
+                            // Apply colorful username
+                            anchor.innerHTML = DWEM.Modules.CNCUserinfo.applyColorfulUsername(anchor.innerHTML, sender);
                             senderSpan.append(anchor);
                             const imageContainer = CNCChat.Image.create(data.file);
                             imageContainer.style.display = 'flex';
@@ -176,6 +182,8 @@ export default class CNCPublicChat {
                         }
                     } else if (json && json.sender) {
                         senderSpan.innerHTML = `<span style="color: #5865f2">ⓓ</span>${json.sender}`;
+                        // PROJECT_AA
+                        // senderSpan.innerHTML = DWEM.Modules.CNCUserinfo.applyColorfulUsername(senderSpan.innerHTML, json.sender);
                         if (json.msg === 'discord') {
                             messageSpan.style.whiteSpace = 'pre-line';
                             messageSpan.innerHTML = CNCChat.linkify(json.text);
@@ -188,7 +196,9 @@ export default class CNCPublicChat {
                             }
                         }
                     } else {
-                        senderSpan.innerHTML = `<a style="text-decoration: none" href="javascript:void(0);" onclick="DWEM.Modules.CNCUserinfo.open('${sender}', event);">§${sender}</a>`;
+                        senderSpan.innerHTML = `<a href=\"javascript:void(0);\" onclick=\"DWEM.Modules.CNCUserinfo.open('${sender}', event);\" style=\"text-decoration: none;\">§${sender}</a>`;
+                        // PROJECT_AB
+                        senderSpan.innerHTML = DWEM.Modules.CNCUserinfo.applyColorfulUsername(senderSpan.innerHTML, sender);
                         messageSpan.innerHTML = CNCChat.linkify(message);
                     }
 

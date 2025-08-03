@@ -88,7 +88,7 @@ class UserDropdown extends HTMLDivElement {
         const realUsername = username.replaceAll(' (admin)', '');
         const lowerUsername = realUsername.toLowerCase();
         this.dropdownContent.innerHTML = `
-            <div style="font-weight: bold"><a href="#watch-${realUsername}" target="_blank">${realUsername}${isAdmin ? ' (ADMIN)' : ''}</a></div>
+            <div style="font-weight: bold"><a href="#watch-${realUsername}" target="_blank">${DWEM.Modules.CNCUserinfo.applyColorfulUsername(realUsername, realUsername)}${isAdmin ? ' (ADMIN)' : ''}</a></div>
             <div><a href="https://crawl.akrasiac.org/scoring/players/${lowerUsername}.html" target="_blank">CAO Scoreboard</a></div>
             <div><a href="https://crawl.montres.org.uk/players/${lowerUsername}.html" target="_blank">Stoat Soup Scoreboard</a></div>
             <div><a href="https://gooncrawl.montres.org.uk/players/${lowerUsername}.html" target="_blank">GoonCrawl Scoreboard</a></div>
@@ -100,8 +100,9 @@ class UserDropdown extends HTMLDivElement {
             <div><a href="https://archive.nemelex.cards/ttyrec/${realUsername}?C=M&O=D" target="_blank"">CNC - ttyrecs</a></div>
             <div><a href="https://archive.nemelex.cards/rcfiles/?user=${realUsername}" target="_blank"">CNC - rcfiles</a></div>
         `;
+        // TODO: PROJECT_B, realUsername tag = PROJECT_A
         const rect = this.dropdownContent.getBoundingClientRect();
-        this.style.left = `${x - rect.width - window.scrollX}px`;
+        this.style.left = `${x - window.scrollX}px`;
         this.style.top = `${y - rect.height - window.scrollY}px`;
     }
 }
@@ -112,6 +113,9 @@ export default class CNCUserinfo {
     static version = '0.1';
     static dependencies = ['IOHook'];
     static description = '(Beta) This module provides advanced CNC user information.';
+
+    // PROJECT_A: Nemelex colors from CNCBanner, sorted
+    static NEMELEX_COLORS = ['#008cc0', '#009800', '#8000ff', '#cad700', '#ff4000'];
 
     open(username, event) {
         this.userDropdown.open(username, event.pageX, event.pageY);
@@ -133,24 +137,176 @@ export default class CNCUserinfo {
             container.innerHTML = data.names;
             const anchors = container.querySelectorAll('a');
             for (const anchor of anchors) {
+                const username = anchor.textContent.replaceAll(' (admin)', '');
                 anchor.href = 'javascript:void(0);'
-                anchor.setAttribute('onclick', `DWEM.Modules.CNCUserinfo.open('${anchor.textContent}', event);`);
-                anchor.textContent = anchor.textContent.replaceAll(' (admin)', '');
+                anchor.setAttribute('onclick', `DWEM.Modules.CNCUserinfo.open('${username}', event);`);
+                anchor.textContent = username;
                 anchor.removeAttribute('target');
+                // PROJECT_A: Apply colorful username to spectator list
+                anchor.innerHTML = this.applyColorfulUsername(anchor, username);
             }
             data.names = container.innerHTML;
         }
     }
 
+    /**
+     * Creates a span element with Nemelex color animation
+     * @param {string} text - Text to colorize
+     * @param {string[]} colorArray - Array of colors to use
+     * @param {number} split - Number of parts to split the text into
+     * @param {number} time - Animation interval in seconds (negative for left roll, positive for right roll)
+     * @returns {string} HTML string with colored spans
+     */
+    createNemelexSpan(text, colorArray, split, time) {
+        if (!text || !colorArray || colorArray.length === 0 || split <= 0) {
+            return text;
+        }
+
+        const N = colorArray.length;
+        const currentTime = Date.now();
+        const intervalMs = Math.abs(time) * 1000;
+        const offset = intervalMs > 0 ? Math.floor(currentTime / intervalMs) % N : 0;
+
+        // Determine roll direction
+        const rollOffset = time < 0 ? offset : (N - offset) % N;
+
+        // Create rotated color array
+        const rotatedColors = [];
+        for (let i = 0; i < N; i++) {
+            rotatedColors.push(colorArray[(i + rollOffset) % N]);
+        }
+
+        // Split text into parts
+        const partLength = Math.ceil(text.length / split);
+        const parts = [];
+        for (let i = 0; i < split; i++) {
+            const start = i * partLength;
+            const end = Math.min((i + 1) * partLength, text.length);
+            if (start < text.length) {
+                parts.push(text.substring(start, end));
+            }
+        }
+
+        // Apply colors to parts
+        const coloredParts = parts.map((part, index) => {
+            const color = rotatedColors[index % rotatedColors.length];
+            return `<span style="color: ${color}">${part}</span>`;
+        });
+
+        return coloredParts.join('');
+    }
+
+    /**
+     * Applies colorful username styling
+     * @param {string|HTMLElement} usernameElement - Username element or HTML string
+     * @param {string} username - The username text
+     * @returns {string} Modified HTML string
+     */
+    applyColorfulUsername(usernameElement, username) {
+        // Only apply Nemelex coloring to 'labter' user
+        if (username && username.toLowerCase() === 'labter') {
+            const coloredUsername = this.createNemelexSpan(
+                username,
+                CNCUserinfo.NEMELEX_COLORS,
+                4,  // split into 4 parts
+                2   // 2 second interval, positive for right roll
+            );
+
+            if (typeof usernameElement === 'string') {
+                // Simple string replacement
+                return usernameElement.replace(username, coloredUsername);
+            } else if (usernameElement instanceof HTMLElement) {
+                // If it's an element, update innerHTML
+                usernameElement.innerHTML = coloredUsername;
+                return usernameElement.outerHTML;
+            }
+        }
+
+        // Return unchanged for other users
+        return typeof usernameElement === 'string' ? usernameElement : usernameElement.outerHTML;
+    }
+
     onLoad() {
         this.userDropdown = new UserDropdown();
         document.body.appendChild(this.userDropdown);
-
+        const {SourceMapperRegistry: SMR} = DWEM;
         const {IOHook} = DWEM.Modules;
+
         IOHook.handle_message.before.addHandler('cnc-userinfo', (data) => {
             this.patchUpdateSpectators(data);
         });
 
+        function lobbyEntryInjector() {
+            function lobby_entry(data) {
+                var single = false;
+                if (new_list == null) {
+                    single = true;
+                    new_list = $("#player_list").clone();
+                }
+
+                var id = "game-" + data.id;
+                var entry = new_list.find("#" + id);
+                if (entry.length == 0) {
+                    entry = $("#game_entry_template").clone();
+                    entry.attr("id", id);
+                    new_list.append(entry);
+                }
+
+                function set(key, value) {
+                    const cell = entry.find("." + key).empty(); // 내용 비우기
+                    cell.append(value);
+                }
+
+                var username_entry = $(make_watch_link(data));
+                username_entry.text(data.username);
+                // PROJECT_A: Apply colorful username in lobby
+                username_entry.html(DWEM.Modules.CNCUserinfo.applyColorfulUsername(username_entry.html(), data.username));
+                set("username", username_entry);
+                set("game_id", data.game_id);
+                set("xl", data.xl);
+                set("char", data.char);
+                set("place", data.place);
+                if (data.turn && data.dur) {
+                    set("turn", data.turn);
+                    set("dur", format_duration(parseInt(data.dur)));
+
+                    new_list.removeClass("no_game_times");
+                }
+                set("god", data.god || "");
+                set("title", data.title);
+                set("idle_time", format_idle_time(data.idle_time));
+                entry.find(".idle_time")
+                    .data("time", data.idle_time)
+                    .attr("data-time", "" + data.idle_time);
+                entry.find(".idle_time")
+                    .data("sort", "" + data.idle_time)
+                    .attr("data-sort", "" + data.idle_time);
+                set("spectator_count", data.spectator_count > 0 ? data.spectator_count : "");
+                if (entry.find(".milestone").text() !== data.milestone) {
+                    if (single)
+                        roll_in_new_milestone(entry, data.milestone);
+                    else
+                        set("milestone", data.milestone);
+                }
+
+                if (single)
+                    lobby_complete();
+            }
+
+            comm.register_handlers({lobby_entry: lobby_entry});
+            $(document).on('contextmenu', '#player_list .username a', function (e) {
+                e.preventDefault();
+                DWEM.Modules.CNCUserinfo.open(e.target.textContent, e);
+            });
+        }
+
+        const lobbyEntryMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${lobbyEntryInjector.toString()}()`);
+        SMR.add('client', lobbyEntryMapper);
+
         CNCUserinfo.open = this.open.bind(this);
+
+        // Make instance methods available as static methods for other modules
+        CNCUserinfo.createNemelexSpan = this.createNemelexSpan.bind(this);
+        CNCUserinfo.applyColorfulUsername = this.applyColorfulUsername.bind(this);
     }
 }

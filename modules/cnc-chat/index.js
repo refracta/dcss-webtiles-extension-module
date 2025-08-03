@@ -25,31 +25,31 @@ export default class CNCChat {
         },
         generateGif: async (los = 7) => {
             const CNCChat = DWEM.Modules.CNCChat;
-            
+
             // Check renderer availability
             let renderer = CNCChat.dungeon_renderer || window._dwem_dungeon_renderer;
             if (!renderer || !renderer.element) {
                 throw new Error('Dungeon renderer not available. Make sure you are in game, not in lobby.');
             }
-            
+
             // Get stored game state data
             const gameStateData = [...CNCChat.gameStateQueue];
             if (gameStateData.length === 0) {
                 throw new Error('No game state data available for GIF creation');
             }
-            
+
             // Generate frames
             const frames = await CNCChat.generateGif(gameStateData, los);
-            
+
             if (frames.length === 0) {
                 throw new Error('No frames generated');
             }
-            
+
             // Get dimensions from first frame
             const img = new Image();
             img.src = frames[0];
             await new Promise(resolve => img.onload = resolve);
-            
+
             // Create GIF
             return new Promise((resolve, reject) => {
                 gifshot.createGIF(
@@ -284,77 +284,77 @@ export default class CNCChat {
         if (!IOHook) {
             throw new Error('IOHook module not found');
         }
-        
+
         const frames = [];
-        
+
         // Block problematic messages during replay
         let isReplaying = true;
         const replayHandler = (data) => {
             if (!isReplaying) return false;
-            
+
             // Block UI-related messages
             const blockedMessages = [
                 'ui_state', 'update_menu', 'menu',
                 'close_menu', 'msgs'
             ];
-            
+
             return blockedMessages.includes(data.msg);
         };
-        
+
         // Add blocker
         IOHook.handle_message.before.addHandler('gif-replay-blocker', replayHandler, 99999);
-        
+
         try {
             // Save current map_knowledge
             const originalMapKnowledge = this.saveMapKnowledge();
-            
+
             // Create clean background (without monsters and player)
             const mapKnowledgePrime = this.createCleanMapKnowledge(originalMapKnowledge);
-            
+
             // Get frame range
             const frameCount = Math.min(gameStateData.length, 20);
             const startIdx = Math.max(0, gameStateData.length - frameCount);
-            
+
             // Render clean background first
             this.applyMapKnowledge(mapKnowledgePrime);
             await new Promise(resolve => setTimeout(resolve, 50));
-            
+
             // Apply each state and capture frames
             for (let i = startIdx; i < gameStateData.length; i++) {
                 const stateData = gameStateData[i];
-                
+
                 // Apply game state
                 this.applyGameState(stateData, IOHook);
-                
+
                 // Wait for rendering
                 await new Promise(resolve => setTimeout(resolve, 50));
-                
+
                 // Capture frame
                 const canvas = await this.Snapshot.captureGame(los);
                 frames.push(canvas.toDataURL('image/png'));
             }
-            
+
             // Restore original map_knowledge
             this.applyMapKnowledge(originalMapKnowledge);
-            
+
         } finally {
             isReplaying = false;
             // Remove blocker
             IOHook.handle_message.before.removeHandler('gif-replay-blocker');
-            
+
             // Refresh display
             this.refreshDisplay();
         }
-        
+
         return frames;
     }
-    
+
     saveMapKnowledge() {
         const saved = {};
-        
+
         // Use the injected k
         const mapKnowledge = this.k;
-        
+
         if (mapKnowledge && typeof mapKnowledge === 'object') {
             // k is an array in map_knowledge.js
             if (mapKnowledge.length !== undefined) {
@@ -366,51 +366,51 @@ export default class CNCChat {
                 }
             }
         }
-        
+
         return saved;
     }
-    
+
     createCleanMapKnowledge(original) {
         const clean = {};
-        
+
         for (const key in original) {
             const cell = JSON.parse(JSON.stringify(original[key]));
-            
+
             if (cell.t) {
                 // Remove monster data
                 if (cell.t.mon) {
                     delete cell.t.mon;
                 }
-                
+
                 // Remove player data (@)
                 if (cell.t.fg && cell.t.fg.value === 64) {
                     delete cell.t.fg;
                 }
-                
+
                 // Remove player in mcache
                 if (cell.t.mcache && Array.isArray(cell.t.mcache)) {
                     cell.t.mcache = cell.t.mcache.filter(item => {
                         return !(item && item.value === 64);
                     });
                 }
-                
+
                 // Remove other player-related overlays
                 if (cell.t.player) {
                     delete cell.t.player;
                 }
             }
-            
+
             clean[key] = cell;
         }
-        
+
         return clean;
     }
-    
+
     applyMapKnowledge(mapKnowledge) {
         // Clear existing k array
         if (this.k && this.k.length !== undefined) {
             this.k.length = 0;
-            
+
             // Apply new data to k array
             for (const key in mapKnowledge) {
                 const cell = mapKnowledge[key];
@@ -421,7 +421,7 @@ export default class CNCChat {
             }
         }
     }
-    
+
     makeKey(x, y) {
         // Zig-zag encode X and Y.
         x = (x << 1) ^ (x >> 31);
@@ -443,24 +443,24 @@ export default class CNCChat {
         var result = x | (y << 1);
         return result;
     }
-    
+
     applyGameState(stateData, IOHook) {
         // Apply player message
         if (stateData.player) {
             IOHook.handle_message(stateData.player);
         }
-        
+
         // Apply map message
         if (stateData.map) {
             IOHook.handle_message(stateData.map);
         }
-        
+
         // Apply stored map_knowledge if available
         if (stateData.map_knowledge) {
             this.applyMapKnowledge(stateData.map_knowledge);
         }
     }
-    
+
     refreshDisplay() {
         if (window.comm && window.comm.send_message) {
             // Request current game state refresh (Ctrl+L)
@@ -481,6 +481,7 @@ export default class CNCChat {
                     var msg = $("<div>").append(data.content);
                     msg.find(".chat_msg").html(linkify(msg.find(".chat_msg").text()));
                     $("#chat_history").append(msg.html() + "<br>");
+                    // PROJECT_A
                 } else {
                     $("#chat_history").append(data.rawContent);
                 }
@@ -597,10 +598,10 @@ export default class CNCChat {
                     break;
                 case 'map':
                     this.currentGameState.map = JSON.parse(JSON.stringify(data));
-                    
+
                     // Save map_knowledge using the injected k property
                     this.currentGameState.map_knowledge = {};
-                    
+
                     if (this.k && this.k.length !== undefined) {
                         // k is an array in map_knowledge.js
                         for (let i = 0; i < this.k.length; i++) {
@@ -610,7 +611,7 @@ export default class CNCChat {
                             }
                         }
                     }
-                    
+
                     break;
                 case 'ui_state':
                     this.currentGameState.ui_state = JSON.parse(JSON.stringify(data));
@@ -622,7 +623,7 @@ export default class CNCChat {
                     this.currentGameState.options = JSON.parse(JSON.stringify(data));
                     break;
             }
-            
+
             // Store complete state snapshot when map updates (main game tick)
             if (data.msg === 'map') {
                 const stateSnapshot = {
@@ -630,10 +631,10 @@ export default class CNCChat {
                     timestamp: Date.now(),
                     dungeon_level: window.current_level,
                 };
-                
-                
+
+
                 this.gameStateQueue.push(stateSnapshot);
-                
+
                 // Maintain queue size limit
                 if (this.gameStateQueue.length > this.gameStateQueueSize) {
                     this.gameStateQueue = this.gameStateQueue.slice(-this.gameStateQueueSize);
@@ -644,13 +645,13 @@ export default class CNCChat {
             try {
                 // Generate GIF using API
                 const gifBlob = await CNCChat.API.generateGif(los);
-                
+
                 // Upload and send
                 const {url} = await CNCChat.API.upload({
                     file: gifBlob,
                     type: 'game',
                 }).then((r) => r.json());
-                
+
                 socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
             } catch (error) {
                 console.error('Error during GIF generation:', error);
@@ -697,6 +698,10 @@ export default class CNCChat {
                             const senderSpan = document.createElement('span');
                             senderSpan.textContent = `${sender}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
                             senderSpan.classList.add('chat_sender');
+                            // PROJECT_A: Apply colorful username
+                            if (DWEM.Modules.CNCUserinfo) {
+                                senderSpan.innerHTML = DWEM.Modules.CNCUserinfo.applyColorfulUsername(senderSpan.innerHTML, sender);
+                            }
                             let messageSpan = document.createElement('span');
                             messageSpan.classList.add('chat_msg');
                             const image = this.Image.create(data.file);
@@ -710,6 +715,10 @@ export default class CNCChat {
                             const senderSpan = document.createElement('span');
                             senderSpan.textContent = `${sender}'s Item`;
                             senderSpan.classList.add('chat_sender');
+                            // PROJECT_A: Apply colorful username
+                            if (DWEM.Modules.CNCUserinfo) {
+                                senderSpan.innerHTML = DWEM.Modules.CNCUserinfo.applyColorfulUsername(senderSpan.innerHTML, sender);
+                            }
                             let messageSpan = document.createElement('span');
                             messageSpan.classList.add('chat_msg');
                             const imageContainer = this.Image.create(data.file);
