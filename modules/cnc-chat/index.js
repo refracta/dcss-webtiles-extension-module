@@ -351,11 +351,22 @@ export default class CNCChat {
     
     saveMapKnowledge() {
         const saved = {};
-        if (window.map_knowledge) {
-            for (const key in window.map_knowledge) {
-                saved[key] = JSON.parse(JSON.stringify(window.map_knowledge[key]));
+        
+        // Use the injected k
+        const mapKnowledge = this.k;
+        
+        if (mapKnowledge && typeof mapKnowledge === 'object') {
+            // k is an array in map_knowledge.js
+            if (mapKnowledge.length !== undefined) {
+                for (let i = 0; i < mapKnowledge.length; i++) {
+                    if (mapKnowledge[i] && mapKnowledge[i].x !== undefined && mapKnowledge[i].y !== undefined) {
+                        const key = mapKnowledge[i].x + ',' + mapKnowledge[i].y;
+                        saved[key] = JSON.parse(JSON.stringify(mapKnowledge[i]));
+                    }
+                }
             }
         }
+        
         return saved;
     }
     
@@ -396,10 +407,41 @@ export default class CNCChat {
     }
     
     applyMapKnowledge(mapKnowledge) {
-        window.map_knowledge = {};
-        for (const key in mapKnowledge) {
-            window.map_knowledge[key] = JSON.parse(JSON.stringify(mapKnowledge[key]));
+        // Clear existing k array
+        if (this.k && this.k.length !== undefined) {
+            this.k.length = 0;
+            
+            // Apply new data to k array
+            for (const key in mapKnowledge) {
+                const cell = mapKnowledge[key];
+                if (cell && cell.x !== undefined && cell.y !== undefined) {
+                    const idx = this.makeKey(cell.x, cell.y);
+                    this.k[idx] = cell;
+                }
+            }
         }
+    }
+    
+    makeKey(x, y) {
+        // Zig-zag encode X and Y.
+        x = (x << 1) ^ (x >> 31);
+        y = (y << 1) ^ (y >> 31);
+
+        // Interleave the bits of X and Y.
+        x &= 0xFFFF;
+        x = (x | (x << 8)) & 0x00FF00FF;
+        x = (x | (x << 4)) & 0x0F0F0F0F;
+        x = (x | (x << 2)) & 0x33333333;
+        x = (x | (x << 1)) & 0x55555555;
+
+        y &= 0xFFFF;
+        y = (y | (y << 8)) & 0x00FF00FF;
+        y = (y | (y << 4)) & 0x0F0F0F0F;
+        y = (y | (y << 2)) & 0x33333333;
+        y = (y | (y << 1)) & 0x55555555;
+
+        var result = x | (y << 1);
+        return result;
     }
     
     applyGameState(stateData, IOHook) {
@@ -415,9 +457,7 @@ export default class CNCChat {
         
         // Apply stored map_knowledge if available
         if (stateData.map_knowledge) {
-            for (const key in stateData.map_knowledge) {
-                window.map_knowledge[key] = JSON.parse(JSON.stringify(stateData.map_knowledge[key]));
-            }
+            this.applyMapKnowledge(stateData.map_knowledge);
         }
     }
     
@@ -557,7 +597,20 @@ export default class CNCChat {
                     break;
                 case 'map':
                     this.currentGameState.map = JSON.parse(JSON.stringify(data));
-                    this.currentGameState.map_knowledge = JSON.parse(JSON.stringify(window.map_knowledge || {}));
+                    
+                    // Save map_knowledge using the injected k property
+                    this.currentGameState.map_knowledge = {};
+                    
+                    if (this.k && this.k.length !== undefined) {
+                        // k is an array in map_knowledge.js
+                        for (let i = 0; i < this.k.length; i++) {
+                            if (this.k[i] && this.k[i].x !== undefined && this.k[i].y !== undefined) {
+                                const key = this.k[i].x + ',' + this.k[i].y;
+                                this.currentGameState.map_knowledge[key] = JSON.parse(JSON.stringify(this.k[i]));
+                            }
+                        }
+                    }
+                    
                     break;
                 case 'ui_state':
                     this.currentGameState.ui_state = JSON.parse(JSON.stringify(data));
@@ -575,9 +628,16 @@ export default class CNCChat {
                 const stateSnapshot = {
                     ...JSON.parse(JSON.stringify(this.currentGameState)),
                     timestamp: Date.now(),
-                    k: JSON.parse(JSON.stringify(this.k || {})),
                     dungeon_level: window.current_level,
                 };
+                
+                // Debug log
+                console.log('State recorder - snapshot:', {
+                    hasMapKnowledge: !!stateSnapshot.map_knowledge,
+                    mapKnowledgeKeys: stateSnapshot.map_knowledge ? Object.keys(stateSnapshot.map_knowledge).length : 0,
+                    kExists: !!this.k,
+                    kLength: this.k ? this.k.length : 0
+                });
                 
                 this.gameStateQueue.push(stateSnapshot);
                 
