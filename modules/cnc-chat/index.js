@@ -1,5 +1,10 @@
 import html2canvas from './html2canvas.min.js';
 import gifshot from 'https://cdn.skypack.dev/gifshot@0.4.5';
+import { GifGenerator } from './gif-generator.js';
+import { SimpleGifGenerator } from './simple-gif-generator.js';
+import { GifGeneratorV2 } from './gif-generator-v2.js';
+import { ReplayGifGenerator } from './replay-gif-generator.js';
+import { FinalGifGenerator } from './final-gif-generator.js';
 
 export default class CNCChat {
     static name = 'CNCChat';
@@ -264,6 +269,8 @@ export default class CNCChat {
 
         function rendererInjector() {
             DWEM.Modules.CNCChat.dungeon_renderer = renderer;
+            // Also store on window for easier access
+            window._dwem_dungeon_renderer = renderer;
         }
 
         const rendererMapper = SMR.getSourceMapper('BeforeReturnInjection', `!${rendererInjector.toString()}()`);
@@ -341,70 +348,120 @@ export default class CNCChat {
             }
         }, 999);
 
-        this.mapQueue = [];
-        this.kQueue = [];
-        this.mapQueueSize = 20;
-        this.prerenderSize = 10;
-        IOHook.handle_message.after.addHandler('cnc-chat-gif', (data) => {
+        // Enhanced game state recording for GIF generation
+        this.gameStateQueue = [];
+        this.gameStateQueueSize = 30; // Store more frames for better GIFs
+        this.currentGameState = {};
+
+        // Store complete game state snapshots
+        IOHook.handle_message.after.addHandler('cnc-chat-state-recorder', (data) => {
+            // Update current game state based on message type
+            switch (data.msg) {
+                case 'player':
+                    this.currentGameState.player = JSON.parse(JSON.stringify(data));
+                    break;
+                case 'map':
+                    this.currentGameState.map = JSON.parse(JSON.stringify(data));
+                    this.currentGameState.map_knowledge = JSON.parse(JSON.stringify(window.map_knowledge || {}));
+                    break;
+                case 'ui_state':
+                    this.currentGameState.ui_state = JSON.parse(JSON.stringify(data));
+                    break;
+                case 'msgs':
+                    this.currentGameState.msgs = JSON.parse(JSON.stringify(data));
+                    break;
+                case 'options':
+                    this.currentGameState.options = JSON.parse(JSON.stringify(data));
+                    break;
+            }
+            
+            // Store complete state snapshot when map updates (main game tick)
             if (data.msg === 'map') {
-                this.mapQueue.push(JSON.parse(JSON.stringify(data)));
-                this.kQueue.push(JSON.parse(JSON.stringify(this.k)));
-                if (this.mapQueue.length > this.mapQueueSize) {
-                    this.mapQueue = this.mapQueue.slice(-this.mapQueueSize);
-                    this.kQueue = this.kQueue.slice(-this.mapQueueSize);
+                const stateSnapshot = {
+                    ...JSON.parse(JSON.stringify(this.currentGameState)),
+                    timestamp: Date.now(),
+                    k: JSON.parse(JSON.stringify(this.k || {})),
+                    dungeon_level: window.current_level,
+                };
+                
+                this.gameStateQueue.push(stateSnapshot);
+                
+                // Maintain queue size limit
+                if (this.gameStateQueue.length > this.gameStateQueueSize) {
+                    this.gameStateQueue = this.gameStateQueue.slice(-this.gameStateQueueSize);
                 }
             }
         });
         CommandManager.addCommand('/ggif', ['integer'], async (los) => {
             los = los || 7;
-            const frames = [];
-            const mapQueueCopy = [...this.mapQueue];
-            let canvasWidth, canvasHeight;
-            this.k = this.kQueue[0];
-            if (mapQueueCopy.length > this.prerenderSize) {
-                for (let i = 0; i < this.prerenderSize; i++) {
-                    IOHook.handle_message(mapQueueCopy[i]);
-                }
+
+            // Try multiple ways to get the renderer
+            let renderer = CNCChat.dungeon_renderer || window._dwem_dungeon_renderer;
+            
+            console.log('Renderer search:', {
+                CNCChat: CNCChat.dungeon_renderer,
+                window_dwem: window._dwem_dungeon_renderer,
+                canvas_exists: !!document.querySelector('#game canvas')
+            });
+            
+            if (!renderer || !renderer.element) {
+                console.error('Dungeon renderer not available. Make sure you are in game, not in lobby.');
+                return;
             }
-            const start = mapQueueCopy.length > this.prerenderSize ? this.prerenderSize : 0;
-            for (let i = start; i < mapQueueCopy.length; i++) {
-                IOHook.handle_message(mapQueueCopy[i]);
-                const canvas = await CNCChat.Snapshot.captureGame(los);
-                if (!canvasWidth || !canvasHeight) {
-                    canvasWidth = canvas.width;
-                    canvasHeight = canvas.height;
-                }
-                const dataURL = canvas.toDataURL('image/png');
-                frames.push(dataURL);
+            
+            // Get stored game state data
+            const gameStateData = [...this.gameStateQueue];
+            if (gameStateData.length === 0) {
+                console.error('No game state data available for GIF creation');
+                return;
             }
-            gifshot.createGIF(
-                {
-                    images: frames,
-                    interval: 0.2,
-                    gifWidth: canvasWidth,
-                    gifHeight: canvasHeight,
-                    sampleInterval: 1,
-                    numWorkers: 4,
-                },
-                async (obj) => {
-                    if (!obj.error) {
-                        const image = obj.image;
-                        const response = await fetch(image);
-                        const gifBlob = await response.blob();
-                        const {url} = await CNCChat.API.upload({
-                            file: gifBlob,
-                            type: 'game',
-                        }).then((r) => r.json());
-                        socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
-                    } else {
-                        console.error('Error creating GIF:', obj.error);
-                    }
+
+            try {
+                // Use final generator - simpler approach
+                const gifGenerator = new FinalGifGenerator(this.Snapshot.captureGame.bind(this.Snapshot));
+                
+                // Generate frames
+                const frames = await gifGenerator.generateGif(gameStateData, los);
+                
+                if (frames.length > 0) {
+                    // Get dimensions from first frame
+                    const img = new Image();
+                    img.src = frames[0];
+                    await new Promise(resolve => img.onload = resolve);
+                    
+                    gifshot.createGIF(
+                        {
+                            images: frames,
+                            interval: 0.2,
+                            gifWidth: img.width,
+                            gifHeight: img.height,
+                            sampleInterval: 1,
+                            numWorkers: 4,
+                        },
+                        async (obj) => {
+                            if (!obj.error) {
+                                const image = obj.image;
+                                const response = await fetch(image);
+                                const gifBlob = await response.blob();
+                                const {url} = await CNCChat.API.upload({
+                                    file: gifBlob,
+                                    type: 'game',
+                                }).then((r) => r.json());
+                                socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
+                            } else {
+                                console.error('Error creating GIF:', obj.error);
+                            }
+                        }
+                    );
                 }
-            );
+            } catch (error) {
+                console.error('Error during GIF frame generation:', error);
+            }
+
         }, {
             module: CNCChat.name,
-            description: 'Capture game to GIF',
-            argDescriptions: ['los']
+            description: 'Capture game to GIF with stored game states',
+            argDescriptions: ['los (line of sight radius)']
         });
 
         const captureGame = async (los) => {

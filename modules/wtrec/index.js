@@ -628,22 +628,6 @@ export default class WTRec {
         stepControl.appendChild(stepInput);
         controlsSection.appendChild(stepControl);
 
-        const showBarCheckbox = document.createElement('input');
-        showBarCheckbox.type = 'checkbox';
-        showBarCheckbox.checked = true;
-        showBarCheckbox.onchange = () => {
-            progressContainer.style.display = showBarCheckbox.checked ? '' : 'none';
-        };
-        const checkboxControl = document.createElement('div');
-        checkboxControl.style.cssText = 'margin-bottom: 5px; display: flex; align-items: center;';
-        const checkboxLabel = document.createElement('label');
-        checkboxLabel.style.cssText = 'display: flex; align-items: center; cursor: pointer; font-size: 10px;';
-        showBarCheckbox.style.cssText = 'margin-right: 5px; width: 12px; height: 12px;';
-        checkboxLabel.appendChild(showBarCheckbox);
-        checkboxLabel.innerHTML += 'Progress bar <span style="color:#888; font-size: 9px">(P)</span>';
-        checkboxControl.appendChild(checkboxLabel);
-        controlsSection.appendChild(checkboxControl);
-
         // Navigation buttons
         const navButtons = document.createElement('div');
         navButtons.style.cssText = 'display: flex; gap: 3px; margin-bottom: 5px;';
@@ -798,8 +782,7 @@ export default class WTRec {
                 abortSleep = true;
             } else if (e.key === 'p' || e.key === 'P') {
                 e.preventDefault();
-                showBarCheckbox.checked = !showBarCheckbox.checked;
-                showBarCheckbox.onchange();
+                progressContainer.style.display = progressContainer.style.display === 'none' ? '' : 'none';
             } else if (e.key === 'h' || e.key === 'H') {
                 e.preventDefault();
                 uiContainer.style.display = uiContainer.style.display === 'none' ? '' : 'none';
