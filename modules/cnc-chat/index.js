@@ -696,11 +696,12 @@ export default class CNCChat {
                         if (data.type === 'game' || data.type === 'menu') {
                             const container = document.createElement('div');
                             const senderSpan = document.createElement('span');
-                            senderSpan.textContent = `${sender}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
                             senderSpan.classList.add('chat_sender');
                             // PROJECT_A: Apply colorful username
                             if (DWEM.Modules.CNCUserinfo) {
-                                senderSpan.innerHTML = DWEM.Modules.CNCUserinfo.applyColorfulUsername(senderSpan.innerHTML, sender);
+                                senderSpan.innerHTML = `${DWEM.Modules.CNCUserinfo.applyColorfulUsername(sender)}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
+                            } else {
+                                senderSpan.textContent = `${sender}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
                             }
                             let messageSpan = document.createElement('span');
                             messageSpan.classList.add('chat_msg');
@@ -713,11 +714,12 @@ export default class CNCChat {
                         } else if (data.type === 'item') {
                             const container = document.createElement('div');
                             const senderSpan = document.createElement('span');
-                            senderSpan.textContent = `${sender}'s Item`;
                             senderSpan.classList.add('chat_sender');
                             // PROJECT_A: Apply colorful username
                             if (DWEM.Modules.CNCUserinfo) {
-                                senderSpan.innerHTML = DWEM.Modules.CNCUserinfo.applyColorfulUsername(senderSpan.innerHTML, sender);
+                                senderSpan.innerHTML = `${DWEM.Modules.CNCUserinfo.applyColorfulUsername(sender)}'s Item`;
+                            } else {
+                                senderSpan.textContent = `${sender}'s Item`;
                             }
                             let messageSpan = document.createElement('span');
                             messageSpan.classList.add('chat_msg');

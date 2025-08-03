@@ -87,8 +87,15 @@ class UserDropdown extends HTMLDivElement {
         const isAdmin = username.includes(' (admin)');
         const realUsername = username.replaceAll(' (admin)', '');
         const lowerUsername = realUsername.toLowerCase();
+        // PROJECT_B: Get user title info
+        const titleInfo = DWEM.Modules.CNCUserinfo.getUserTitleInfo(realUsername);
+        const titleDiv = titleInfo
+            ? `<div style="font-style: italic; font-size: 0.9em; margin-top: -4px; margin-bottom: 4px;"><a href="${titleInfo.url}" target="_blank">${titleInfo.title}</a></div>`
+            : '';
+
         this.dropdownContent.innerHTML = `
-            <div style="font-weight: bold"><a href="#watch-${realUsername}" target="_blank">${DWEM.Modules.CNCUserinfo.applyColorfulUsername(realUsername, realUsername)}${isAdmin ? ' (ADMIN)' : ''}</a></div>
+            <div style="font-weight: bold"><a href="#watch-${realUsername}" target="_blank">${DWEM.Modules.CNCUserinfo.applyColorfulUsername(realUsername)}${isAdmin ? ' (ADMIN)' : ''}</a></div>
+            ${titleDiv}
             <div><a href="https://crawl.akrasiac.org/scoring/players/${lowerUsername}.html" target="_blank">CAO Scoreboard</a></div>
             <div><a href="https://crawl.montres.org.uk/players/${lowerUsername}.html" target="_blank">Stoat Soup Scoreboard</a></div>
             <div><a href="https://gooncrawl.montres.org.uk/players/${lowerUsername}.html" target="_blank">GoonCrawl Scoreboard</a></div>
@@ -100,7 +107,6 @@ class UserDropdown extends HTMLDivElement {
             <div><a href="https://archive.nemelex.cards/ttyrec/${realUsername}?C=M&O=D" target="_blank"">CNC - ttyrecs</a></div>
             <div><a href="https://archive.nemelex.cards/rcfiles/?user=${realUsername}" target="_blank"">CNC - rcfiles</a></div>
         `;
-        // TODO: PROJECT_B, realUsername tag = PROJECT_A
         const rect = this.dropdownContent.getBoundingClientRect();
         this.style.left = `${x - window.scrollX}px`;
         this.style.top = `${y - rect.height - window.scrollY}px`;
@@ -117,10 +123,52 @@ export default class CNCUserinfo {
     // PROJECT_A: Nemelex colors from CNCBanner, sorted
     static NEMELEX_COLORS = ['#008cc0', '#009800', '#8000ff', '#cad700', '#ff4000'];
 
+    // User title configuration
+    static USER_TITLES = {
+        'wizardmodephilia': {
+            title: 'Wizard Account',
+            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
+        },
+        'sasameki': {
+            title: 'CNC 1st Anniversary Tournament Champion (Skill Category)',
+            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
+        },
+        'opking': {
+            title: 'CNC 1st Anniversary Tournament 2nd Place (Skill Category)',
+            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
+        },
+        'sekai': {
+            title: 'CNC 1st Anniversary Tournament 3rd Place (Skill Category)',
+            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
+        },
+        'unreal': {
+            title: 'CNC 1st Anniversary Tournament Champion (Ent Category)',
+            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
+        },
+        'mumonspawn': {
+            title: 'CNC 1st Anniversary Tournament 2nd Place (Ent Category)',
+            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
+        },
+        'dogchiho': {
+            title: 'CNC 1st Anniversary Tournament 3rd Place (Ent Category)',
+            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
+        }
+    };
+
     open(username, event) {
         this.userDropdown.open(username, event.pageX, event.pageY);
         event.preventDefault();
         event.stopPropagation();
+    }
+
+    /**
+     * Get user title information
+     * @param {string} username - The username to get title for
+     * @returns {Object|null} Title object with {title, url} or null if no title
+     */
+    getUserTitleInfo(username) {
+        if (!username) return null;
+        return CNCUserinfo.USER_TITLES[username.toLowerCase()] || null;
     }
 
     async openTournamentPage(username) {
@@ -143,7 +191,7 @@ export default class CNCUserinfo {
                 anchor.textContent = username;
                 anchor.removeAttribute('target');
                 // PROJECT_A: Apply colorful username to spectator list
-                anchor.innerHTML = this.applyColorfulUsername(anchor, username);
+                anchor.innerHTML = this.applyColorfulUsername(username);
             }
             data.names = container.innerHTML;
         }
@@ -153,7 +201,7 @@ export default class CNCUserinfo {
      * Creates a span element with Nemelex color animation
      * @param {string} text - Text to colorize
      * @param {string[]} colorArray - Array of colors to use
-     * @param {number} split - Number of parts to split the text into
+     * @param {number} split - Length of each color segment (1 = each character gets different color)
      * @param {number} time - Animation interval in seconds (negative for left roll, positive for right roll)
      * @returns {string} HTML string with colored spans
      */
@@ -176,15 +224,10 @@ export default class CNCUserinfo {
             rotatedColors.push(colorArray[(i + rollOffset) % N]);
         }
 
-        // Split text into parts
-        const partLength = Math.ceil(text.length / split);
+        // Split text into segments of 'split' length
         const parts = [];
-        for (let i = 0; i < split; i++) {
-            const start = i * partLength;
-            const end = Math.min((i + 1) * partLength, text.length);
-            if (start < text.length) {
-                parts.push(text.substring(start, end));
-            }
+        for (let i = 0; i < text.length; i += split) {
+            parts.push(text.substring(i, Math.min(i + split, text.length)));
         }
 
         // Apply colors to parts
@@ -198,32 +241,36 @@ export default class CNCUserinfo {
 
     /**
      * Applies colorful username styling
-     * @param {string|HTMLElement} usernameElement - Username element or HTML string
      * @param {string} username - The username text
-     * @returns {string} Modified HTML string
+     * @returns {string} HTML string with colored spans or original username
      */
-    applyColorfulUsername(usernameElement, username) {
-        // Only apply Nemelex coloring to 'labter' user
-        if (username && username.toLowerCase() === 'labter') {
-            const coloredUsername = this.createNemelexSpan(
+    applyColorfulUsername(username) {
+        if (!username) return username;
+
+        const lowerUsername = username.toLowerCase();
+        const colorConfig = {
+            'wizardmodephilia': { split: 1, time: 60 },
+            'sasameki': { split: 1, time: 60 },
+            'opking': { split: 2, time: 60 },
+            'sekai': { split: 3, time: 60 },
+            'unreal': { split: 1, time: 60 },
+            'mumonspawn': { split: 2, time: 60 },
+            'dogchiho': { split: 3, time: 60 }
+        };
+
+        // Apply Nemelex coloring to configured users
+        if (colorConfig[lowerUsername]) {
+            const config = colorConfig[lowerUsername];
+            return this.createNemelexSpan(
                 username,
                 CNCUserinfo.NEMELEX_COLORS,
-                4,  // split into 4 parts
-                2   // 2 second interval, positive for right roll
+                config.split,
+                config.time
             );
-
-            if (typeof usernameElement === 'string') {
-                // Simple string replacement
-                return usernameElement.replace(username, coloredUsername);
-            } else if (usernameElement instanceof HTMLElement) {
-                // If it's an element, update innerHTML
-                usernameElement.innerHTML = coloredUsername;
-                return usernameElement.outerHTML;
-            }
         }
 
         // Return unchanged for other users
-        return typeof usernameElement === 'string' ? usernameElement : usernameElement.outerHTML;
+        return username;
     }
 
     onLoad() {
@@ -260,7 +307,7 @@ export default class CNCUserinfo {
                 var username_entry = $(make_watch_link(data));
                 username_entry.text(data.username);
                 // PROJECT_A: Apply colorful username in lobby
-                username_entry.html(DWEM.Modules.CNCUserinfo.applyColorfulUsername(username_entry.html(), data.username));
+                username_entry.html(DWEM.Modules.CNCUserinfo.applyColorfulUsername(data.username));
                 set("username", username_entry);
                 set("game_id", data.game_id);
                 set("xl", data.xl);
@@ -296,7 +343,13 @@ export default class CNCUserinfo {
             comm.register_handlers({lobby_entry: lobby_entry});
             $(document).on('contextmenu', '#player_list .username a', function (e) {
                 e.preventDefault();
-                DWEM.Modules.CNCUserinfo.open(e.target.textContent, e);
+                let username;
+                if (e.target.tagName === 'A') {
+                    username = e.target.textContent;
+                } else {
+                    username = e.target.parentElement.textContent;
+                }
+                DWEM.Modules.CNCUserinfo.open(username, e);
             });
         }
 
@@ -308,5 +361,6 @@ export default class CNCUserinfo {
         // Make instance methods available as static methods for other modules
         CNCUserinfo.createNemelexSpan = this.createNemelexSpan.bind(this);
         CNCUserinfo.applyColorfulUsername = this.applyColorfulUsername.bind(this);
+        CNCUserinfo.getUserTitleInfo = this.getUserTitleInfo.bind(this);
     }
 }
