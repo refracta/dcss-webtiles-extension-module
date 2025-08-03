@@ -228,7 +228,8 @@ export default class SoundSupport {
             }
         }, {
             module: SoundSupport.name,
-            description: 'List all local sound packs'
+            description: 'List all local sound packs',
+            aliases: ['/ss list']
         });
 
         CommandManager.addCommand('/SoundSupport register', [], async () => {
@@ -240,10 +241,11 @@ export default class SoundSupport {
             }
         }, {
             module: SoundSupport.name,
-            description: 'Register local sound pack'
+            description: 'Register local sound pack',
+            aliases: ['/ss register']
         });
 
-        CommandManager.addCommand('/SoundSupport remove', ['string'], async ([url]) => {
+        CommandManager.addCommand('/SoundSupport remove', ['string'], async (url) => {
             try {
                 await this.removeSoundPack(url);
                 this.sendChatMessage(`<b>[SoundSupport]</b> Sound pack removed: ${url}`);
@@ -253,7 +255,8 @@ export default class SoundSupport {
         }, {
             module: SoundSupport.name,
             description: 'Remove local sound pack',
-            argDescriptions: ['URL']
+            argDescriptions: ['URL'],
+            aliases: ['/ss remove']
         });
 
         CommandManager.addCommand('/SoundSupport clear', [], async () => {
@@ -265,10 +268,11 @@ export default class SoundSupport {
             }
         }, {
             module: SoundSupport.name,
-            description: 'Clear all local sound packs'
+            description: 'Clear all local sound packs',
+            aliases: ['/ss clear']
         });
 
-        CommandManager.addCommand('/SoundSupport volume', ['float'], async ([vol]) => {
+        CommandManager.addCommand('/SoundSupport volume', ['float'], async (vol) => {
             const newVolume = parseFloat(vol);
             if (!isNaN(newVolume) && newVolume >= 0 && newVolume <= 1) {
                 this.soundManager.volume = newVolume;
@@ -279,7 +283,8 @@ export default class SoundSupport {
         }, {
             module: SoundSupport.name,
             description: 'Set sound volume',
-            argDescriptions: ['0-1']
+            argDescriptions: ['0-1'],
+            aliases: ['/ss volume', '/sv']
         });
 
         CommandManager.addCommand('/SoundSupport reload', [], async () => {
@@ -289,17 +294,19 @@ export default class SoundSupport {
             await this.loadSoundPacks();
         }, {
             module: SoundSupport.name,
-            description: 'Force reload sound pack'
+            description: 'Force reload sound pack',
+            aliases: ['/ss reload']
         });
 
-        CommandManager.addCommand('/SoundSupport test', ['text'], async ([text]) => {
+        CommandManager.addCommand('/SoundSupport test', ['text'], async (text) => {
             IOHook.handle_message({
                 msg: 'msgs', messages: [{ text }]
             });
         }, {
             module: SoundSupport.name,
             description: 'Output a message for sound testing',
-            argDescriptions: ['message']
+            argDescriptions: ['message'],
+            aliases: ['/ss test']
         });
 
         CommandManager.addCommand('/SoundSupport', [], () => {
@@ -308,7 +315,8 @@ export default class SoundSupport {
             CommandManager.sendChatMessage(html);
         }, {
             module: SoundSupport.name,
-            description: 'Show SoundSupport commands'
+            description: 'Show SoundSupport commands',
+            aliases: ['/ss']
         });
         RCManager.addHandlers('sound-support-rc-handler', {
             onGameInitialize: (rcfile) => {

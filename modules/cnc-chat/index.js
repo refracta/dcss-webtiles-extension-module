@@ -631,13 +631,6 @@ export default class CNCChat {
                     dungeon_level: window.current_level,
                 };
                 
-                // Debug log
-                console.log('State recorder - snapshot:', {
-                    hasMapKnowledge: !!stateSnapshot.map_knowledge,
-                    mapKnowledgeKeys: stateSnapshot.map_knowledge ? Object.keys(stateSnapshot.map_knowledge).length : 0,
-                    kExists: !!this.k,
-                    kLength: this.k ? this.k.length : 0
-                });
                 
                 this.gameStateQueue.push(stateSnapshot);
                 
@@ -647,9 +640,7 @@ export default class CNCChat {
                 }
             }
         });
-        CommandManager.addCommand('/ggif', ['integer'], async (los) => {
-            los = los || 7;
-
+        CommandManager.addCommand('/ggif', ['integer?'], async (los = 7) => {
             try {
                 // Generate GIF using API
                 const gifBlob = await CNCChat.API.generateGif(los);
@@ -668,36 +659,20 @@ export default class CNCChat {
         }, {
             module: CNCChat.name,
             description: 'Capture game to GIF with stored game states',
-            argDescriptions: ['los (line of sight radius)']
+            argDescriptions: ['los (line of sight radius, default: 7)']
         });
 
-        const captureGame = async (los) => {
-            los = los || 7;
-            console.log('los', los)
+        const captureGame = async (los = 7) => {
             const canvas = await this.Snapshot.captureGame(los);
             const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
             const {url} = await this.API.upload({file, type: 'game'}).then(r => r.json());
             socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
         };
-        CommandManager.addCommand('/ggame', ['integer'], (los) => captureGame(los), {
+        CommandManager.addCommand('/ggame', ['integer?'], captureGame, {
             module: CNCChat.name,
             description: 'Capture game screenshot',
-            argDescriptions: ['los']
-        });
-        CommandManager.addCommand('/gg', ['integer'], (los) => captureGame(los), {
-            module: CNCChat.name,
-            description: 'Alias of /ggame',
-            argDescriptions: ['los']
-        });
-        CommandManager.addCommand('/ggame', [], () => captureGame(7), {
-            module: CNCChat.name,
-            description: 'Capture game screenshot',
-            argDescriptions: []
-        });
-        CommandManager.addCommand('/gg', [], () => captureGame(7), {
-            module: CNCChat.name,
-            description: 'Alias of /ggame',
-            argDescriptions: []
+            argDescriptions: ['los (line of sight radius, default: 7)'],
+            aliases: ['/gg']
         });
         const captureMenu = async () => {
             const canvas = await this.Snapshot.captureMenu(this.Snapshot.Menu.POPUP);
@@ -707,11 +682,8 @@ export default class CNCChat {
         };
         CommandManager.addCommand('/mmenu', [], captureMenu, {
             module: CNCChat.name,
-            description: 'Capture popup menu'
-        });
-        CommandManager.addCommand('/mm', [], captureMenu, {
-            module: CNCChat.name,
-            description: 'Alias of /mmenu'
+            description: 'Capture popup menu',
+            aliases: ['/mm']
         });
 
         IOHook.handle_message.before.addHandler('cnc-chat-parser', (data) => {

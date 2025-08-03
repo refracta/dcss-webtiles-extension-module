@@ -257,26 +257,25 @@ export default class CNCPublicChat {
         });
 
 
-        CommandManager.addCommand('/gif', ['integer'], async (los) => {
-            los = los || 7;
+        CommandManager.addCommand('/gif', ['integer?'], async (los = 7) => {
             const {CNCChat} = DWEM.Modules;
-            
+
             // Check if we have the required modules
             if (!CNCChat) {
                 console.error('CNCChat module not found');
                 return;
             }
-            
+
             try {
                 // Generate GIF using CNCChat API
                 const gifBlob = await CNCChat.API.generateGif(los);
-                
+
                 // Upload using CNCChat API and send via our socket
                 const {url} = await CNCChat.API.upload({
                     file: gifBlob,
                     type: 'game',
                 }).then((r) => r.json());
-                
+
                 this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
             } catch (error) {
                 console.error('Error during GIF generation:', error);
@@ -284,36 +283,21 @@ export default class CNCPublicChat {
         }, {
             module: CNCPublicChat.name,
             description: 'Capture game to GIF with stored game states',
-            argDescriptions: ['los (line of sight radius)']
+            argDescriptions: ['los (line of sight radius, default: 7)']
         });
 
-        const captureGame = async (los) => {
-            los = los || 7;
+        const captureGame = async (los = 7) => {
             const canvas = await CNCChat.Snapshot.captureGame(los);
             const file = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
             const {url} = await CNCChat.API.upload({file, type: 'game'}).then(r => r.json());
             this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
         };
 
-        CommandManager.addCommand('/game', ['integer'], (los) => captureGame(los), {
+        CommandManager.addCommand('/game', ['integer?'], captureGame, {
             module: CNCPublicChat.name,
             description: 'Capture game screenshot',
-            argDescriptions: ['los']
-        });
-        CommandManager.addCommand('/g', ['integer'], (los) => captureGame(los), {
-            module: CNCPublicChat.name,
-            description: 'Alias of /game',
-            argDescriptions: ['los']
-        });
-        CommandManager.addCommand('/game', [], () => captureGame(7), {
-            module: CNCPublicChat.name,
-            description: 'Capture game screenshot',
-            argDescriptions: []
-        });
-        CommandManager.addCommand('/g', [], () => captureGame(7), {
-            module: CNCPublicChat.name,
-            description: 'Alias of /game',
-            argDescriptions: []
+            argDescriptions: ['los (line of sight radius, default: 7)'],
+            aliases: ['/g']
         });
         const captureMenu = async () => {
             const canvas = await CNCChat.Snapshot.captureMenu(CNCChat.Snapshot.Menu.POPUP);
@@ -323,11 +307,8 @@ export default class CNCPublicChat {
         };
         CommandManager.addCommand('/menu', [], captureMenu, {
             module: CNCPublicChat.name,
-            description: 'Capture popup menu'
-        });
-        CommandManager.addCommand('/m', [], captureMenu, {
-            module: CNCPublicChat.name,
-            description: 'Alias of /menu'
+            description: 'Capture popup menu',
+            aliases: ['/m']
         });
         CNCChat.handleRightClickItem = (url) => {
             this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
