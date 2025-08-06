@@ -464,7 +464,7 @@ export default class CNCChat {
     refreshDisplay() {
         if (window.comm && window.comm.send_message) {
             // Request current game state refresh (Ctrl+L)
-            window.comm.send_message('key', { keycode: 12 });
+            window.comm.send_message('key', {keycode: 12});
         }
     }
 
@@ -479,6 +479,10 @@ export default class CNCChat {
                     - histcon.clientHeight) < 1.0;
                 if (!data.rawContent) {
                     var msg = $("<div>").append(data.content);
+                    var sender = msg.find('.chat_sender');
+                    if (sender.text() !== '') {
+                        sender.html(DWEM.Modules.CNCUserinfo.applyColorfulUsername(sender.text()))
+                    }
                     msg.find(".chat_msg").html(linkify(msg.find(".chat_msg").text()));
                     $("#chat_history").append(msg.html() + "<br>");
                     // PROJECT_A
