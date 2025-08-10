@@ -457,7 +457,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                             <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">서버 상태</a> - 
                             <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="사랑방은 한옥에서 손님을 맞이하는 방을 말합니다. 이 기능이 켜져있으면 자동으로 관전자 수가 제일 많은 플레이어를 관전합니다.">사랑방<span id="sarangbang-second"></span></a> - 
                             <a href="https://terminal.nemelex.cards">웹 터미널</a> - 
-                            <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">WTRec 재생 (베타)</a> - 
+                            <a 
+                                href="javascript:DWEM.Modules.CNCBanner.playWTRec()"
+                                title="좌클릭: URL 입력 또는 랜덤 재생 | 우클릭: 내 wtrec 파일 업로드 후 재생"
+                            >WTRec 재생 (베타)</a> - 
                             <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM 모듈 관리자 (Ctrl + F12)</a>
                             <br>
                             'nemelex' 사용자로 포트 1326에서 SSH 접속이 가능합니다. 비밀번호 'xobeh' 또는 <a href="https://archive.nemelex.cards/cao_key" style="text-decoration:none;">CAO 키</a>를 사용하여 인증할 수 있습니다.
@@ -514,7 +517,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">서버 상태</a> -
             <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="사랑방은 한옥에서 손님을 맞이하는 방을 말합니다. 이 기능이 켜져있으면 자동으로 관전자 수가 제일 많은 플레이어를 관전합니다.">사랑방<span id="sarangbang-second"></span></a> -
             <a href="https://terminal.nemelex.cards">웹 터미널</a> -
-            <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">WTRec 재생 (베타)</a> -
+            <a 
+                href="javascript:DWEM.Modules.CNCBanner.playWTRec()"
+                title="좌클릭: URL 입력 또는 랜덤 재생 | 우클릭: 내 wtrec 파일 업로드 후 재생"
+            >WTRec 재생 (베타)</a> -
             <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM 모듈 관리자 (Ctrl + F12)</a>
             <br>
             'nemelex' 사용자로 포트 1326에서 SSH 접속이 가능합니다. 비밀번호 'xobeh' 또는 <a href="https://archive.nemelex.cards/cao_key" style="text-decoration:none;">CAO 키</a>를 사용하여 인증할 수 있습니다.
@@ -569,7 +575,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">Server Status</a> -
                         <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="The 'Sarangbang' refers to the room in traditional korean houses used to receive guests. When this feature is enabled, it will automatically find and watch the player with the highest number of spectators.">Sarangbang<span id="sarangbang-second"></span></a> -
                         <a href="https://terminal.nemelex.cards">Web Terminal</a> -
-                        <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()">Play WTRec (Beta)</a> -
+                        <a 
+                            href="javascript:DWEM.Modules.CNCBanner.playWTRec()"
+                            title="Left click: Enter URL or play random | Right click: Upload your wtrec and play"
+                        >Play WTRec (Beta)</a> -
                         <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM Module Manager (Ctrl + F12)</a>
                         <br>
                         SSH is available on port 1326 with the user 'nemelex'. You can use the password 'xobeh' or authenticate using the <a href="https://archive.nemelex.cards/cao_key" style="text-decoration:none;">CAO key</a>.
@@ -601,15 +610,25 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     }
 
     async playWTRec() {
-        let url = prompt("Please enter a URL in the form of \n\"https://wtrec.nemelex.cards/wtrec/*/*.wtrec\".\n\nIf left blank, a random wtrec will be played.");
-        if (url) {
+        let url = prompt(
+            "Please enter a URL in the form of\n\"https://wtrec.nemelex.cards/wtrec/*/*.wtrec\".\n\nOK with empty input ('') = play random.\nCancel = do nothing."
+        );
+        // If user cancelled, do nothing
+        if (url === null) {
+            return;
+        }
+        // If user provided a non-empty string, try to play that URL
+        if (url !== '') {
             const blob = await fetch(url).then(r => r.blob());
             if (blob.size >= 10 * 1024 * 1024) {
                 DWEM.Modules.WTRec.playWTRec(blob);
             } else {
                 alert(`File is too small (${(blob.size / 1024 / 1024).toFixed(2)}MB). Please select a file that is 10MB or larger.`);
             }
-        } else {
+            return;
+        }
+        // Only when confirmed with empty string, play a random wtrec
+        {
             const list = await fetch('https://wtrec-json.nemelex.cards/wtrec').then(r => r.json());
             
             // Try up to 30 different users to find one with a large file
@@ -658,9 +677,33 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         }
     }
 
+    async uploadWTRec(event) {
+        try {
+            event?.preventDefault?.();
+        } catch (_) {}
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.wtrec,.zip,application/zip';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+        input.onchange = async () => {
+            const file = input.files && input.files[0];
+            document.body.removeChild(input);
+            if (!file) return;
+            try {
+                await DWEM.Modules.WTRec.playWTRec(file);
+            } catch (e) {
+                console.error(e);
+                alert('Failed to play WTRec file. Please ensure it is a valid .wtrec/.zip.');
+            }
+        };
+        input.click();
+    }
+
     onLoad() {
         const {IOHook, SiteInformation} = DWEM.Modules;
         const userLang = navigator.language || navigator.userLanguage;
+        const enhance = () => this.enhanceWTRecLinks?.();
         IOHook.handle_message.before.addHandler('cnc-banner', (data) => {
             if (data.msg === 'html' && data.id === 'banner') {
                 const {current_user} = SiteInformation;
@@ -669,6 +712,11 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 } else {
                     data.content = this.getEnglishBanner(current_user);
                 }
+            }
+        });
+        IOHook.handle_message.after.addHandler('cnc-banner-wtrec-enhancer', (data) => {
+            if (data.msg === 'html' && data.id === 'banner') {
+                setTimeout(enhance, 0);
             }
         });
         const lobby = {};
@@ -687,3 +735,25 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         });
     }
 }
+
+// Attach right-click upload and hover tooltips to WTRec links after banner render
+CNCBanner.prototype.enhanceWTRecLinks = function () {
+    const links = document.querySelectorAll('a[href="javascript:DWEM.Modules.CNCBanner.playWTRec()"]');
+    const isKorean = (navigator.language || navigator.userLanguage || '').startsWith('ko');
+    const titleText = isKorean
+        ? '좌클릭: URL 입력 또는 랜덤 재생 | 우클릭: 내 wtrec 파일 업로드 후 재생'
+        : 'Left click: Enter URL or play random | Right click: Upload your wtrec and play';
+
+    links.forEach(a => {
+        if (a.dataset.wtrecEnhanced) return;
+        try { a.oncontextmenu = null; a.removeAttribute('oncontextmenu'); } catch (_) {}
+        a.title = a.title || titleText;
+        a.addEventListener('contextmenu', (e) => {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopPropagation(); } catch (_) {}
+            try { DWEM.Modules.CNCBanner.uploadWTRec(e); } catch (_) {}
+            return false;
+        }, { passive: false });
+        a.dataset.wtrecEnhanced = 'true';
+    });
+};
