@@ -2064,6 +2064,36 @@
         "meta": "dwem option"
     },
     {
+        "caption": "record_wtrec",
+        "value": "record_wtrec",
+        "docText": "record_wtrec = true\n        DWEM (WTRec) option. When true, records this session's WebTiles messages client-side to IndexedDB.\n        Manage recordings via chat: /wtrec status | list | download | delete.",
+        "meta": "dwem option"
+    },
+    {
+        "caption": "translation_language",
+        "value": "translation_language",
+        "docText": "translation_language = ko\n        DWEM (TranslationModule) option. Enable i18n and select target language (e.g., ko, ja).",
+        "meta": "dwem option"
+    },
+    {
+        "caption": "translation_file",
+        "value": "translation_file",
+        "docText": "translation_file = https://translation.nemelex.cards/build/latest.json\n        DWEM (TranslationModule) option. URL to matcher data JSON.",
+        "meta": "dwem option"
+    },
+    {
+        "caption": "use_translation_font",
+        "value": "use_translation_font",
+        "docText": "use_translation_font = true\n        DWEM (TranslationModule) option. Load appropriate web font for the chosen language.",
+        "meta": "dwem option"
+    },
+    {
+        "caption": "translation_debug",
+        "value": "translation_debug",
+        "docText": "translation_debug = false\n        DWEM (TranslationModule) option. Log translation matcher activity and auto-reload in dev.",
+        "meta": "dwem option"
+    },
+    {
         "caption": "https://osp.nemelex.cards/build/latest.zip",
         "value": "https://osp.nemelex.cards/build/latest.zip",
         "docText": "https://osp.nemelex.cards/build/latest.zip (SOUND PACK)\n    CNC Open Sound Pack: https://l.abstr.net/cnc-osp\n    Example1 (Default): sound_pack += https://osp.nemelex.cards/build/latest.zip:[\"init.txt\"]\n    Example2 (Default + Xobeh): sound_pack += https://osp.nemelex.cards/build/latest.zip:[\"xobeh.txt\", \"init.txt\"]\n    Example2 (Default + Trog): sound_pack += https://osp.nemelex.cards/build/latest.zip:[\"trog.txt\", \"init.txt\"]\n    Example4 (Default + Zin): sound_pack += https://osp.nemelex.cards/build/latest.zip:[\"zin.txt\", \"init.txt\"]",
