@@ -2035,6 +2035,13 @@ export default class WTRec {
                     CM.sendChatMessage('Failed to show wtrec status');
                 }
             }, {module: WTRec.name, description: 'Show current wtrec recording status'});
+
+            // /wtrec (help for this module)
+            CM.addCommand('/wtrec', [], () => {
+                const cmds = CM.getCommandsByModule(WTRec.name);
+                const html = `<b>WTRec Commands</b><br>` + CM.generateHelpHTML(cmds);
+                CM.sendChatMessage(html);
+            }, {module: WTRec.name, description: 'Show WTRec command help', aliases: ['/wtrec help']});
             return true;
         };
 
