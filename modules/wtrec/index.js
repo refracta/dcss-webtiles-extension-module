@@ -1796,7 +1796,8 @@ export default class WTRec {
             blobs: [],
             username: null,
             name: null,
-            createdAt: 0
+            createdAt: 0,
+            saved: false
         };
 
         const skipSend = new Set(['go_lobby', 'login', 'token_login', 'change_password', 'forget_login_cookie', 'start_change_email', 'change_email', 'set_login_cookie', 'pong']);
@@ -1810,6 +1811,7 @@ export default class WTRec {
                 this._rec.startTime = new Date().getTime();
                 this._rec.username = data?.username || RCManager?.session?.username || this._rec.username;
                 this._rec.createdAt = Date.now();
+                this._rec.saved = false;
                 // pre-generate file name
                 const d = new Date();
                 const pad = (n) => String(n).padStart(2, '0');
@@ -1842,11 +1844,12 @@ export default class WTRec {
                     this._rec.createdAt = Date.now();
                     this._rec.username = this._rec.username || RCManager?.session?.username || DWEM.Modules.SiteInformation?.current_user || 'player';
                     this._rec.name = this.generateSessionName(this._rec.username, this._rec.createdAt);
+                    this._rec.saved = false;
                 }
                 // Try to capture player name from player message structure
                 if (data.msg === 'player') {
                     const candidate = data.name || data.username || data.player || data.char || null;
-                    if (candidate && !this._rec.username) {
+                    if (candidate && (!this._rec.username || this._rec.username === 'player')) {
                         this._rec.username = String(candidate);
                     }
                     if (candidate && (this._rec.name?.startsWith?.('player__') || !this._rec.name)) {
@@ -1889,6 +1892,8 @@ export default class WTRec {
                 // finalize and persist
                 (async () => {
                     try {
+                        if (this._rec.saved) return; // avoid double-save
+                        this._rec.saved = true;
                         // Always recompute final name from best-known username
                         const finalName = this.generateSessionName(this._rec.username || DWEM.Modules.SiteInformation?.current_user, this._rec.createdAt || Date.now());
                         const session = {
@@ -1913,6 +1918,8 @@ export default class WTRec {
                         this._rec.blobs = [];
                         this._rec.name = null;
                         this._rec.createdAt = 0;
+                        this._rec.username = null;
+                        this._rec.saved = false;
                     }
                 })();
             }
