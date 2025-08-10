@@ -8,7 +8,7 @@ WTRec is a DWEM module that records DCSS WebTiles sessions in the browser and le
   - Session names are saved as `username__YYYY-MM-DD_HH.mm.ss`.
 
 - CNC Lobby playback
-  - On the CNC lobby page, right‑click a wtrec entry to play it directly.
+  - On the CNC lobby page, right‑click Play WTRec button to play.
 
 ## Commands
 - `/wtrec`: Show a quick summary of WTRec commands.
