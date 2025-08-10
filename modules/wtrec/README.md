@@ -25,7 +25,3 @@ Arguments
 ## Storage and quota
 - Storage: Browser IndexedDB (`dwem-wtrec` / object store `sessions`).
 - `/wtrec list` shows total quota, used, and free space at the end.
-
-## Troubleshooting
-- If a session shows 0 messages, use `/wtrec status` to confirm the live count.
-- If the session name appears as `player__...`, the username might not have been detected yet; it is corrected once a `player` message is received.
