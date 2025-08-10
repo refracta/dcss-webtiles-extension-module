@@ -103,7 +103,7 @@ export default class WTRec {
         const zipBlob = await zip.generateAsync({type: "blob"});
         const link = document.createElement('a');
         link.href = URL.createObjectURL(zipBlob);
-        link.download = 'wtrec.zip';
+        link.download = 'wtrec.wtrec';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1989,7 +1989,7 @@ export default class WTRec {
                         const blob = await this.buildZipFromSession(session);
                         const a = document.createElement('a');
                         a.href = URL.createObjectURL(blob);
-                        a.download = `${name}.zip`;
+                        a.download = `${name}.wtrec`;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);

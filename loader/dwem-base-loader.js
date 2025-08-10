@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DCSS Webtiles Extension Module Loader
 // @description  Load the DWEM from other Webtiles sites as well.
-// @version      1.12
+// @version      1.13
 // @author       refracta
 // @match        http://webzook.net:8080/
 // @match        https://crawl.kelbi.org/
@@ -83,7 +83,7 @@
         // If DWEM_MODULES is not set, the following modules are loaded by default:
         localStorage.DWEM_MODULES = JSON.stringify([
             ...JSON.parse(localStorage.DWEM_MODULES || '[]'),
-            ...['io-hook', 'site-information', 'websocket-factory', 'rc-manager', 'module-manager', 'command-manager', 'sound-support', 'convenience-module', 'advanced-rc-editor', 'translation-module']
+            ...['io-hook', 'site-information', 'websocket-factory', 'rc-manager', 'module-manager', 'command-manager', 'sound-support', 'convenience-module', 'advanced-rc-editor', 'translation-module', 'wtrec']
             .map(m => "../modules/" + m + "/index.js")
         ]);
         localStorage.DWEM_LATEST_DURATION ||= 300;
