@@ -211,11 +211,11 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             url:  'https://crawl.develz.org/tournament/0.33/'
         },
         {
-            id: 'cssdt-tournament',
-            name: 'Crawl Cosplay Sudden Death Tournament (0.32)',
-            startUTC: new Date(Date.UTC(2024, 10, 1, 0, 0, 0)),
-            endUTC: new Date(Date.UTC(2024, 11, 6, 0, 0, 0)),
-            url: 'https://cosplay.kelbi.org/ccsdt/ccsdt.html'
+            id: 'ccsdt-tournament',
+            name: 'Crawl Cosplay Sudden Death Tournament (0.33)',
+            startUTC: new Date(Date.UTC(2025, 9 - 1, 5, 0, 0, 0)),
+            endUTC:   new Date(Date.UTC(2025, 10 - 1, 10, 0, 0, 0)),
+            url: 'https://www.crawlcosplay.org/ccsdt'
         },
         {
             id: 'cctt-tournament',
@@ -630,20 +630,20 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         // Only when confirmed with empty string, play a random wtrec
         {
             const list = await fetch('https://wtrec-json.nemelex.cards/wtrec').then(r => r.json());
-            
+
             // Try up to 30 different users to find one with a large file
             const maxAttempts = 30;
             let attempts = 0;
             let largestFile = null;
             let largestFileUrl = null;
             let largestFileSize = 0;
-            
+
             while (attempts < maxAttempts) {
                 const user = list[Math.floor(Math.random() * list.length)].name;
                 attempts++;
-                
+
                 const files = await fetch(`https://wtrec-json.nemelex.cards/wtrec/${user}`).then(r => r.json());
-                
+
                 // Keep track of the largest file found so far
                 for (const file of files) {
                     if (file.size > largestFileSize) {
@@ -652,10 +652,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         largestFileSize = file.size;
                     }
                 }
-                
+
                 // Filter files that are 10MB or larger
                 const largeFiles = files.filter(file => file.size >= 10 * 1024 * 1024);
-                
+
                 if (largeFiles.length > 0) {
                     // Select a random large file
                     const file = largeFiles[Math.floor(Math.random() * largeFiles.length)];
@@ -665,7 +665,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                     return;
                 }
             }
-            
+
             // If no file >= 10MB was found, play the largest file found
             if (largestFileUrl) {
                 console.log(`No file >= 10MB found. Playing largest file found: ${(largestFileSize / 1024 / 1024).toFixed(2)}MB`);
