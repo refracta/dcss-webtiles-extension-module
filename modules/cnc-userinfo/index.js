@@ -97,6 +97,7 @@ class UserDropdown extends HTMLDivElement {
             <div style="font-weight: bold"><a href="#watch-${realUsername}" target="_blank">${DWEM.Modules.CNCUserinfo.applyColorfulUsername(realUsername)}${isAdmin ? ' (ADMIN)' : ''}</a></div>
             ${titleDiv}
             <div><a href="https://crawl.akrasiac.org/scoring/players/${lowerUsername}.html" target="_blank">CAO Scoreboard</a></div>
+            <div><a href="https://crawl.akrasiac.org/scoring03/players/${realUsername}.html" target="_blank"">CAO Scoreboard (Old)</a></div>
             <div><a href="https://crawl.montres.org.uk/players/${lowerUsername}.html" target="_blank">Stoat Soup Scoreboard</a></div>
             <div><a href="https://gooncrawl.montres.org.uk/players/${lowerUsername}.html" target="_blank">GoonCrawl Scoreboard</a></div>
             <div><a href="https://bcadrencrawl.montres.org.uk/players/${lowerUsername}.html" target="_blank">BcadrenCrawl Scoreboard</a></div>
