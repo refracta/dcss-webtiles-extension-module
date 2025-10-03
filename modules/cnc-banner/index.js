@@ -432,7 +432,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         <details>
             <summary style="cursor: pointer;">당연히 신은 <span style="color: lawngreen">조베</span>겠지?</summary>
             <div style="margin-left: 15px">
-                <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a>
+                <a href="https://refracta.github.io/nemelx-altar-3d" id="coloredText">카드 안에 모든 것이 있나니!</a>
                 <a title="서버 지연 시간입니다. 다시 측정하려면 클릭, 지연 시간 측정기를 확인하려면 우클릭하세요" style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)" oncontextmenu="DWEM.Modules.CNCBanner.toggleLatencyIndicator(event)">(<span id="latency">?</span> MS)</a>
                 <div id="latency-indicator" style="display: none; max-width: 500px"></div>
                 <br>
@@ -492,7 +492,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
 
         }
         return `
-        <a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">카드 안에 모든 것이 있나니!</a>
+        <a href="https://refracta.github.io/nemelx-altar-3d" id="coloredText">카드 안에 모든 것이 있나니!</a>
         <a title="서버 지연 시간입니다. 다시 측정하려면 클릭, 지연 시간 측정기를 확인하려면 우클릭하세요" style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)" oncontextmenu="DWEM.Modules.CNCBanner.toggleLatencyIndicator(event)">(<span id="latency">?</span> MS)</a>
         <div id="latency-indicator" style="display: none; max-width: 500px"></div>
         <br>
@@ -551,7 +551,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     }
 
     getEnglishBanner(current_user) {
-        return `<a href="https://refracta.github.io/nemelx-alter-3d" id="coloredText">It's all in the cards!</a> <a title="This is your server latency. Click to remeasure, Right click to show latency indicator" style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)" oncontextmenu="DWEM.Modules.CNCBanner.toggleLatencyIndicator(event)">(<span id="latency">?</span> MS)</a>
+        return `<a href="https://refracta.github.io/nemelx-altar-3d" id="coloredText">It's all in the cards!</a> <a title="This is your server latency. Click to remeasure, Right click to show latency indicator" style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)" oncontextmenu="DWEM.Modules.CNCBanner.toggleLatencyIndicator(event)">(<span id="latency">?</span> MS)</a>
                     <div id="latency-indicator" style="display: none; max-width: 500px"></div>
                     <br>
                     ${current_user ? `
