@@ -39,7 +39,7 @@ const fileFilter = (req, file, cb) => {
     if (mimetype) {
         return cb(null, true);
     } else {
-        cb(new Error('File upload only supports the following filetypes - png'));
+        cb(new Error('File upload only supports the following filetypes - png or gif'));
     }
 };
 
