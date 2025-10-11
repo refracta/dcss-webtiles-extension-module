@@ -143,19 +143,23 @@ export default class RCManager {
         }
         while (this.queue.length > 0) {
             const data = this.queue.shift();
-            IOHook.handle_message({...data, initiator: 'rc-manager'});
-            if (data.msg === 'game_client') {
-                const initPromise = new Promise(resolve => {
-                    this.initResolver = resolve;
-                });
-                const scriptPromise = new Promise(resolve => {
-                    require([`game-${data.version}/game`], (game) => {
-                        const images = Array.from(document.querySelectorAll('#game img'));
-                        const imagePromises = images.map(image => image.complete ? Promise.resolve() : new Promise(r => image.onload = r));
-                        Promise.all(imagePromises).then(resolve);
+            try {
+                IOHook.handle_message({...data, initiator: 'rc-manager'});
+                if (data.msg === 'game_client') {
+                    const initPromise = new Promise(resolve => {
+                        this.initResolver = resolve;
                     });
-                });
-                await Promise.all([initPromise, scriptPromise]);
+                    const scriptPromise = new Promise(resolve => {
+                        require([`game-${data.version}/game`], (game) => {
+                            const images = Array.from(document.querySelectorAll('#game img'));
+                            const imagePromises = images.map(image => image.complete ? Promise.resolve() : new Promise(r => image.onload = r));
+                            Promise.all(imagePromises).then(resolve);
+                        });
+                    });
+                    await Promise.all([initPromise, scriptPromise]);
+                }
+            } catch (e) {
+                console.error('RCManager - triggerHandler failed', e, data);
             }
         }
         delete this.queue;
