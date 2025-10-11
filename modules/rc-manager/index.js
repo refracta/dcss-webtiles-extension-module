@@ -159,7 +159,7 @@ export default class RCManager {
                     await Promise.all([initPromise, scriptPromise]);
                 }
             } catch (e) {
-                console.error('RCManager - triggerHandler failed', e, data);
+                console.error('RCManager - triggerHandler failed\n', e, data);
             }
         }
         delete this.queue;
