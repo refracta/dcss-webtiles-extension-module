@@ -106,13 +106,14 @@ export default class TranslationModule {
 
     #getTranslationConfig(rcfile) {
         const {RCManager} = DWEM.Modules;
+        const language = RCManager.getRCOption(rcfile, 'language', 'string');
         const translationLanguage = RCManager.getRCOption(rcfile, 'translation_language', 'string');
         const translationFile = RCManager.getRCOption(rcfile, 'translation_file', 'string', 'https://translation.nemelex.cards/build/latest.json');
         const useTranslationFont = RCManager.getRCOption(rcfile, 'use_translation_font', 'boolean', true);
         const translationDebug = RCManager.getRCOption(rcfile, 'translation_debug', 'boolean', false);
 
         return {
-            translationLanguage, useTranslationFont, translationFile, translationDebug
+            language, translationLanguage, useTranslationFont, translationFile, translationDebug
         };
     }
 
@@ -324,6 +325,9 @@ export default class TranslationModule {
                                 }
                             }
                         });
+                        if (this.config.language && this.config.language !== 'en') {
+                            this.sendMessage(`<cyan>[TranslationModule]</cyan> <red>Do not use the "language = ${this.config.language}" option together with the translation_language option, as this may result in incorrect translation.</red>`)
+                        }
                         this.sendMessage(`<cyan>[TranslationModule]</cyan> ${matchers.length} matcher data loaded successfully. (${new Date(time).toLocaleString()}) / Thanks to ${messages[0]}`)
 
                         if (this.config.translationDebug) {

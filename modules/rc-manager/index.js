@@ -173,7 +173,7 @@ export default class RCManager {
     }
 
     getRCOption(rcfile, name, type = 'string', defaultValue) {
-        const regex = new RegExp(`^(?!\\s*#).*${name}\\s*=\\s*(\\S+)\\s*`, 'gm');
+        const regex = new RegExp(`^(?!\\s*#) *${name}\\s*=\\s*(\\S+)\\s*`, 'gm');
         const value = Array.from(rcfile.matchAll(regex)).pop()?.[1];
 
         if (type === 'boolean') {
