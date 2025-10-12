@@ -231,19 +231,19 @@ export default class RCManager {
                         (async () => {
                             const username = this.session.username || SiteInformation.current_user;
                             const version = data.text;
-                            const url = this.getRCURL(version, username);
+                            this.rcURL = this.getRCURL(version, username);
                             let rcfile = '';
-                            if (url) {
+                            if (this.rcURL) {
                                 try {
                                     rcfile = await fetch('https://rc-proxy.nemelex.cards', {
                                         method: 'POST',
                                         headers: {
                                             'Content-Type': 'application/json',
                                         },
-                                        body: JSON.stringify({url})
+                                        body: JSON.stringify({url: this.rcURL})
                                     }).then(r => r.text());
                                 } catch (e) {
-                                    console.error(`Failed to fetch RCURL. ${url}`);
+                                    console.error(`Failed to fetch RCURL. ${this.rcURL}`);
                                 }
                             }
                             await this.triggerHandlers(rcfile);

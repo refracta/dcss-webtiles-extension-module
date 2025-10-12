@@ -3,7 +3,7 @@ import JSZip from 'https://cdn.skypack.dev/jszip@3.10.1';
 export default class WTRec {
     static name = 'WTRec'
     static version = '0.1'
-    static dependencies = ['IOHook', 'CommandManager', 'RCManager']
+    static dependencies = ['IOHook', 'CommandManager', 'RCManager', 'SiteInformation']
     static description = '(Beta) This module provides features for webtiles game recording.'
 
     // --- IndexedDB helpers ---
@@ -1805,11 +1805,12 @@ export default class WTRec {
 
         // Hook outgoing
         IOHook.send_message.before.addHandler('wtrec', (msg, data) => {
-            if (msg === 'play' || msg === 'watch') {
+            // if (msg === 'play' || msg === 'watch') {
+            if (msg === 'play') {
                 // fresh start for each game
                 this._rec.data = [{msg, ...(data || {}), wtrec: {type: 'send', timing: 0}}];
                 this._rec.startTime = new Date().getTime();
-                this._rec.username = data?.username || RCManager?.session?.username || this._rec.username;
+                this._rec.username = data?.username || RCManager?.session?.username || DWEM.Modules.SiteInformation.current_user|| this._rec.username;
                 this._rec.createdAt = Date.now();
                 this._rec.saved = false;
                 // pre-generate file name
@@ -1888,7 +1889,7 @@ export default class WTRec {
                         } catch (e) {}
                     })();
                 } catch (e) {}
-            } else if (this._rec.enabled && (data?.msg === 'go_lobby' || data?.msg === 'game_ended')) {
+            } else if (DWEM.Modules.SiteInformation?.playing && this._rec.enabled && (data?.msg === 'go_lobby' || data?.msg === 'game_ended')) {
                 // finalize and persist
                 (async () => {
                     try {
@@ -1907,7 +1908,7 @@ export default class WTRec {
                         };
                         await this.saveSession(session);
                         const size = await this.estimateSessionSize(session);
-                        DWEM.Modules.CommandManager?.sendChatMessage?.(`/wtrec saved: ${session.name} (${session.data.length} msgs, ${(size/1024/1024).toFixed(2)}MB)`);
+                        DWEM.Modules.CommandManager?.sendChatMessage?.(`wtrec saved: ${session.name} (${session.data.length} msgs, ${(size/1024/1024).toFixed(2)}MB)`);
                     } catch (e) {
                         console.error('WTRec save error', e);
                     } finally {
@@ -1932,7 +1933,7 @@ export default class WTRec {
                     const enabled = RCManager.getRCOption(rcfile, 'record_wtrec', 'boolean', false);
                     this._rec.enabled = !!enabled;
                     if (this._rec.enabled) {
-                        this._rec.username = RCManager?.session?.username || this._rec.username;
+                        this._rec.username = RCManager?.session?.username || DWEM.Modules.SiteInformation.current_user || this._rec.username;
                     }
                 } catch (e) {
                     this._rec.enabled = false;
