@@ -100,7 +100,7 @@ export default class TranslationModule {
     }
 
     unloadTranslationFont() {
-        document.querySelector('#translation_font')?.remove();
+        document.querySelector('#translation_font')?.remove?.();
     }
 
 
@@ -276,7 +276,9 @@ export default class TranslationModule {
                 try {
                     this.config = this.#getTranslationConfig(rcfile);
                     if (this.config.translationLanguage) {
-                        this.loadTranslationFont(this.config.translationLanguage);
+                        if (this.config.useTranslationFont){
+                            this.loadTranslationFont(this.config.translationLanguage);
+                        }
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 5_000); // 10초 후 abort
                         const {
