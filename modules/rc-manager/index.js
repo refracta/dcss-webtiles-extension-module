@@ -177,7 +177,7 @@ export default class RCManager {
         const value = Array.from(rcfile.matchAll(regex)).pop()?.[1];
 
         if (type === 'boolean') {
-            return value === 'true';
+            return value === undefined ? defaultValue : value === 'true';
         } else if (type === 'number') {
             const numValue = Number(value);
             return isNaN(numValue) ? defaultValue : numValue;
