@@ -168,7 +168,7 @@ export default class TranslationModule {
                     $("#stats_rightcolumn span:contains('Place:')").text(translate("Place:", 'interface@stats.text'))
                     $("#stats_rightcolumn span:contains('Time:')").text(translate("Time:", 'interface@stats.text'))
                     $("#stats_rightcolumn span:contains('Gold:')").text(translate("Gold:", 'interface@stats.text'))
-                    $("#stats_rightcolumn span:contains('Doom:')").text(translate("Doom:", 'interface@stats.text'))
+                    $("#stats_rightcolumn span.stats_caption:contains('Doom:')").text(translate("Doom:", 'interface@stats.text'))
                 }
             }
         }
