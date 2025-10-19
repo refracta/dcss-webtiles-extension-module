@@ -277,7 +277,7 @@ export default class TranslationModule {
                     this.config = this.#getTranslationConfig(rcfile);
                     if (this.config.translationLanguage) {
                         if (this.config.useTranslationFont){
-                            this.loadTranslationFont(this.config.translationLanguage);
+                            this.loadTranslationFont(this.config.useTranslationFont);
                         }
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 5_000); // 10초 후 abort
