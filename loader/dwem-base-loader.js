@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DCSS Webtiles Extension Module Loader
 // @description  Load the DWEM from other Webtiles sites as well.
-// @version      1.13
+// @version      1.14
 // @author       refracta
 // @match        http://webzook.net:8080/
 // @match        https://crawl.kelbi.org/
@@ -36,7 +36,7 @@
         }
 
         const scripts = head.getElementsByTagName('script');
-        let rjsScript = Array.from(scripts).find(s => s.src?.endsWith('require.js'));
+        let rjsScript = Array.from(scripts).find(s => s.src?.includes('require.js'));
         if (!rjsScript) {
             rjsScript = {src: "/static/scripts/contrib/require.js", getAttribute: () => "/static/scripts/app"};
         }
