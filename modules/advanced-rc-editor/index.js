@@ -116,7 +116,9 @@ export default class AdvancedRCEditor {
         IOHook.handle_message.after.addHandler('rc-manager', async (data) => {
             if (data.msg === 'set_game_links') {
                 if (!gameId && (this.urlRCFile || this.urlAppend)) {
-                    Array.from(document.querySelectorAll('.edit_rc_link')).forEach(e => e.style.color = 'red');
+                    document.querySelectorAll('.edit_rc_link').forEach(e => {
+                        e.style.setProperty('color', 'red', 'important'); // color: red !important;
+                    });
                 }
             }
             if (data.msg === 'rcfile_contents') {
