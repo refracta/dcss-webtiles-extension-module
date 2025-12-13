@@ -700,6 +700,136 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         input.click();
     }
 
+    applyXMasTheme(){
+        (function() {
+            // 1. 기존에 적용된 스타일 및 배너 문구 제거 (중복/잔여물 방지)
+            const existingStyle = document.getElementById('christmas-theme-style');
+            if (existingStyle) existingStyle.remove();
+
+            const existingBanner = document.getElementById('christmas-banner-msg');
+            if (existingBanner) existingBanner.remove();
+
+            const css = `
+        /* === 1. 로비 전용 스타일 (#lobby 하위) === */
+        
+        #lobby {
+            /* 로비일 때만 그라데이션 배경 */
+            background: radial-gradient(circle at center, #0f2b1d 0%, #000000 100%) !important;
+            min-height: 100vh;
+            position: relative;
+            color: #ffffff !important; /* 기본 글자색 흰색 */
+        }
+
+        /* 눈 내리는 효과 (로비만) */
+        #lobby::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 130px 80px, #ffffff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            animation: snowAnim 4s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.5;
+        }
+
+        @keyframes snowAnim {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 200px; }
+        }
+
+        /* 로비 내 링크 스타일 */
+        #lobby a, #lobby a:link, #lobby a:visited, #lobby a:active {
+            color: #ffffff !important;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+        #lobby a:hover {
+            color: #ff4500 !important; /* 호버 시 오렌지 레드 */
+            text-shadow: 0 0 5px #ff4500;
+        }
+
+        /* === 2. 컴포넌트 스타일링 === */
+
+        /* 배너 영역 (문구 없이 테두리 장식만 유지) */
+        #banner {
+            border-bottom: 3px dashed #c0392b;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 플레이어 리스트 테이블 */
+        #player_list {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #555;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
+        }
+        #player_list th.header {
+            background-color: #800000 !important;
+            color: #ffffff !important;
+            border-bottom: 2px solid #ffffff;
+        }
+        #player_list tr:hover {
+            background-color: rgba(46, 204, 113, 0.2) !important;
+        }
+
+        /* 텍스트 색상 조정 */
+        .milestone { color: #bdc3c7 !important; }
+        .username a { color: #ffffff !important; font-weight: bold; }
+
+        /* 버튼 스타일 (로비 내) */
+        #lobby .button, #lobby input[type="button"], #lobby input[type="submit"] {
+            background: linear-gradient(to bottom, #c0392b, #800000) !important;
+            color: white !important;
+            border: 1px solid #ffffff !important;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 2;
+            position: relative;
+        }
+        #lobby .button:hover {
+            background: linear-gradient(to bottom, #e74c3c, #c0392b) !important;
+        }
+
+        /* === 3. 채팅창 (전역 적용) === */
+        #chat {
+            background-color: rgba(10, 30, 10, 0.95) !important;
+            border: 2px solid #c0392b !important;
+            border-radius: 10px;
+            z-index: 3000 !important;
+        }
+        #chat_input {
+            background-color: #222;
+            color: #fff;
+            border: 1px solid #555;
+        }
+    `;
+
+            // 2. 스타일 주입
+            const style = document.createElement('style');
+            style.id = 'christmas-theme-style';
+            style.type = 'text/css';
+            style.appendChild(document.createTextNode(css));
+            document.head.appendChild(style);
+
+            console.log("🎅 Christmas theme updated (No Text, Lobby Only)!");
+        })();
+    }
+
     onLoad() {
         const {IOHook, SiteInformation} = DWEM.Modules;
         const userLang = navigator.language || navigator.userLanguage;
@@ -733,6 +863,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             const numberOfPlayers = Object.keys(lobby).length;
             lobbySpan.textContent = `Games currently running (${numberOfPlayers} players):`
         });
+        
+        if (new Date().getMonth() === 11) {
+            this.applyXMasTheme();
+        }
     }
 }
 
