@@ -764,7 +764,6 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             border-bottom: 3px dashed #c0392b;
             padding-bottom: 10px;
             margin-bottom: 15px;
-            position: relative;
         }
 
         /* 플레이어 리스트 테이블 */
