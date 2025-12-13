@@ -765,7 +765,6 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             padding-bottom: 10px;
             margin-bottom: 15px;
             position: relative;
-            z-index: 2;
         }
 
         /* 플레이어 리스트 테이블 */
@@ -863,7 +862,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             const numberOfPlayers = Object.keys(lobby).length;
             lobbySpan.textContent = `Games currently running (${numberOfPlayers} players):`
         });
-        
+
         if (new Date().getMonth() === 11) {
             this.applyXMasTheme();
         }

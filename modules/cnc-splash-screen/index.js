@@ -7,7 +7,7 @@ export default class CNCSplashScreen {
 
     onLoad() {
         const imagePath = import.meta.url.substring(0, import.meta.url.lastIndexOf('/')) + '/images/';
-        const images = [
+        let images = [
             'title_abyss.png',
             'title_animated_minimap_by_igooo.gif',
             'title_assassination_by_spdhatsan.png',
@@ -43,6 +43,10 @@ export default class CNCSplashScreen {
             'title_xom.jpg',
             'title_yiuf.png'
         ];
+        if (new Date().getMonth() === 11) {
+            Array.from(document.querySelectorAll('#loader_center img')).forEach(e => e.remove());
+            images = images.map(e => `xmas/${e}`);
+        }
         const loaderCenter = document.querySelector('#loader_center');
         for (const name of images) {
             const image = new Image();
