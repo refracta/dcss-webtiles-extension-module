@@ -8,6 +8,7 @@ export default class CommandManager {
         this.commands = [];
         this.aliasMap = {}; // Maps aliases to command names
         this.suggestionDiv = null;
+        this.commandTrie = new CommandTrie()
     }
 
     // 명령어 등록
@@ -18,8 +19,11 @@ export default class CommandManager {
             argDescriptions = [],
             aliases = []
         } = options;
-        this.commands.push({command, argumentTypes, handler, module, description, argDescriptions});
-        
+
+        const commandTarget = { command, argumentTypes, handler, module, description, argDescriptions };
+        this.commands.push(commandTarget);
+        this.commandTrie.insert(command, aliases, commandTarget);
+
         // Register aliases
         aliases.forEach(alias => {
             this.aliasMap[alias] = command;
@@ -203,26 +207,13 @@ export default class CommandManager {
             if (msg === 'chat_msg') {
                 const {text} = data;
                 const fullCommand = text.trim();
-                const args = fullCommand.split(' ');
-                const command = args[0];
-                
-                // First check if it's an alias
-                let targetCommand = command;
-                if (this.aliasMap[command]) {
-                    targetCommand = this.aliasMap[command];
-                }
-                
-                const matchedCommand = this.commands.find(cmd => fullCommand.startsWith(cmd.command) || 
-                    (targetCommand !== command && fullCommand.replace(command, targetCommand).startsWith(cmd.command)));
-                
-                if (matchedCommand) {
-                    // Extract params correctly whether it's alias or direct command
-                    const commandToReplace = fullCommand.startsWith(matchedCommand.command) ? 
-                        matchedCommand.command : command;
-                    const params = fullCommand.replace(commandToReplace, '').trim().split(' ').filter(p => p);
+                const { matchedCommand, targetCommand } = this.commandTrie.find(fullCommand);
+
+                if (targetCommand) {
+                    const params = fullCommand.replace(matchedCommand, '').trim().split(' ').filter(p => p);
                     try {
-                        const parsedArgs = this.parseArguments(params, matchedCommand.argumentTypes);
-                        matchedCommand.handler(...parsedArgs);
+                        const parsedArgs = this.parseArguments(params, targetCommand.argumentTypes);
+                        targetCommand.handler(...parsedArgs);
                     } catch (error) {
                         console.error(`Error executing command: ${error.message}`);
                     }
@@ -246,5 +237,72 @@ export default class CommandManager {
             description: 'Show command list',
             argDescriptions: ['module']
         });
+    }
+}
+
+class CommandTrie {
+    static Node = class Node {
+        constructor() {
+            this.children = {};
+            this.command = null;
+            this.aliasTarget = null;
+        }
+    }
+
+    constructor() {
+        this.root = new CommandTrie.Node();
+    }
+
+    insert(command, aliases, target) {
+        // Current insertion logic does not check for duplicate command/aliases.
+        // It silently overwrites previous commands with newer ones.
+
+        let currentNode = this.root;
+        for (const word of command.split(' ')) {
+            if (!currentNode.children[word]) {
+                currentNode.children[word] = new CommandTrie.Node();
+            }
+            currentNode = currentNode.children[word];
+        }
+        currentNode.command = target;
+
+
+        for (const alias of aliases) {
+            let aliasNode = this.root;
+            for (const word of alias.split(' ')) {
+                if (!aliasNode.children[word]) {
+                    aliasNode.children[word] = new CommandTrie.Node();
+                }
+                aliasNode = aliasNode.children[word];
+            }
+            aliasNode.aliasTarget = command;
+        }
+    }
+
+    find(fullCommand) {
+        const matchedWords = [];
+        let targetNode = this.root;
+        for (const word of fullCommand.split(' ')) {
+            if (!targetNode.children[word]) {
+                break;
+            }
+
+            matchedWords.push(word);
+            targetNode = targetNode.children[word]
+        }
+
+        const matchedCommand = matchedWords.join(" ");
+
+        // Prefer matching command over alias
+        if (targetNode.command) {
+            return { matchedCommand : matchedCommand, targetCommand : targetNode.command };
+        }
+
+        // Resolve aliases, possibly recursively
+        if (targetNode.aliasTarget) {
+            return { matchedCommand : matchedCommand, targetCommand : this.find(targetNode.aliasTarget)?.targetCommand };
+        }
+
+        return null;
     }
 }
