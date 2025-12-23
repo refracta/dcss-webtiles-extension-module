@@ -709,9 +709,63 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             const existingBanner = document.getElementById('christmas-banner-msg');
             if (existingBanner) existingBanner.remove();
 
+            const today = new Date();
+            const isHeavySnow = today.getMonth() === 11 && today.getDate() >= 23;
+            const snowGradients = (isHeavySnow
+                ? [
+                    'radial-gradient(2px 2px at 10px 20px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 30px 60px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(3px 3px at 50px 120px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 70px 35px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 90px 90px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(3px 3px at 110px 150px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 130px 25px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 145px 70px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 120px 110px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 40px 95px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(3px 3px at 75px 145px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 155px 120px, #ffffff, rgba(0,0,0,0))'
+                ]
+                : [
+                    'radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 50px 160px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 130px 80px, #ffffff, rgba(0,0,0,0))'
+                ]).join(',\n                ');
+            const snowGradientsBack = (isHeavySnow
+                ? [
+                    'radial-gradient(1px 1px at 15px 45px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 35px 110px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(1px 1px at 55px 75px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 75px 155px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(1px 1px at 95px 25px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 115px 95px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(1px 1px at 135px 140px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 155px 60px, #ffffff, rgba(0,0,0,0))'
+                ]
+                : [
+                    'radial-gradient(1px 1px at 15px 45px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 55px 120px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(1px 1px at 95px 35px, #ffffff, rgba(0,0,0,0))',
+                    'radial-gradient(2px 2px at 135px 90px, #ffffff, rgba(0,0,0,0))'
+                ]).join(',\n                ');
+            const snowSize = isHeavySnow ? 160 : 200;
+            const snowOpacity = isHeavySnow ? 0.75 : 0.5;
+            const snowDuration = isHeavySnow ? 2.5 : 4;
+            const snowSizeBack = isHeavySnow ? 220 : 260;
+            const snowOpacityBack = isHeavySnow ? 0.45 : 0.3;
+            const snowDurationBack = isHeavySnow ? 6 : 8;
+            const snowDrift = isHeavySnow ? 90 : 60;
+            const snowDriftMid = Math.round(snowDrift / 2);
+            const snowDriftBack = isHeavySnow ? -70 : -45;
+            const snowDriftBackMid = Math.round(snowDriftBack / 2);
+            const snowHalf = Math.round(snowSize / 2);
+            const snowHalfBack = Math.round(snowSizeBack / 2);
+
             const css = `
         /* === 1. 로비 전용 스타일 (#lobby 하위) === */
-        
+
         #lobby {
             /* 로비일 때만 그라데이션 배경 */
             background: radial-gradient(circle at center, #0f2b1d 0%, #000000 100%) !important;
@@ -725,23 +779,40 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             content: "";
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background-image: 
-                radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 50px 160px, #ffffff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 130px 80px, #ffffff, rgba(0,0,0,0));
+            background-image:
+                ${snowGradients};
             background-repeat: repeat;
-            background-size: 200px 200px;
-            animation: snowAnim 4s linear infinite;
+            background-size: ${snowSize}px ${snowSize}px;
+            animation: snowAnim ${snowDuration}s linear infinite;
             pointer-events: none;
             z-index: 0;
-            opacity: 0.5;
+            opacity: ${snowOpacity};
         }
 
         @keyframes snowAnim {
             0% { background-position: 0 0; }
-            100% { background-position: 0 200px; }
+            50% { background-position: ${snowDriftMid}px ${snowHalf}px; }
+            100% { background-position: ${snowDrift}px ${snowSize}px; }
+        }
+
+        #lobby::after {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                ${snowGradientsBack};
+            background-repeat: repeat;
+            background-size: ${snowSizeBack}px ${snowSizeBack}px;
+            animation: snowAnimBack ${snowDurationBack}s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+            opacity: ${snowOpacityBack};
+        }
+
+        @keyframes snowAnimBack {
+            0% { background-position: 0 0; }
+            50% { background-position: ${snowDriftBackMid}px ${snowHalfBack}px; }
+            100% { background-position: ${snowDriftBack}px ${snowSizeBack}px; }
         }
 
         /* 로비 내 링크 스타일 */
