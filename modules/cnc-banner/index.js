@@ -756,12 +756,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             const snowSizeBack = isHeavySnow ? 220 : 260;
             const snowOpacityBack = isHeavySnow ? 0.45 : 0.3;
             const snowDurationBack = isHeavySnow ? 6 : 8;
-            const snowDrift = isHeavySnow ? 90 : 60;
-            const snowDriftMid = Math.round(snowDrift / 2);
-            const snowDriftBack = isHeavySnow ? -70 : -45;
-            const snowDriftBackMid = Math.round(snowDriftBack / 2);
-            const snowHalf = Math.round(snowSize / 2);
-            const snowHalfBack = Math.round(snowSizeBack / 2);
+            const snowSway = isHeavySnow ? 50 : 30;
+            const snowSwayBack = isHeavySnow ? -35 : -20;
+            const snowSwayDuration = isHeavySnow ? 6 : 8;
+            const snowSwayDurationBack = isHeavySnow ? 9 : 12;
 
             const css = `
         /* === 1. 로비 전용 스타일 (#lobby 하위) === */
@@ -783,16 +781,21 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 ${snowGradients};
             background-repeat: repeat;
             background-size: ${snowSize}px ${snowSize}px;
-            animation: snowAnim ${snowDuration}s linear infinite;
+            animation: snowFall ${snowDuration}s linear infinite,
+                       snowSway ${snowSwayDuration}s ease-in-out infinite alternate;
             pointer-events: none;
             z-index: 0;
             opacity: ${snowOpacity};
         }
 
-        @keyframes snowAnim {
+        @keyframes snowFall {
             0% { background-position: 0 0; }
-            50% { background-position: ${snowDriftMid}px ${snowHalf}px; }
-            100% { background-position: ${snowDrift}px ${snowSize}px; }
+            100% { background-position: 0 ${snowSize}px; }
+        }
+
+        @keyframes snowSway {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(${snowSway}px); }
         }
 
         #lobby::after {
@@ -803,16 +806,21 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 ${snowGradientsBack};
             background-repeat: repeat;
             background-size: ${snowSizeBack}px ${snowSizeBack}px;
-            animation: snowAnimBack ${snowDurationBack}s linear infinite;
+            animation: snowFallBack ${snowDurationBack}s linear infinite,
+                       snowSwayBack ${snowSwayDurationBack}s ease-in-out infinite alternate;
             pointer-events: none;
             z-index: 0;
             opacity: ${snowOpacityBack};
         }
 
-        @keyframes snowAnimBack {
+        @keyframes snowFallBack {
             0% { background-position: 0 0; }
-            50% { background-position: ${snowDriftBackMid}px ${snowHalfBack}px; }
-            100% { background-position: ${snowDriftBack}px ${snowSizeBack}px; }
+            100% { background-position: 0 ${snowSizeBack}px; }
+        }
+
+        @keyframes snowSwayBack {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(${snowSwayBack}px); }
         }
 
         /* 로비 내 링크 스타일 */
