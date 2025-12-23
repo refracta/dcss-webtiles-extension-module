@@ -750,11 +750,11 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                     'radial-gradient(1px 1px at 95px 35px, #ffffff, rgba(0,0,0,0))',
                     'radial-gradient(2px 2px at 135px 90px, #ffffff, rgba(0,0,0,0))'
                 ]).join(',\n                ');
-            const snowSize = isHeavySnow ? 160 : 200;
-            const snowOpacity = isHeavySnow ? 0.75 : 0.5;
+            const snowSize = isHeavySnow ? 180 : 220;
+            const snowOpacity = isHeavySnow ? 0.65 : 0.4;
             const snowDuration = isHeavySnow ? 2.5 : 4;
-            const snowSizeBack = isHeavySnow ? 220 : 260;
-            const snowOpacityBack = isHeavySnow ? 0.45 : 0.3;
+            const snowSizeBack = isHeavySnow ? 240 : 300;
+            const snowOpacityBack = isHeavySnow ? 0.4 : 0.25;
             const snowDurationBack = isHeavySnow ? 6 : 8;
             const snowSway = isHeavySnow ? 50 : 30;
             const snowSwayBack = isHeavySnow ? -35 : -20;
