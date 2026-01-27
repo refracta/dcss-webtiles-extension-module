@@ -205,10 +205,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     tournaments = [
         {
             id: 'stable-tournament',
-            name: '0.33 Tournament',
-            startUTC: new Date(Date.UTC(2025, 4, 2, 20, 0, 0)),
-            endUTC: new Date(Date.UTC(2025, 4, 18, 20, 0, 0)),
-            url:  'https://crawl.develz.org/tournament/0.33/'
+            name: '0.34 Tournament',
+            startUTC: new Date(Date.UTC(2026, 1, 6, 20, 0, 0)),
+            endUTC: new Date(Date.UTC(2026, 1, 22, 20, 0, 0)),
+            url:  'https://crawl.develz.org/tournament/0.34/'
         },
         {
             id: 'ccsdt-tournament',
