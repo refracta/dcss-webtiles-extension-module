@@ -1,5 +1,6 @@
 import html2canvas from './html2canvas.min.js';
-import gifshot from 'https://cdn.skypack.dev/gifshot@0.4.5';
+// import gifshot from 'https://cdn.skypack.dev/gifshot@0.4.5';
+import gifshot from 'https://cdn.skypack.dev/gifshot@latest';
 
 export default class CNCChat {
     static name = 'CNCChat';
