@@ -816,10 +816,6 @@ export default class SoundSupport {
         RCManager.addHandlers('sound-support-rc-handler', {
             onGameInitialize: (rcfile) => {
                 const queue = [];
-                IOHook.handle_message.before.addHandler('sound-support-save-msgtests', (data) => {
-                                     console.log(data);
-
-                });
                 IOHook.handle_message.before.addHandler('sound-support-save-msgs', (data) => {
                     if (data.msg === 'msgs' || data.msg === 'player' || data.msg === 'ui-push' || data.msg === 'go_lobby' || data.msg === 'game_ended') {
                         queue.push(JSON.parse(JSON.stringify(data)));
