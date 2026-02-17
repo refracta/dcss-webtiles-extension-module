@@ -78,8 +78,8 @@ export default class BasicModule {
   - Description: This module helps to check and control the loading status of multiple modules.
 
 - [`SoundSupport:0.1`](modules/sound-support)
-    - Description: (Beta) This module implements sound features in the webtiles environment. You can use it by adding a
-      sound pack to the RC configuration.
+  - Description: (Beta) This module implements sound effects and (Experimental) BGM in the webtiles environment. You can
+    use it by adding a sound pack to the RC configuration.
 
 - [`ConvenienceModule:0.1`](modules/convenience-module)
     - Description: (Beta) This module provides convenience features.
@@ -105,6 +105,43 @@ export default class BasicModule {
 
 - [`CNCPublicChat:0.1`](modules/cnc-public-chat)
     - Description: (Beta) This module provides CNC server public chat.
+
+## SoundSupport sound pack spec (Experimental BGM)
+
+BGM support is experimental. Syntax and trigger mapping may change and may behave differently depending on the Webtiles
+version / server.
+
+### RC options
+
+- `sound_on` (bool): Enable SoundSupport.
+- `sound_volume` (float, 0..1): Sound effects volume.
+- `bgm_volume` (float, 0..1): BGM volume. Default: `sound_volume`.
+- `sound_debug` (bool): Print sound/BGM matching and selection details to the browser console.
+
+### Sound pack file format
+
+Sound packs are ZIP files that contain one or more `.txt` config files and the referenced audio files.
+
+Supported config lines:
+
+- `sound_file_path = <path>`: Base path (inside the ZIP) for subsequent audio paths.
+- `sound += <regex>:<path>`: Play a sound effect when a message matches `<regex>`.
+- `dwem_bgm += (<Place>, <weight>, <path>)`
+- `dwem_bgm += (<Place>:<Depth>, <weight>, <path>)`
+- `dwem_bgm_trigger += (StartGame|EndGame|Orb, <weight>, "<path>")`
+
+### BGM selection rules
+
+- On place/depth change, SoundSupport selects one BGM by weighted random among matching entries.
+- `Place` entries apply to both `Place` and `Place:N`. `Place:N` entries apply only to that depth.
+- Selected BGM loops. If the selected path equals the currently playing one, playback continues without restart.
+
+### Trigger mapping (DWEM-specific)
+
+- `StartGame`: Treated as `Dungeon:0` (the only special Dungeon depth).
+- `EndGame`: `ui-push` message with `type: "game-over"` (game over screen).
+- `Orb`: `player.status[]` contains an entry with `light: "Orb"` and `col: 13` (holding the Orb).
+- While holding the Orb, SoundSupport suppresses all BGM transitions except leaving the game (BGM is stopped on lobby).
 
 # Notes
 
