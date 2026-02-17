@@ -12,6 +12,7 @@ to register and use a sound pack.
 ```bash
 # Recommended settings
 sound_on = true
+sound_pack += https://sound-packs.nemelex.cards/DCSS-UST/v1.0.1.zip
 sound_pack += https://osp.nemelex.cards/build/latest.zip:["init.txt"]
 one_SDL_sound_channel = true
 sound_fade_time = 0.5
