@@ -45,6 +45,12 @@ sound-related settings that can be used in the RC configuration:
     - **Default:** 1
     - **Example:** `sound_volume = 0.8`
 
+- **bgm_volume**
+    - **Description:** Sets the volume of the BGM (background music). This only affects BGM playback.
+    - **Value:** A decimal between 0 and 1
+    - **Default:** `sound_volume`
+    - **Example:** `bgm_volume = 0.8`
+
 - **one_SDL_sound_channel**
     - **Description:** Determines whether to use a single SDL sound channel. If a single channel is used, only one sound
       can be played at a time.
@@ -91,6 +97,32 @@ Refer to the [options_guide](https://raw.githubusercontent.com/crawl/crawl/maste
 
  - The contents of the `sound-pack-info` file are displayed in the message.
  - Match file is prioritized according to the order in which the user loads it in RC, and if it's the same file, the sound of the match clause (`sound ^= ...`) positioned earlier has a higher match priority.
+
+## SoundSupport sound pack spec (Experimental BGM)
+
+BGM support is experimental. Syntax and trigger mapping may change and may behave differently depending on the Webtiles
+version / server.
+
+### Supported config lines
+
+- `dwem_bgm += (<Place>, <weight>, "<path>")`
+- `dwem_bgm += (<Place>:<Depth>, <weight>, "<path>")`
+- `dwem_bgm_trigger += (StartGame|EndGame|Orb, <weight>, "<path>")`
+
+### BGM selection rules
+
+- On place/depth change, SoundSupport selects one BGM by weighted random among matching entries.
+- `Place` entries apply to both `Place` and `Place:N`. `Place:N` entries apply only to that depth.
+- Selected BGM loops. If the selected path equals the currently playing one, playback continues without restart.
+
+### Trigger mapping (DWEM-specific)
+
+- `StartGame`: Treated as `Dungeon:0` (the only special Dungeon depth).
+- `EndGame`: `ui-push` message with `type: "game-over"` (game over screen).
+- `Orb`: `player.status[]` contains an entry with `light: "Orb"` and `col: 13` (holding the Orb).
+- While holding the Orb, SoundSupport suppresses all BGM transitions.
+- BGM is stopped on lobby.
+
 ### Example Configuration
 
 ```plaintext
