@@ -821,7 +821,7 @@ export default class SoundSupport {
 
                 });
                 IOHook.handle_message.before.addHandler('sound-support-save-msgs', (data) => {
-                    if (data.msg === 'msgs' || data.msg === 'player' || data.msg === 'go_lobby' || data.msg === 'game_ended') {
+                    if (data.msg === 'msgs' || data.msg === 'player' || data.msg === 'ui-push' || data.msg === 'go_lobby' || data.msg === 'game_ended') {
                         queue.push(JSON.parse(JSON.stringify(data)));
                     }
                 });
@@ -867,7 +867,7 @@ export default class SoundSupport {
                 const handleBgmMessage = (data) => {
                     if (data.msg === 'player') {
                         this._handlePlayerMessage(data);
-                    } else if (data.msg === 'game_ended') {
+                    } else if (data.msg === 'ui-push' && data.type === 'game-over') {
                         this._bgmContextKey = 'trigger:endgame';
                         this._playBgmTrigger('EndGame', data);
                     } else if (data.msg === 'go_lobby') {
@@ -887,14 +887,14 @@ export default class SoundSupport {
                             }
                         }, 1);
                         IOHook.handle_message.before.addHandler('sound-support-bgm-handler', (data) => {
-                            if (data.msg === 'player' || data.msg === 'go_lobby' || data.msg === 'game_ended') {
+                            if (data.msg === 'player' || data.msg === 'ui-push' || data.msg === 'go_lobby' || data.msg === 'game_ended') {
                                 handleBgmMessage(data);
                             }
                         }, 1);
                         for (const data of queue) {
                             if (data.msg === 'msgs' && data.messages) {
                                 handleSoundMessage(data);
-                            } else if (data.msg === 'player' || data.msg === 'go_lobby' || data.msg === 'game_ended') {
+                            } else if (data.msg === 'player' || data.msg === 'ui-push' || data.msg === 'go_lobby' || data.msg === 'game_ended') {
                                 handleBgmMessage(data);
                             }
                         }
