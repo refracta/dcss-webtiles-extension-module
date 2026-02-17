@@ -12,6 +12,16 @@ export default class SoundSupport {
         this.dbName = 'SoundPackDB';
         this.storeName = 'soundPacks';
         this.soundManager = new SoundManager();
+        this.currentBgmPath = null;
+        this.currentBgmPlace = null;
+        this.currentBgmDepth = null;
+
+        this._playerPlace = null;
+        this._playerDepthRaw = null;
+        this._playerDepth = null;
+        this._playerOrbHeld = false;
+        this._bgmContextKey = null;
+        this._bgmRequestId = 0;
         this.initDB();
     }
 
@@ -39,6 +49,7 @@ export default class SoundSupport {
         const soundOn = RCManager.getRCOption(rcfile, 'sound_on', 'boolean');
         const soundFadeTime = RCManager.getRCOption(rcfile, 'sound_fade_time', 'float', 0.5);
         const soundVolume = RCManager.getRCOption(rcfile, 'sound_volume', 'float', 1);
+        const bgmVolume = RCManager.getRCOption(rcfile, 'bgm_volume', 'float', soundVolume);
         const oneSDLSoundChannel = RCManager.getRCOption(rcfile, 'one_SDL_sound_channel', 'boolean');
         const soundDebug = RCManager.getRCOption(rcfile, 'sound_debug', 'boolean');
 
@@ -54,34 +65,494 @@ export default class SoundSupport {
         }
 
         return {
-            soundOn, soundVolume, soundFadeTime, oneSDLSoundChannel, soundPackConfigList, soundDebug
+            soundOn,
+            soundVolume,
+            bgmVolume,
+            soundFadeTime,
+            oneSDLSoundChannel,
+            soundPackConfigList,
+            soundDebug,
+            dwemBgmData: [],
+            dwemBgmTriggerData: [],
+            fileIndex: {}
         };
     }
 
     #getMatchResult(rcfile, soundFilePath = '') {
-        const matches = rcfile.match(/^(?!\s*#).*sound\s*[+^]=\s*.+|^(?!\s*#).*sound_file_path\s*=\s*.+/gm);
         const matchData = [];
-        if (matches) {
-            for (const line of matches) {
-                if (line.includes('sound_file_path')) {
-                    soundFilePath = line.split('=')[1].trim();
-                    if (soundFilePath.length > 0 && !soundFilePath.endsWith('/')) {
-                        soundFilePath += '/';
-                    }
-                } else {
-                    try {
-                        const config = line.split(/[+^]=/)[1].trim().split(/(?<!\\):/);
-                        let [regex, path] = config;
-                        regex = new RegExp(regex);
-                        path = (soundFilePath + path).replaceAll('\\', '/');
-                        matchData.push({regex, path});
-                    } catch (e) {
-                        console.error(`Invalid sound line: `, line, e);
-                    }
+        const bgmData = [];
+        const bgmTriggerData = [];
+
+        const lines = rcfile.split(/\r?\n/);
+        for (let rawLine of lines) {
+            const trimmedLine = rawLine.trim();
+            if (!trimmedLine || trimmedLine.startsWith('#')) {
+                continue;
+            }
+
+            const parsedPath = this._parseSoundFilePath(trimmedLine);
+            if (parsedPath !== null) {
+                soundFilePath = parsedPath;
+                continue;
+            }
+
+            if (trimmedLine.startsWith('dwem_bgm_trigger')) {
+                const parsed = this._parseBgmArgs(trimmedLine);
+                if (!parsed) {
+                    console.error(`Invalid dwem_bgm_trigger line: `, rawLine);
+                    continue;
+                }
+                const weight = parseFloat(parsed.weightText);
+                if (!Number.isFinite(weight) || weight < 0) {
+                    console.error(`Invalid dwem_bgm_trigger weight: `, rawLine);
+                    continue;
+                }
+                const triggerName = this._stripQuotes(parsed.nameText).trim();
+                const path = this._buildAudioPath(soundFilePath, parsed.pathText);
+                bgmTriggerData.push({trigger: triggerName.toLowerCase(), weight, path});
+                continue;
+            }
+
+            if (trimmedLine.startsWith('dwem_bgm')) {
+                const parsed = this._parseBgmArgs(trimmedLine);
+                if (!parsed) {
+                    console.error(`Invalid dwem_bgm line: `, rawLine);
+                    continue;
+                }
+                const weight = parseFloat(parsed.weightText);
+                if (!Number.isFinite(weight) || weight < 0) {
+                    console.error(`Invalid dwem_bgm weight: `, rawLine);
+                    continue;
+                }
+                const placeToken = this._stripQuotes(parsed.nameText).trim();
+                const placeParsed = this._parsePlaceWithDepth(placeToken);
+                const place = placeParsed.place;
+                const placeKey = this._normalizePlaceKey(place);
+                const path = this._buildAudioPath(soundFilePath, parsed.pathText);
+                bgmData.push({
+                    place,
+                    placeKey,
+                    depth: placeParsed.depth,
+                    weight,
+                    path
+                });
+                continue;
+            }
+
+            if (!/^\s*sound\s*[+^]=\s*.+$/.test(trimmedLine)) {
+                continue;
+            }
+
+            try {
+                const config = trimmedLine.split(/[+^]=/)[1].trim().split(/(?<!\\):/);
+                let [regex, path] = config;
+                regex = new RegExp(regex);
+                path = this._buildAudioPath(soundFilePath, path);
+                matchData.push({regex, path});
+            } catch (e) {
+                console.error(`Invalid sound line: `, rawLine, e);
+            }
+        }
+
+        return {matchData, bgmData, bgmTriggerData, soundFilePath};
+    }
+
+    _stripQuotes(text) {
+        const trimmed = (text || '').trim();
+        if ((trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2)
+            || (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length >= 2)) {
+            return trimmed.slice(1, -1);
+        }
+        return trimmed;
+    }
+
+    _parseSoundFilePath(line) {
+        const match = line.match(/^sound_file_path\s*=\s*(.*?)\s*$/);
+        if (!match) {
+            return null;
+        }
+        let path = match[1].trim();
+        const hashIndex = path.indexOf('#');
+        if (hashIndex >= 0) {
+            path = path.slice(0, hashIndex).trim();
+        }
+        path = this._stripQuotes(path).trim();
+        if (path.length > 0 && !path.endsWith('/')) {
+            path += '/';
+        }
+        return path;
+    }
+
+    _buildAudioPath(basePath, filePath) {
+        let normalizedBase = this._stripQuotes(basePath || '').trim();
+        let normalizedFile = this._stripQuotes(filePath || '').replaceAll('\\', '/').trim();
+        const hashIndex = normalizedFile.indexOf('#');
+        if (hashIndex >= 0) {
+            normalizedFile = normalizedFile.slice(0, hashIndex).trim();
+        }
+        if (normalizedFile.startsWith('./')) {
+            normalizedFile = normalizedFile.slice(2);
+        }
+
+        if (!normalizedBase) {
+            return normalizedFile;
+        }
+        if (!normalizedBase.endsWith('/')) {
+            normalizedBase += '/';
+        }
+        return `${normalizedBase}${normalizedFile}`;
+    }
+
+    _parseParenArgs(line) {
+        const openIdx = line.indexOf('(');
+        const closeIdx = line.lastIndexOf(')');
+        if (openIdx < 0 || closeIdx < 0 || closeIdx <= openIdx) {
+            return null;
+        }
+        const body = line.substring(openIdx + 1, closeIdx);
+        const parts = [];
+        let current = '';
+        let quote = null;
+        let escaping = false;
+
+        for (let i = 0; i < body.length; i++) {
+            const ch = body[i];
+            if (escaping) {
+                current += ch;
+                escaping = false;
+                continue;
+            }
+            if (ch === '\\') {
+                current += ch;
+                escaping = true;
+                continue;
+            }
+            if (quote) {
+                current += ch;
+                if (ch === quote) {
+                    quote = null;
+                }
+                continue;
+            }
+            if (ch === '"' || ch === "'") {
+                // Only treat quotes as delimiters at the start of an argument.
+                // This avoids breaking unquoted apostrophes like "Spider's Nest".
+                if (current.trim().length === 0) {
+                    quote = ch;
+                }
+                current += ch;
+                continue;
+            }
+            if (ch === ',') {
+                parts.push(current);
+                current = '';
+                continue;
+            }
+            current += ch;
+        }
+        parts.push(current);
+        return parts;
+    }
+
+    _parseBgmArgs(line) {
+        const parts = this._parseParenArgs(line);
+        if (!parts || parts.length < 3) {
+            return null;
+        }
+        return {
+            nameText: parts[0].trim(),
+            weightText: parts[1].trim(),
+            pathText: parts.slice(2).join(',').trim()
+        };
+    }
+
+    _parsePlaceWithDepth(placeText) {
+        const trimmed = (placeText || '').trim();
+        const match = trimmed.match(/^(.*)\s*:\s*([0-9]+)$/);
+        if (!match) {
+            return {place: trimmed, depth: null};
+        }
+        return {
+            place: match[1].trim(),
+            depth: parseInt(match[2], 10)
+        };
+    }
+
+    _normalizePlaceKey(placeText) {
+        let s = (placeText || '').trim().toLowerCase();
+        s = s.replace(/[’]/g, "'");
+        s = s.replace(/'s\b/g, '');
+        s = s.replace(/'/g, '');
+        s = s.replace(/\s+/g, ' ');
+        if (s.startsWith('the ')) {
+            s = s.slice(4);
+        } else if (s.startsWith('an ')) {
+            s = s.slice(3);
+        } else if (s.startsWith('a ')) {
+            s = s.slice(2);
+        }
+        return s.trim();
+    }
+
+    _normalizeDepthRaw(depth) {
+        const parsed = parseInt(depth, 10);
+        if (!Number.isFinite(parsed) || parsed < 0) {
+            return null;
+        }
+        return parsed;
+    }
+
+    _normalizeDepth(depth) {
+        const parsed = parseInt(depth, 10);
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+            return null;
+        }
+        return parsed;
+    }
+
+    _pickWeighted(entries) {
+        let totalWeight = 0;
+        for (const item of entries) {
+            totalWeight += item.weight;
+        }
+        if (!totalWeight) {
+            return null;
+        }
+        const random = Math.random() * totalWeight;
+        let sum = 0;
+        for (const item of entries) {
+            sum += item.weight;
+            if (random <= sum) {
+                return item;
+            }
+        }
+        return entries[entries.length - 1] || null;
+    }
+
+    _findBgmCandidates(placeKey, depth) {
+        const candidates = [];
+        for (const bgm of this.soundConfig.dwemBgmData || []) {
+            if (bgm.placeKey !== placeKey) {
+                continue;
+            }
+            if (bgm.depth === null) {
+                candidates.push(bgm);
+                continue;
+            }
+            if (depth !== null && bgm.depth === depth) {
+                candidates.push(bgm);
+            }
+        }
+        return candidates;
+    }
+
+    _resolveBgmBlob(soundPath) {
+        if (!soundPath || !this.soundConfig || !this.soundConfig.fileIndex) {
+            return null;
+        }
+        const normalized = this._buildAudioPath('', soundPath).replace(/^\/+/, '');
+        const direct = this.soundConfig.fileIndex[normalized];
+        if (direct) {
+            return direct;
+        }
+        const basename = normalized.split('/').pop();
+        if (!basename) {
+            return null;
+        }
+        const keys = Object.keys(this.soundConfig.fileIndex);
+        const matchKey = keys.find((key) => key === basename || key.endsWith(`/${basename}`));
+        return matchKey ? this.soundConfig.fileIndex[matchKey] : null;
+    }
+
+    _stopBgm() {
+        // Cancel any in-flight async bgm loads so they can't restart playback after we stop.
+        this._bgmRequestId++;
+        this.currentBgmPath = null;
+        this.currentBgmPlace = null;
+        this.currentBgmDepth = null;
+        this._bgmContextKey = null;
+        this.soundManager.stopBgm?.();
+    }
+
+    async _setBgm(soundPath) {
+        const requestId = ++this._bgmRequestId;
+        if (this.currentBgmPath === soundPath && this.soundManager.currentlyLoopingBgm) {
+            return;
+        }
+        const selected = this._resolveBgmBlob(soundPath);
+        if (!selected) {
+            if (this.soundConfig.soundDebug) {
+                console.warn(`[SoundSupport][BGM] Missing file: ${soundPath}`);
+            }
+            return;
+        }
+        let audioBuffer = selected.audioBuffer;
+        if (!audioBuffer) {
+            audioBuffer = selected.audioBuffer = await this.soundManager.blobToAudioBuffer(selected);
+        }
+        if (requestId !== this._bgmRequestId) {
+            return;
+        }
+        this.currentBgmPath = soundPath;
+        this.soundManager.playLoop(audioBuffer);
+    }
+
+    _playBgmTrigger(triggerName, rawData) {
+        const triggerKey = String(triggerName || '').trim().toLowerCase();
+        if (!triggerKey) {
+            return;
+        }
+        const candidates = (this.soundConfig.dwemBgmTriggerData || []).filter((e) => e.trigger === triggerKey);
+        const currentPath = this.currentBgmPath;
+        const selected = this._pickWeighted(candidates);
+
+        if (this.soundConfig.soundDebug) {
+            const candidateList = candidates.map((entry) => ({
+                trigger: entry.trigger,
+                weight: entry.weight,
+                path: entry.path
+            }));
+            console.log(
+                `[SoundSupport][BGM] Trigger="${triggerName}"\n` +
+                `  rawPlace=${JSON.stringify(rawData?.place)} rawDepth=${JSON.stringify(rawData?.depth)}\n` +
+                `  candidates=${JSON.stringify(candidateList)}\n` +
+                `  selected=${selected?.path ?? 'none'}\n` +
+                `  current=${currentPath ?? 'none'}`
+            );
+        }
+
+        if (!selected) {
+            return;
+        }
+        if (currentPath === selected.path && this.soundManager.currentlyLoopingBgm) {
+            return;
+        }
+        this._setBgm(selected.path);
+    }
+
+    _handlePlayerMessage(data) {
+        if (!data || data.msg !== 'player') {
+            return;
+        }
+
+        const prevPlace = this._playerPlace;
+        const prevDepthRaw = this._playerDepthRaw;
+        const prevOrbHeld = this._playerOrbHeld;
+
+        if (typeof data.place === 'string') {
+            const placeParsed = this._parsePlaceWithDepth(this._stripQuotes(data.place));
+            if (placeParsed.place) {
+                this._playerPlace = placeParsed.place;
+            }
+            if ((data.depth === undefined || data.depth === null) && placeParsed.depth !== null) {
+                const rawDepth = this._normalizeDepthRaw(placeParsed.depth);
+                if (rawDepth !== null) {
+                    this._playerDepthRaw = rawDepth;
+                    this._playerDepth = this._normalizeDepth(rawDepth);
                 }
             }
         }
-        return {matchData, soundFilePath};
+        if (data.depth !== undefined && data.depth !== null) {
+            const rawDepth = this._normalizeDepthRaw(data.depth);
+            if (rawDepth !== null) {
+                this._playerDepthRaw = rawDepth;
+                this._playerDepth = this._normalizeDepth(rawDepth);
+            }
+        }
+
+        const statusList = Array.isArray(data.status) ? data.status : (Array.isArray(data.statuses) ? data.statuses : null);
+        if (statusList) {
+            let orbHeld = false;
+            for (const entry of statusList) {
+                if (!entry || typeof entry !== 'object') {
+                    continue;
+                }
+                const lightRaw = entry.light ?? entry.text ?? '';
+                const descRaw = entry.desc ?? '';
+                const light = String(lightRaw).replace(/<[^>]*>/g, '').trim();
+                const desc = String(descRaw).replace(/<[^>]*>/g, '').trim();
+                const col = parseInt(entry.col, 10);
+                const descLower = desc.toLowerCase();
+                const isCharlatanOrb = descLower.includes("charlatan");
+
+                // Orb trigger condition (confirmed by user):
+                // status.light === "Orb" with col === 13 indicates the player is actually holding the Orb.
+                if (light.toLowerCase() === 'orb' && col === 13 && !isCharlatanOrb) {
+                    orbHeld = true;
+                }
+            }
+            this._playerOrbHeld = orbHeld;
+        }
+
+        if (!this._playerPlace) {
+            return;
+        }
+
+        if (!prevOrbHeld && this._playerOrbHeld) {
+            this._bgmContextKey = 'trigger:orb';
+            this._playBgmTrigger('Orb', data);
+            return;
+        }
+
+        // While holding the Orb of Zot, suppress all BGM transitions except explicit end-of-game handling.
+        if (this._playerOrbHeld) {
+            return;
+        }
+
+        if (this._playerPlace === prevPlace && this._playerDepthRaw === prevDepthRaw) {
+            return;
+        }
+
+        this._playBgmForPlace(this._playerPlace, this._playerDepthRaw, data);
+    }
+
+    _playBgmForPlace(place, depthRaw, rawData) {
+        const placeKey = this._normalizePlaceKey(place);
+        const depthParsed = this._normalizeDepthRaw(depthRaw);
+        const normalizedDepth = this._normalizeDepth(depthParsed);
+        const isStartGame = placeKey === 'dungeon' && depthParsed === 0;
+        const contextKey = isStartGame ? `${placeKey}:0` : (normalizedDepth !== null ? `${placeKey}:${normalizedDepth}` : placeKey);
+        if (contextKey === this._bgmContextKey) {
+            return;
+        }
+
+        this._bgmContextKey = contextKey;
+        this.currentBgmPlace = place;
+        this.currentBgmDepth = isStartGame ? 0 : normalizedDepth;
+
+        if (isStartGame) {
+            this._playBgmTrigger('StartGame', rawData);
+            return;
+        }
+
+        const candidates = this._findBgmCandidates(placeKey, normalizedDepth);
+        const currentPath = this.currentBgmPath;
+        const selected = this._pickWeighted(candidates);
+
+        if (this.soundConfig.soundDebug) {
+            const candidateList = candidates.map((entry) => ({
+                place: entry.depth !== null ? `${entry.place}:${entry.depth}` : entry.place,
+                weight: entry.weight,
+                path: entry.path
+            }));
+            console.log(
+                `[SoundSupport][BGM] Place="${place}" depth=${normalizedDepth} (raw=${depthParsed})\n` +
+                `  rawPlace=${JSON.stringify(rawData?.place)} rawDepth=${JSON.stringify(rawData?.depth)}\n` +
+                `  candidates=${JSON.stringify(candidateList)}\n` +
+                `  selected=${selected?.path ?? 'none'}\n` +
+                `  current=${currentPath ?? 'none'}`
+            );
+        }
+
+        if (!selected) {
+            this.currentBgmPath = null;
+            this.soundManager.stopBgm?.();
+            return;
+        }
+        if (currentPath === selected.path && this.soundManager.currentlyLoopingBgm) {
+            return;
+        }
+        this._setBgm(selected.path);
     }
 
     sendMessage(text) {
@@ -155,15 +626,25 @@ export default class SoundSupport {
 
     async loadSoundPacks() {
         let {
-            soundOn, soundVolume, soundFadeTime, oneSDLSoundChannel, soundPackConfigList
+            soundOn, soundVolume, bgmVolume, soundFadeTime, oneSDLSoundChannel, soundPackConfigList
         } = this.soundConfig;
         if (!soundOn) {
             return;
         }
         this.soundManager.volume = soundVolume;
+        this.soundManager.bgmVolume = bgmVolume;
         this.soundManager.fadeTime = soundFadeTime;
+        this._stopBgm();
+        this._playerPlace = null;
+        this._playerDepthRaw = null;
+        this._playerDepth = null;
+        this._playerOrbHeld = false;
+        this.soundConfig.dwemBgmData = [];
+        this.soundConfig.dwemBgmTriggerData = [];
+        this.soundConfig.fileIndex = {};
         let totalBytes = 0;
         let totalMatchData = 0;
+        let totalBgmData = 0;
         for (let config of soundPackConfigList) {
             let localSoundPack;
             try {
@@ -196,15 +677,29 @@ export default class SoundSupport {
             }
             txtFiles = await Promise.all(txtFiles.map(key => blobToText(config.files[key])));
             let allMatchData = [];
+            let allBgmData = [];
+            let allBgmTriggerData = [];
             let soundFilePath = '';
             for (const txt of txtFiles) {
                 const matchResult = this.#getMatchResult(txt, soundFilePath);
                 soundFilePath = matchResult.soundFilePath;
                 const {matchData} = matchResult;
                 allMatchData = [...allMatchData, ...matchData];
+                allBgmData = [...allBgmData, ...matchResult.bgmData];
+                allBgmTriggerData = [...allBgmTriggerData, ...matchResult.bgmTriggerData];
             }
             totalMatchData += allMatchData.length;
             config.matchData = allMatchData;
+            config.dwemBgmData = allBgmData;
+            config.dwemBgmTriggerData = allBgmTriggerData;
+            totalBgmData += allBgmData.length;
+            this.soundConfig.dwemBgmData.push(...allBgmData);
+            this.soundConfig.dwemBgmTriggerData.push(...allBgmTriggerData);
+            for (const [path, file] of Object.entries(config.files)) {
+                if (!this.soundConfig.fileIndex[path]) {
+                    this.soundConfig.fileIndex[path] = file;
+                }
+            }
             if (config.files['sound-pack-info']) {
                 const soundPackInfo = await blobToText(config.files['sound-pack-info']);
                 this.sendMessage(`<cyan>[SoundSupport]</cyan> ${soundPackInfo.trim()}`);
@@ -212,7 +707,7 @@ export default class SoundSupport {
         }
         soundPackConfigList = soundPackConfigList.filter(config => config.soundPack);
         let totalMegaBytes = totalBytes / (1024 * 1024);
-        this.sendMessage(`<cyan>[SoundSupport]</cyan> ${soundPackConfigList.length} sound pack (${Math.floor(totalMegaBytes * 10) / 10} MB), ${totalMatchData} match data loaded successfully.`);
+        this.sendMessage(`<cyan>[SoundSupport]</cyan> ${soundPackConfigList.length} sound pack (${Math.floor(totalMegaBytes * 10) / 10} MB), ${totalMatchData} sound + ${totalBgmData} bgm data loaded successfully.`);
     }
 
     onLoad() {
@@ -321,12 +816,21 @@ export default class SoundSupport {
         RCManager.addHandlers('sound-support-rc-handler', {
             onGameInitialize: (rcfile) => {
                 const queue = [];
+                IOHook.handle_message.before.addHandler('sound-support-save-msgtests', (data) => {
+                                     console.log(data);
+
+                });
                 IOHook.handle_message.before.addHandler('sound-support-save-msgs', (data) => {
-                    if (data.msg === 'msgs') {
+                    if (data.msg === 'msgs' || data.msg === 'player' || data.msg === 'go_lobby' || data.msg === 'game_ended') {
                         queue.push(JSON.parse(JSON.stringify(data)));
                     }
                 });
                 this.soundConfig = this.#getSoundConfig(rcfile);
+                this._stopBgm();
+                this._playerPlace = null;
+                this._playerDepthRaw = null;
+                this._playerDepth = null;
+                this._playerOrbHeld = false;
                 const handleSoundMessage = async (data) => {
                     const {messages} = data;
                     for (const message of messages.filter(m => m.text)) {
@@ -360,6 +864,20 @@ export default class SoundSupport {
                         }
                     }
                 }
+                const handleBgmMessage = (data) => {
+                    if (data.msg === 'player') {
+                        this._handlePlayerMessage(data);
+                    } else if (data.msg === 'game_ended') {
+                        this._bgmContextKey = 'trigger:endgame';
+                        this._playBgmTrigger('EndGame', data);
+                    } else if (data.msg === 'go_lobby') {
+                        this._stopBgm();
+                        this._playerPlace = null;
+                        this._playerDepthRaw = null;
+                        this._playerDepth = null;
+                        this._playerOrbHeld = false;
+                    }
+                };
                 this.loadSoundPacks().then(() => {
                     IOHook.handle_message.before.removeHandler('sound-support-save-msgs');
                     if (SiteInformation.current_hash !== '#lobby') {
@@ -368,14 +886,25 @@ export default class SoundSupport {
                                 handleSoundMessage(data);
                             }
                         }, 1);
+                        IOHook.handle_message.before.addHandler('sound-support-bgm-handler', (data) => {
+                            if (data.msg === 'player' || data.msg === 'go_lobby' || data.msg === 'game_ended') {
+                                handleBgmMessage(data);
+                            }
+                        }, 1);
                         for (const data of queue) {
-                            handleSoundMessage(data);
+                            if (data.msg === 'msgs' && data.messages) {
+                                handleSoundMessage(data);
+                            } else if (data.msg === 'player' || data.msg === 'go_lobby' || data.msg === 'game_ended') {
+                                handleBgmMessage(data);
+                            }
                         }
                     }
                 });
             },
             onGameEnd: () => {
                 IOHook.handle_message.before.removeHandler('sound-support-sound-handler');
+                IOHook.handle_message.before.removeHandler('sound-support-bgm-handler');
+                this._stopBgm();
             }
         });
     }
@@ -489,10 +1018,13 @@ export default class SoundSupport {
 
 
 class SoundManager {
-    constructor(options = {fadeTime: 0, volume: 1}) {
+    constructor(options = {fadeTime: 0, volume: 1, bgmVolume: 1}) {
         this.context = new AudioContext();
         this.fadeTime = options.fadeTime;
         this.volume = options.volume;
+        this.bgmVolume = options.bgmVolume;
+        this.loopData = null;
+        this.currentlyLoopingBgm = false;
     }
 
     blobToAudioBuffer(blob) {
@@ -537,5 +1069,33 @@ class SoundManager {
             gainNode.gain.linearRampToValueAtTime(this.volume, this.context.currentTime);
             gainNode.gain.linearRampToValueAtTime(0, this.context.currentTime + this.fadeTime);
         }
+    }
+
+    stopBgm() {
+        if (!this.loopData) {
+            return;
+        }
+        const {source} = this.loopData;
+        source.stop(0);
+        this.loopData = null;
+        this.currentlyLoopingBgm = false;
+    }
+
+    playLoop(buffer) {
+        if (this.loopData) {
+            this.stopBgm();
+        }
+        const gainNode = this.context.createGain();
+        gainNode.gain.value = this.bgmVolume;
+
+        const source = this.context.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+        source.connect(gainNode);
+        gainNode.connect(this.context.destination);
+        source.start(0);
+
+        this.loopData = {source, gainNode};
+        this.currentlyLoopingBgm = true;
     }
 }
