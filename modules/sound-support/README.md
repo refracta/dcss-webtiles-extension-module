@@ -152,7 +152,7 @@ Various functions can be accessed in the game chat window using the /SoundSuppor
 /SoundSupport register: Registers a local sound pack. A file selection window will open, and the selected zip file will be registered as a sound pack.
 /SoundSupport remove [URL]: Removes the local sound pack from the specified URL.
 /SoundSupport clear: Removes all local sound packs.
-/SoundSupport volume [0-1]: Set sound volume
+/SoundSupport volume (0-1 | fx 0-1 | bgm 0-1): Set FX/BGM volume
 /SoundSupport reload: Force reload sound pack
 /SoundSupport test [message]: Output a message for sound testing
 ```

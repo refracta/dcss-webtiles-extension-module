@@ -767,18 +767,82 @@ export default class SoundSupport {
             aliases: ['/ss clear']
         });
 
-        CommandManager.addCommand('/SoundSupport volume', ['float'], async (vol) => {
-            const newVolume = parseFloat(vol);
-            if (!isNaN(newVolume) && newVolume >= 0 && newVolume <= 1) {
-                this.soundManager.volume = newVolume;
-                this.sendChatMessage(`<b>[SoundSupport]</b> Sound volume set to ${newVolume}`);
-            } else {
-                this.sendChatMessage(`<b>[SoundSupport]</b> Invalid volume value. Please provide a number between 0 and 1.`);
+        CommandManager.addCommand('/SoundSupport volume', ['text'], async (text) => {
+            const raw = String(text || '').trim();
+            const parts = raw ? raw.split(/\s+/).filter(Boolean) : [];
+
+            const parseVol = (value) => {
+                const v = parseFloat(value);
+                if (!Number.isFinite(v) || v < 0 || v > 1) {
+                    return null;
+                }
+                return v;
+            };
+
+            const setFxVolume = (v) => {
+                this.soundManager.volume = v;
+                if (this.soundConfig) {
+                    this.soundConfig.soundVolume = v;
+                }
+            };
+
+            const setBgmVolume = (v) => {
+                this.soundManager.bgmVolume = v;
+                if (this.soundManager.loopData?.gainNode) {
+                    this.soundManager.loopData.gainNode.gain.value = v;
+                }
+                if (this.soundConfig) {
+                    this.soundConfig.bgmVolume = v;
+                }
+            };
+
+            const usage = () => {
+                this.sendChatMessage(
+                    `<b>[SoundSupport]</b> Usage: /SoundSupport volume 0-1 | /SoundSupport volume fx 0-1 | /SoundSupport volume bgm 0-1`
+                );
+            };
+
+            if (!parts.length) {
+                usage();
+                return;
             }
+
+            if (parts.length === 1) {
+                const v = parseVol(parts[0]);
+                if (v === null) {
+                    this.sendChatMessage(`<b>[SoundSupport]</b> Invalid volume value. Please provide a number between 0 and 1.`);
+                    return;
+                }
+                setFxVolume(v);
+                setBgmVolume(v);
+                this.sendChatMessage(`<b>[SoundSupport]</b> FX+BGM volume set to ${v}`);
+                return;
+            }
+
+            if (parts.length === 2) {
+                const target = parts[0].toLowerCase();
+                const v = parseVol(parts[1]);
+                if (v === null) {
+                    this.sendChatMessage(`<b>[SoundSupport]</b> Invalid volume value. Please provide a number between 0 and 1.`);
+                    return;
+                }
+                if (target === 'fx') {
+                    setFxVolume(v);
+                    this.sendChatMessage(`<b>[SoundSupport]</b> FX volume set to ${v}`);
+                    return;
+                }
+                if (target === 'bgm') {
+                    setBgmVolume(v);
+                    this.sendChatMessage(`<b>[SoundSupport]</b> BGM volume set to ${v}`);
+                    return;
+                }
+            }
+
+            usage();
         }, {
             module: SoundSupport.name,
-            description: 'Set sound volume',
-            argDescriptions: ['0-1'],
+            description: 'Set FX/BGM volume',
+            argDescriptions: ['0-1 | fx 0-1 | bgm 0-1'],
             aliases: ['/ss volume', '/sv']
         });
 
