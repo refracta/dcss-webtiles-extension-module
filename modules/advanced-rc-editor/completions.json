@@ -2022,6 +2022,12 @@
         "meta": "dwem option"
     },
     {
+        "caption": "bgm_volume",
+        "value": "bgm_volume",
+        "docText": "bgm_volume = 0.8 \n    Description: Sets the volume of the BGM (background music). This only affects BGM playback.\n    Value: A decimal between 0 and 1\n    Default: sound_volume",
+        "meta": "dwem option"
+    },
+    {
         "caption": "sound_fade_time",
         "value": "sound_fade_time",
         "docText": "sound_fade_time = 0.5 \n    Description: Sets the fade-out time for sounds. This represents the time it takes for the sound to gradually\n    decrease in volume at the end. It only works when one_SDL_sound_channel is true\n    Value: Number (in seconds)\n    Default: 0",

@@ -2666,6 +2666,11 @@ sound_volume = 0.8 (DWEM)
     Value: A decimal between 0 and 1
     Default: 1
 
+bgm_volume = 0.8 (DWEM)
+    Description: Sets the volume of the BGM (background music). This only affects BGM playback.
+    Value: A decimal between 0 and 1
+    Default: sound_volume
+
 sound_fade_time = 0.5 (DWEM)
     Description: Sets the fade-out time for sounds. This represents the time it takes for the sound to gradually
     decrease in volume at the end. It only works when one_SDL_sound_channel is true
