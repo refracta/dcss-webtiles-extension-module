@@ -226,9 +226,9 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         },
         {
             id: 'cnc-anniversary-tournament',
-            name: 'CNC 1st Anniversary Tournament',
-            startUTC: new Date(Date.UTC(2025, 6 - 1, 10, 15, 0, 0)),
-            endUTC: new Date(Date.UTC(2025, 6 - 1, 25, 14, 59, 59)),
+            name: 'CNC 2nd Anniversary Tournament',
+            startUTC: new Date(Date.UTC(2026, 6 - 1, 10, 15, 0, 0)),
+            endUTC: new Date(Date.UTC(2026, 6 - 1, 25, 14, 59, 59)),
             url: 'https://docs.google.com/document/d/e/2PACX-1vSFy2_8ZJeitgui9bAwO9MOxB4D6RLTdeXZr68l9DFFgi9FQgnDhm4JCc7MASSID_5qPpE_yqr1c4np/pub'
         }
     ];
@@ -473,6 +473,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                             <br>
                             DWEM에 <a href="https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing">번역 모듈</a>이 추가되었습니다. 한국어로 게임을 즐겨보세요. 관심이 있다면 번역 작업에도 도움을 주세요!
                             <br>
+                            <a href="https://discord.gg/BQyRwpnvGH">#event-suggestion</a>에서 CNC 2nd Anniversary Tournament의 대회 제안을 받고 있습니다.
+                            <br>
                             ${this.getTournaments()}
                 </p>
             </div>
@@ -533,6 +535,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             <br>
             DWEM에 <a href="https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing">번역 모듈</a>이 추가되었습니다. 한국어로 게임을 <a href="https://crawl.nemelex.cards/?arce_append=translation_language%20=%20ko">즐겨보세요</a>. 관심이 있다면 번역 작업에도 도움을 주세요!
             <br>
+            <a href="https://discord.gg/BQyRwpnvGH">#event-suggestion</a>에서 CNC 2nd Anniversary Tournament의 대회 제안을 받고 있습니다.
+            <br>
             ${this.getTournaments()}
         </p>
         <script>
@@ -590,6 +594,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         7/2 Update: <a href="https://crawl.nemelex.cards/?arce_append=%23%20Recommended%20settings%0Asound_on%20%3D%20true%0Asound_pack%20%2B%3D%20https%3A%2F%2Fsound-packs.nemelex.cards%2FDCSS-UST%2Fv1.0.1.zip%0Asound_pack%20%2B%3D%20https%3A%2F%2Fosp.nemelex.cards%2Fbuild%2Flatest.zip%3A%5B%22init.txt%22%5D%0Aone_SDL_sound_channel%20%3D%20true%0Asound_fade_time%20%3D%200.5%0Abgm_volume%20%3D%200.5">Try</a> the new <a href="https://github.com/refracta/dcss-webtiles-extension-module">DWEM</a> module <a href="https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md">SoundSupport</a>!
                         <br>
                         <a href="https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing">Translation Module</a> has been added to DWEM. If you are interested, please help with the translation work.
+                        <br>
+                        We are accepting tournament proposals for the CNC 2nd Anniversary Tournament at <a href="https://discord.gg/BQyRwpnvGH">#event-suggestion</a>.
                         <br>
                         ${this.getTournaments()}
                     </p>
