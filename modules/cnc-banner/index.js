@@ -66,7 +66,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         return `
         <style>
             #banner .cnc-donation-summary {
-                width: min(720px, calc(100% - 10px));
+                width: min(860px, calc(100% - 10px));
                 box-sizing: border-box;
                 margin: 0 0 12px 0;
                 padding: 9px 11px;
