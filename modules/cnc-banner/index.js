@@ -8,6 +8,11 @@ export default class CNCBanner {
     static dependencies = ['IOHook', 'SiteInformation', 'ModuleManager', 'WebSocketFactory', 'WTRec'];
     static description = 'This module sets the banner for the CNC server.';
 
+    donationApiUrl = 'https://donation.abstr.net/api/donation';
+    donationGuideUrl = 'https://donation.abstr.net?type=CNC';
+    donationListUrl = 'https://donation.abstr.net/list';
+    donationGoalKrw = 120000;
+
     openRCLinks() {
         const textContent = `[CDI]
 https://crawl.dcss.io/crawl/rcfiles/crawl-git/%n.rc
@@ -50,6 +55,213 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         this.colors = this.colors || words.map(_ => this.getRandomColor());
         const coloredWords = words.map((word, index) => `<span style="color:${this.colors[index]};">${word}</span>`);
         document.getElementById('coloredText').innerHTML = coloredWords.join(" ");
+    }
+
+    getDonationSummaryHTML(locale = 'ko') {
+        const texts = this.getDonationTexts(locale);
+        return `
+        <style>
+            #banner .cnc-donation-summary {
+                width: min(720px, calc(100% - 10px));
+                box-sizing: border-box;
+                margin: 0 0 12px 0;
+                padding: 9px 11px;
+                border: 1px solid rgba(117, 183, 106, 0.55);
+                border-left: 3px solid #75b76a;
+                border-radius: 6px;
+                background: rgba(9, 16, 12, 0.88);
+                color: #dcebd7;
+                font-size: 13px;
+                line-height: 1.45;
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            }
+            #banner .cnc-donation-summary a {
+                color: #f4d700 !important;
+                text-decoration: none;
+            }
+            #banner .cnc-donation-summary a:hover {
+                color: #ffffff !important;
+                text-shadow: 0 0 4px rgba(244, 215, 0, 0.5);
+            }
+            #banner .cnc-donation-line,
+            #banner .cnc-donation-rank {
+                margin: 2px 0;
+            }
+            #banner .cnc-donation-goal,
+            #banner .cnc-donation-name {
+                color: #ffffff;
+                font-weight: 600;
+            }
+            #banner .cnc-donation-rank-title {
+                color: #9fd896;
+                font-weight: 600;
+            }
+            #banner .cnc-donation-more {
+                margin-left: 4px;
+                white-space: nowrap;
+            }
+            #banner .cnc-donation-thanks {
+                margin-top: 5px;
+                color: #b9cbb5;
+            }
+            #banner .cnc-donation-loading,
+            #banner .cnc-donation-empty {
+                color: #aebdae;
+            }
+            #banner .cnc-donation-error {
+                color: #ffb3a7;
+            }
+        </style>
+        <div id="cnc-donation-summary" class="cnc-donation-summary" data-donation-locale="${locale}" aria-live="polite">
+            <div class="cnc-donation-loading">${texts.loading}</div>
+        </div>
+        `;
+    }
+
+    async updateDonationSummary() {
+        const container = document.getElementById('cnc-donation-summary');
+        if (!container) {
+            return;
+        }
+
+        try {
+            const response = await fetch(this.donationApiUrl, {cache: 'no-store'});
+            if (!response.ok) {
+                throw new Error(`Donation API returned ${response.status}`);
+            }
+
+            const ledger = await response.json();
+            const locale = container.dataset.donationLocale || this.getDonationLocale();
+            container.innerHTML = this.renderDonationSummary(ledger, locale);
+        } catch (error) {
+            const texts = this.getDonationTexts(container.dataset.donationLocale || this.getDonationLocale());
+            console.error('Failed to update CNC donation summary.', error);
+            container.innerHTML = `
+                <div class="cnc-donation-error">
+                    ${texts.error}
+                    <a href="${this.donationListUrl}" target="_blank" rel="noopener">${texts.listLink}</a>${texts.errorSuffix}
+                </div>
+            `;
+        }
+    }
+
+    renderDonationSummary(ledger, locale = this.getDonationLocale()) {
+        const texts = this.getDonationTexts(locale);
+        const currentMonthDonations = this.filterCncDonations(ledger?.currentMonth?.donations);
+        const overallDonations = this.filterCncDonations(ledger?.overall?.donations);
+        const monthlyTotal = currentMonthDonations.reduce((sum, donation) => sum + this.getDonationAmount(donation), 0);
+        const monthlyTop = this.getTopDonators(currentMonthDonations, locale);
+        const overallTop = this.getTopDonators(overallDonations, locale);
+
+        return `
+            <div class="cnc-donation-line">
+                ${texts.supportPrefix}<a href="${this.donationGuideUrl}" target="_blank" rel="noopener">${texts.supportLink}</a>${texts.supportSuffix}
+                <span class="cnc-donation-goal">(${texts.goalLabel}: ${this.formatKrw(monthlyTotal, locale)} / ${this.formatKrw(this.donationGoalKrw, locale)})</span>
+            </div>
+            <div class="cnc-donation-rank">
+                <span class="cnc-donation-rank-title">${texts.monthlyTopLabel}:</span>
+                ${this.renderTopDonators(monthlyTop, locale)}
+            </div>
+            <div class="cnc-donation-rank">
+                <span class="cnc-donation-rank-title">${texts.overallTopLabel}:</span>
+                ${this.renderTopDonators(overallTop, locale)}
+            </div>
+            <div class="cnc-donation-thanks">
+                ${texts.thanks}
+                <a class="cnc-donation-more" href="${this.donationListUrl}" target="_blank" rel="noopener">${texts.moreLink}</a>
+            </div>
+        `;
+    }
+
+    getDonationLocale() {
+        return (navigator.language || navigator.userLanguage || '').startsWith('ko') ? 'ko' : 'en';
+    }
+
+    getDonationTexts(locale) {
+        if (locale === 'ko') {
+            return {
+                loading: '후원 정보를 불러오는 중...',
+                error: '후원 정보를 불러오지 못했습니다.',
+                listLink: '후원 목록',
+                errorSuffix: '에서 확인해주세요.',
+                supportPrefix: '서버 운영과 오픈소스 개발을 계속 이어갈 수 있도록 ',
+                supportLink: '후원',
+                supportSuffix: '해주세요.',
+                goalLabel: '월간 후원 목표',
+                monthlyTopLabel: '월간 최고액 후원자 3명',
+                overallTopLabel: '누적 최고액 후원자 3명',
+                empty: '아직 후원 내역이 없습니다.',
+                anonymous: '익명',
+                thanks: '후원해주신 분들께 감사드립니다. 목록은 매달 1일에 갱신됩니다.',
+                moreLink: '(목록 더보기)'
+            };
+        }
+
+        return {
+            loading: 'Loading donation information...',
+            error: 'Could not load donation information.',
+            listLink: 'donation list',
+            errorSuffix: '.',
+            supportPrefix: 'Please ',
+            supportLink: 'support',
+            supportSuffix: ' continued server operations and open-source development.',
+            goalLabel: 'monthly donation goal',
+            monthlyTopLabel: 'Top 3 donors this month',
+            overallTopLabel: 'Top 3 donors all time',
+            empty: 'No donations yet.',
+            anonymous: 'Anonymous',
+            thanks: 'Thank you to everyone who donated. The list is refreshed on the first day of each month.',
+            moreLink: '(view full list)'
+        };
+    }
+
+    filterCncDonations(donations) {
+        return Array.isArray(donations) ? donations.filter(donation => donation?.type === 'CNC') : [];
+    }
+
+    getTopDonators(donations, locale = this.getDonationLocale()) {
+        const texts = this.getDonationTexts(locale);
+        const totals = new Map();
+        for (const donation of donations) {
+            const username = String(donation?.username || texts.anonymous).trim() || texts.anonymous;
+            const amount = this.getDonationAmount(donation);
+            totals.set(username, (totals.get(username) || 0) + amount);
+        }
+
+        return [...totals.entries()]
+            .map(([username, amount]) => ({username, amount}))
+            .sort((a, b) => b.amount - a.amount || a.username.localeCompare(b.username))
+            .slice(0, 3);
+    }
+
+    renderTopDonators(donators, locale = this.getDonationLocale()) {
+        const texts = this.getDonationTexts(locale);
+        if (!donators.length) {
+            return `<span class="cnc-donation-empty">${texts.empty}</span>`;
+        }
+
+        return donators
+            .map(donator => `<span class="cnc-donation-name">${this.escapeHtml(donator.username)}</span> - ${this.formatKrw(donator.amount, locale)}`)
+            .join(', ');
+    }
+
+    getDonationAmount(donation) {
+        const amount = Number(donation?.amount);
+        return Number.isFinite(amount) ? amount : 0;
+    }
+
+    formatKrw(value, locale = this.getDonationLocale()) {
+        const amount = Math.max(0, Number(value) || 0).toLocaleString('ko-KR');
+        return locale === 'ko' ? `${amount}원` : `KRW ${amount}`;
+    }
+
+    escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     getLatencySocket() {
@@ -477,6 +689,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                             <br>
                             ${this.getTournaments()}
                 </p>
+                ${this.getDonationSummaryHTML('ko')}
             </div>
         </details>
         <br>
@@ -539,6 +752,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             <br>
             ${this.getTournaments()}
         </p>
+        ${this.getDonationSummaryHTML('ko')}
         <script>
             DWEM.Modules.CNCBanner.updateLatencyText();
             DWEM.Modules.CNCBanner.startUpdateTournamentInfo();
@@ -599,6 +813,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                         <br>
                         ${this.getTournaments()}
                     </p>
+                    ${this.getDonationSummaryHTML('en')}
                     <script>
                         DWEM.Modules.CNCBanner.updateLatencyText();
                         DWEM.Modules.CNCBanner.startUpdateTournamentInfo();
@@ -917,6 +1132,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         const {IOHook, SiteInformation} = DWEM.Modules;
         const userLang = navigator.language || navigator.userLanguage;
         const enhance = () => this.enhanceWTRecLinks?.();
+        const refreshDonationSummary = () => this.updateDonationSummary?.();
         IOHook.handle_message.before.addHandler('cnc-banner', (data) => {
             if (data.msg === 'html' && data.id === 'banner') {
                 const {current_user} = SiteInformation;
@@ -929,7 +1145,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         });
         IOHook.handle_message.after.addHandler('cnc-banner-wtrec-enhancer', (data) => {
             if (data.msg === 'html' && data.id === 'banner') {
-                setTimeout(enhance, 0);
+                setTimeout(() => {
+                    enhance();
+                    refreshDonationSummary();
+                }, 0);
             }
         });
         const lobby = {};
