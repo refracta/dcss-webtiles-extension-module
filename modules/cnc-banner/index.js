@@ -222,14 +222,30 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     getTopDonators(donations, locale = this.getDonationLocale()) {
         const texts = this.getDonationTexts(locale);
         const totals = new Map();
-        for (const donation of donations) {
+        for (let index = 0; index < donations.length; index++) {
+            const donation = donations[index];
             const username = String(donation?.username || texts.anonymous).trim() || texts.anonymous;
             const amount = this.getDonationAmount(donation);
-            totals.set(username, (totals.get(username) || 0) + amount);
+            const message = String(donation?.donationMessage || '').trim();
+            const donationTime = this.getDonationTime(donation);
+            const current = totals.get(username) || {
+                username,
+                amount: 0,
+                lastDonationMessage: '',
+                lastDonationTime: Number.NEGATIVE_INFINITY,
+                lastDonationIndex: -1
+            };
+
+            current.amount += amount;
+            if (donationTime > current.lastDonationTime || (donationTime === current.lastDonationTime && index > current.lastDonationIndex)) {
+                current.lastDonationMessage = message;
+                current.lastDonationTime = donationTime;
+                current.lastDonationIndex = index;
+            }
+            totals.set(username, current);
         }
 
-        return [...totals.entries()]
-            .map(([username, amount]) => ({username, amount}))
+        return [...totals.values()]
             .sort((a, b) => b.amount - a.amount || a.username.localeCompare(b.username))
             .slice(0, 3);
     }
@@ -241,8 +257,33 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         }
 
         return donators
-            .map(donator => `<span class="cnc-donation-name">${this.escapeHtml(donator.username)}</span> - ${this.formatKrw(donator.amount, locale)}`)
+            .map(donator => {
+                const message = this.formatDonationMessagePreview(donator.lastDonationMessage);
+                return `<span class="cnc-donation-name">${this.escapeHtml(donator.username)}${message}</span> - ${this.formatKrw(donator.amount, locale)}`;
+            })
             .join(', ');
+    }
+
+    formatDonationMessagePreview(message) {
+        if (!message) {
+            return '';
+        }
+
+        const previewLength = 20;
+        const normalized = String(message).replace(/\s+/g, ' ').trim();
+        if (!normalized) {
+            return '';
+        }
+
+        const preview = normalized.length > previewLength
+            ? `${normalized.slice(0, previewLength)}...`
+            : normalized;
+        return ` (${this.escapeHtml(preview)})`;
+    }
+
+    getDonationTime(donation) {
+        const time = Date.parse(donation?.datetimeISO || donation?.datetimeRaw || donation?.date || '');
+        return Number.isFinite(time) ? time : 0;
     }
 
     getDonationAmount(donation) {
