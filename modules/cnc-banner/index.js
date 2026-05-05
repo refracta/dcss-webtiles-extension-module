@@ -12,6 +12,9 @@ export default class CNCBanner {
     donationGuideUrl = 'https://donation.abstr.net?type=CNC';
     donationListUrl = 'https://donation.abstr.net/list';
     donationGoalKrw = 120000;
+    donationSummaryCache = {};
+    donationSummaryUpdateKey = null;
+    donationLedgerRequest = null;
 
     openRCLinks() {
         const textContent = `[CDI]
@@ -59,6 +62,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
 
     getDonationSummaryHTML(locale = 'ko') {
         const texts = this.getDonationTexts(locale);
+        const content = this.donationSummaryCache[locale] || `<div class="cnc-donation-loading">${texts.loading}</div>`;
         return `
         <style>
             #banner .cnc-donation-summary {
@@ -113,9 +117,14 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             }
         </style>
         <div id="cnc-donation-summary" class="cnc-donation-summary" data-donation-locale="${locale}" aria-live="polite">
-            <div class="cnc-donation-loading">${texts.loading}</div>
+            ${content}
         </div>
         `;
+    }
+
+    scheduleDonationSummaryUpdate() {
+        clearTimeout(this.donationSummaryUpdateKey);
+        this.donationSummaryUpdateKey = setTimeout(() => this.updateDonationSummary(), 120);
     }
 
     async updateDonationSummary() {
@@ -125,23 +134,41 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         }
 
         try {
-            const response = await fetch(this.donationApiUrl, {cache: 'no-store'});
-            if (!response.ok) {
-                throw new Error(`Donation API returned ${response.status}`);
-            }
-
-            const ledger = await response.json();
+            this.donationLedgerRequest = this.donationLedgerRequest || fetch(this.donationApiUrl, {cache: 'no-store'})
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Donation API returned ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .finally(() => {
+                    this.donationLedgerRequest = null;
+                });
+            const ledger = await this.donationLedgerRequest;
             const locale = container.dataset.donationLocale || this.getDonationLocale();
-            container.innerHTML = this.renderDonationSummary(ledger, locale);
+            const html = this.renderDonationSummary(ledger, locale);
+            this.setDonationSummaryHTML(locale, html);
         } catch (error) {
-            const texts = this.getDonationTexts(container.dataset.donationLocale || this.getDonationLocale());
+            const locale = container.dataset.donationLocale || this.getDonationLocale();
+            const texts = this.getDonationTexts(locale);
             console.error('Failed to update CNC donation summary.', error);
-            container.innerHTML = `
+            const html = `
                 <div class="cnc-donation-error">
                     ${texts.error}
                     <a href="${this.donationListUrl}" target="_blank" rel="noopener">${texts.listLink}</a>${texts.errorSuffix}
                 </div>
             `;
+            this.setDonationSummaryHTML(locale, html);
+        }
+    }
+
+    setDonationSummaryHTML(locale, html) {
+        this.donationSummaryCache[locale] = html;
+        for (const container of document.querySelectorAll('#cnc-donation-summary')) {
+            const containerLocale = container.dataset.donationLocale || this.getDonationLocale();
+            if (containerLocale === locale) {
+                container.innerHTML = html;
+            }
         }
     }
 
@@ -1173,7 +1200,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         const {IOHook, SiteInformation} = DWEM.Modules;
         const userLang = navigator.language || navigator.userLanguage;
         const enhance = () => this.enhanceWTRecLinks?.();
-        const refreshDonationSummary = () => this.updateDonationSummary?.();
+        const refreshDonationSummary = () => this.scheduleDonationSummaryUpdate?.();
         IOHook.handle_message.before.addHandler('cnc-banner', (data) => {
             if (data.msg === 'html' && data.id === 'banner') {
                 const {current_user} = SiteInformation;
