@@ -282,7 +282,11 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         }
 
         return [...totals.values()]
-            .sort((a, b) => b.amount - a.amount || a.username.localeCompare(b.username))
+            .sort((a, b) =>
+                b.amount - a.amount ||
+                b.lastDonationTime - a.lastDonationTime ||
+                a.username.localeCompare(b.username)
+            )
             .slice(0, 5);
     }
 
