@@ -342,8 +342,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             return '';
         }
 
-        const previewLength = 20;
-        const normalized = String(message).replace(/\s+/g, ' ').trim();
+        const previewLength = 10;
+        const normalized = this.normalizeDonationMessage(message);
         if (!normalized) {
             return '';
         }
@@ -360,7 +360,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         }
 
         const previewLength = 200;
-        const normalized = String(message).replace(/\s+/g, ' ').trim();
+        const normalized = this.normalizeDonationMessage(message);
         if (!normalized) {
             return '';
         }
@@ -369,6 +369,13 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             ? `${normalized.slice(0, previewLength)}...`
             : normalized;
         return ` - ${this.escapeHtml(preview)}`;
+    }
+
+    normalizeDonationMessage(message) {
+        return String(message)
+            .replace(/\\n/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
     }
 
     getDonationTime(donation) {
