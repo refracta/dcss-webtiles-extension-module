@@ -66,7 +66,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         return `
         <style>
             #banner .cnc-donation-summary {
-                width: min(860px, calc(100% - 10px));
+                width: min(980px, calc(100% - 10px));
                 box-sizing: border-box;
                 margin: 0 0 12px 0;
                 padding: 9px 11px;
@@ -215,8 +215,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 supportLink: '후원',
                 supportSuffix: '해주세요.',
                 goalLabel: '월간 후원 목표',
-                monthlyTopLabel: '월간 최고액 후원자 3명',
-                overallTopLabel: '누적 최고액 후원자 3명',
+                monthlyTopLabel: '월간 최고액 후원자 5명',
+                overallTopLabel: '누적 최고액 후원자 5명',
                 empty: '아직 후원 내역이 없습니다.',
                 anonymous: '익명',
                 thanks: '후원해주신 분들께 감사드립니다. 목록은 매달 1일에 갱신됩니다.',
@@ -233,8 +233,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             supportLink: 'support',
             supportSuffix: ' continued server operations and open-source development.',
             goalLabel: 'monthly donation goal',
-            monthlyTopLabel: 'Top 3 donors this month',
-            overallTopLabel: 'Top 3 donors all time',
+            monthlyTopLabel: 'Top 5 donors this month',
+            overallTopLabel: 'Top 5 donors all time',
             empty: 'No donations yet.',
             anonymous: 'Anonymous',
             thanks: 'Thank you to everyone who donated. The list is refreshed on the first day of each month.',
@@ -274,7 +274,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
 
         return [...totals.values()]
             .sort((a, b) => b.amount - a.amount || a.username.localeCompare(b.username))
-            .slice(0, 3);
+            .slice(0, 5);
     }
 
     renderTopDonators(donators, locale = this.getDonationLocale()) {
