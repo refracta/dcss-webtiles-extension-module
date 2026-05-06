@@ -88,7 +88,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 text-shadow: 0 0 4px rgba(244, 215, 0, 0.5);
             }
             #banner .cnc-donation-line,
-            #banner .cnc-donation-rank {
+            #banner .cnc-donation-rank,
+            #banner .cnc-donation-last {
                 margin: 2px 0;
             }
             #banner .cnc-donation-goal,
@@ -97,6 +98,10 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 font-weight: 600;
             }
             #banner .cnc-donation-rank-title {
+                color: #9fd896;
+                font-weight: 600;
+            }
+            #banner .cnc-donation-last-label {
                 color: #9fd896;
                 font-weight: 600;
             }
@@ -179,6 +184,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         const monthlyTotal = currentMonthDonations.reduce((sum, donation) => sum + this.getDonationAmount(donation), 0);
         const monthlyTop = this.getTopDonators(currentMonthDonations, locale);
         const overallTop = this.getTopDonators(overallDonations, locale);
+        const latestDonation = this.getLatestDonation(overallDonations, locale);
 
         return `
             <div class="cnc-donation-line">
@@ -193,6 +199,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 <span class="cnc-donation-rank-title">${texts.overallTopLabel}:</span>
                 ${this.renderTopDonators(overallTop, locale)}
             </div>
+            ${this.renderLatestDonation(latestDonation, locale)}
             <div class="cnc-donation-thanks">
                 ${texts.thanks}
                 <a class="cnc-donation-more" href="${this.donationListUrl}" target="_blank" rel="noopener">${texts.moreLink}</a>
@@ -217,6 +224,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 goalLabel: '월간 후원 목표',
                 monthlyTopLabel: 'Top 5 (월간)',
                 overallTopLabel: 'Top 5 (누적)',
+                latestLabel: 'Last',
                 empty: '아직 후원 내역이 없습니다.',
                 anonymous: '익명',
                 thanks: '후원해주신 분들께 감사드립니다. 목록은 매달 1일에 갱신됩니다.',
@@ -235,6 +243,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             goalLabel: 'monthly donation goal amount',
             monthlyTopLabel: 'Top 5 (monthly)',
             overallTopLabel: 'Top 5 (all time)',
+            latestLabel: 'Last',
             empty: 'No donations yet.',
             anonymous: 'Anonymous',
             thanks: 'Thank you to everyone who donated. The list is refreshed on the first day of each month.',
@@ -277,6 +286,43 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             .slice(0, 5);
     }
 
+    getLatestDonation(donations, locale = this.getDonationLocale()) {
+        const texts = this.getDonationTexts(locale);
+        let latest = null;
+
+        for (let index = 0; index < donations.length; index++) {
+            const donation = donations[index];
+            const donationTime = this.getDonationTime(donation);
+            if (!latest || donationTime > latest.donationTime || (donationTime === latest.donationTime && index > latest.index)) {
+                latest = {
+                    username: String(donation?.username || texts.anonymous).trim() || texts.anonymous,
+                    amount: this.getDonationAmount(donation),
+                    message: String(donation?.donationMessage || '').trim(),
+                    donationTime,
+                    index
+                };
+            }
+        }
+
+        return latest;
+    }
+
+    renderLatestDonation(donation, locale = this.getDonationLocale()) {
+        if (!donation) {
+            return '';
+        }
+
+        const texts = this.getDonationTexts(locale);
+        const message = this.formatLatestDonationMessage(donation.message);
+        return `
+            <div class="cnc-donation-last">
+                <span class="cnc-donation-last-label">${texts.latestLabel}:</span>
+                <span class="cnc-donation-name">${this.escapeHtml(donation.username)}</span>
+                (${this.formatKrw(donation.amount, locale)})${message}
+            </div>
+        `;
+    }
+
     renderTopDonators(donators, locale = this.getDonationLocale()) {
         const texts = this.getDonationTexts(locale);
         if (!donators.length) {
@@ -306,6 +352,23 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             ? `${normalized.slice(0, previewLength)}...`
             : normalized;
         return ` (${this.escapeHtml(preview)})`;
+    }
+
+    formatLatestDonationMessage(message) {
+        if (!message) {
+            return '';
+        }
+
+        const previewLength = 200;
+        const normalized = String(message).replace(/\s+/g, ' ').trim();
+        if (!normalized) {
+            return '';
+        }
+
+        const preview = normalized.length > previewLength
+            ? `${normalized.slice(0, previewLength)}...`
+            : normalized;
+        return ` - ${this.escapeHtml(preview)}`;
     }
 
     getDonationTime(donation) {
