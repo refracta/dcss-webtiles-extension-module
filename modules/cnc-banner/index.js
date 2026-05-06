@@ -183,7 +183,7 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         return `
             <div class="cnc-donation-line">
                 ${texts.supportPrefix}<a href="${this.donationGuideUrl}" target="_blank" rel="noopener">${texts.supportLink}</a>${texts.supportSuffix}
-                <span class="cnc-donation-goal">(${texts.goalLabel}: ${this.formatKrw(monthlyTotal, locale)} / ${this.formatKrw(this.donationGoalKrw, locale)})</span>
+                <span class="cnc-donation-goal">(${texts.goalLabel}: ${this.formatKrw(monthlyTotal, locale)} / ${this.formatKrw(this.donationGoalKrw, locale)}, ${this.formatDonationGoalPercent(monthlyTotal)})</span>
             </div>
             <div class="cnc-donation-rank">
                 <span class="cnc-donation-rank-title">${texts.monthlyTopLabel}:</span>
@@ -215,8 +215,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
                 supportLink: '후원',
                 supportSuffix: '해주세요.',
                 goalLabel: '월간 후원 목표',
-                monthlyTopLabel: '월간 최고액 후원자 5명',
-                overallTopLabel: '누적 최고액 후원자 5명',
+                monthlyTopLabel: 'Top 5 (월간)',
+                overallTopLabel: 'Top 5 (누적)',
                 empty: '아직 후원 내역이 없습니다.',
                 anonymous: '익명',
                 thanks: '후원해주신 분들께 감사드립니다. 목록은 매달 1일에 갱신됩니다.',
@@ -232,9 +232,9 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
             supportPrefix: 'Please ',
             supportLink: 'support',
             supportSuffix: ' continued server operations and open-source development.',
-            goalLabel: 'monthly donation goal',
-            monthlyTopLabel: 'Top 5 donors this month',
-            overallTopLabel: 'Top 5 donors all time',
+            goalLabel: 'monthly donation goal amount',
+            monthlyTopLabel: 'Top 5 (monthly)',
+            overallTopLabel: 'Top 5 (all time)',
             empty: 'No donations yet.',
             anonymous: 'Anonymous',
             thanks: 'Thank you to everyone who donated. The list is refreshed on the first day of each month.',
@@ -321,6 +321,14 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
     formatKrw(value, locale = this.getDonationLocale()) {
         const amount = Math.max(0, Number(value) || 0).toLocaleString('ko-KR');
         return locale === 'ko' ? `${amount}원` : `KRW ${amount}`;
+    }
+
+    formatDonationGoalPercent(monthlyTotal) {
+        if (!this.donationGoalKrw) {
+            return '0.0%';
+        }
+
+        return `${(Math.max(0, Number(monthlyTotal) || 0) / this.donationGoalKrw * 100).toFixed(1)}%`;
     }
 
     escapeHtml(value) {
