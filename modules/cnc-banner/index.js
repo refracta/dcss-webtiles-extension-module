@@ -574,9 +574,9 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
         },
         {
             id: 'ccsdt-tournament',
-            name: 'Crawl Cosplay Sudden Death Tournament (0.33)',
-            startUTC: new Date(Date.UTC(2025, 9 - 1, 5, 0, 0, 0)),
-            endUTC:   new Date(Date.UTC(2025, 10 - 1, 10, 0, 0, 0)),
+            name: 'Crawl Cosplay Sudden Death Tournament (0.34)',
+            startUTC: new Date(Date.UTC(2026, 5 - 1, 15, 0, 0, 0)),
+            endUTC:   new Date(Date.UTC(2026, 6 - 1, 19, 0, 0, 0)),
             url: 'https://www.crawlcosplay.org/ccsdt'
         },
         {
