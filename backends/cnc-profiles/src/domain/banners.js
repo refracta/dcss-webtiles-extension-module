@@ -204,7 +204,7 @@ function createPseudoTranslatorBanner(score) {
   return {
     ...banner,
     id: `pseudo-translator-${score}`,
-    title: `Pseudo Translation Example (${score.toLocaleString("en-US")})`
+    title: `Pseudo Translation Contributor (${score.toLocaleString("en-US")})`
   };
 }
 

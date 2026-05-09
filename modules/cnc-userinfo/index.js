@@ -361,14 +361,17 @@ export default class CNCUserinfo {
 
     getTranslatorStyle(intensity) {
         const t = Math.max(0, Math.min(1, Number(intensity) || 0));
+        const redStop = 8 + t * 16;
+        const whiteStop = 50 - t * 20;
+        const blueStop = 72 - t * 14;
         return {
             color: '#174ea6',
             'font-weight': '800',
-            'background-image': `linear-gradient(${115 + t * 60}deg, #c91f37 0%, #f5f7fb ${35 - t * 10}%, #174ea6 ${68 + t * 8}%, #0b2f73 100%)`,
+            'background-image': `linear-gradient(${110 + t * 20}deg, #c91f37 0%, #c91f37 ${redStop}%, #f5f7fb ${whiteStop}%, #174ea6 ${blueStop}%, #0b2f73 100%)`,
             '-webkit-background-clip': 'text',
             'background-clip': 'text',
             '-webkit-text-fill-color': 'transparent',
-            'text-shadow': `0 0 ${4 + t * 12}px rgba(23, 78, 166, ${0.12 + t * 0.28})`
+            'text-shadow': `0 0 ${3 + t * 9}px rgba(201, 31, 55, ${0.08 + t * 0.2}), 0 0 ${4 + t * 12}px rgba(23, 78, 166, ${0.12 + t * 0.28})`
         };
     }
 

@@ -55,7 +55,7 @@ test("seeds initial profiles preserving username casing", async () => {
   assert.equal(exampleProfile.banners.translator, undefined);
   for (const score of PSEUDO_TRANSLATOR_SCORES) {
     const banner = exampleProfile.banners[`pseudo-translator-${score}`];
-    assert.equal(banner.title, `Pseudo Translation Example (${score.toLocaleString("en-US")})`);
+    assert.equal(banner.title, `Pseudo Translation Contributor (${score.toLocaleString("en-US")})`);
     assert.equal(banner.usernameStyle.id, "translator");
     assert.equal(banner.usernameStyle.data.score, score);
   }
