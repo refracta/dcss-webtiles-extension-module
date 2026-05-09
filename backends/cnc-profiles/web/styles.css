@@ -175,14 +175,30 @@ input:focus {
   box-shadow: inset 0 0 0 2px rgba(35, 97, 77, 0.18);
 }
 
+.banner-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
 .banner-title {
   color: var(--ink);
   font-weight: 800;
   text-decoration: none;
+  min-width: 0;
 }
 
 .banner-title[href]:hover {
   text-decoration: underline;
+}
+
+.banner-detail {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .banner-preview {

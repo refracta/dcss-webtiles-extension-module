@@ -58,6 +58,7 @@ export const BANNER_DEFINITIONS = [
     id: "donator",
     title: "Donator",
     url: BANNER_URLS.donation,
+    detail: createDonationDetail(0),
     usernameStyle: { id: "donator", data: { donation: 0 } }
   },
   {
@@ -165,8 +166,9 @@ function createPseudoDonatorBanner(index, amount) {
   const donation = Math.max(0, Math.floor(Number(amount) || 0));
   return {
     id: `pseudo-donator-${index}`,
-    title: `Pseudo Donator ${index} (${donation.toLocaleString("en-US")} KRW)`,
+    title: `Pseudo Donator ${index}`,
     url: BANNER_URLS.donation,
+    detail: createDonationDetail(donation),
     usernameStyle: {
       id: "donator",
       data: { donation }
@@ -178,12 +180,20 @@ export function createDonatorBanner(amount) {
   const donation = Math.max(0, Math.floor(Number(amount) || 0));
   return {
     id: "donator",
-    title: `Donator (${donation.toLocaleString("en-US")} KRW)`,
+    title: "Donator",
     url: BANNER_URLS.donation,
+    detail: createDonationDetail(donation),
     usernameStyle: {
       id: "donator",
       data: { donation }
     }
+  };
+}
+
+function createDonationDetail(donation) {
+  return {
+    label: "This month",
+    value: `${donation.toLocaleString("en-US")} KRW`
   };
 }
 

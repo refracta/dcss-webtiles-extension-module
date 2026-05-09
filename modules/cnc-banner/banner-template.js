@@ -240,7 +240,8 @@ export default class BannerTemplate {
 
     getUserLinks(locale, currentUser) {
         const encodedUser = encodeURIComponent(currentUser);
-        const profileLink = `<a href="${PROFILES_URL}/" onclick="return DWEM.Modules.CNCBanner.openProfilesWithToken(event)" title="CNC Profiles">${escapeHtml(currentUser)}</a>`;
+        const profilePath = `/${encodedUser}`;
+        const profileLink = `<a href="${PROFILES_URL}${profilePath}" onclick="return DWEM.Modules.CNCBanner.openProfilesWithToken(event, ${escapeHtml(JSON.stringify(profilePath))})" oncontextmenu="return DWEM.Modules.CNCBanner.openUserInfo(event, ${escapeHtml(JSON.stringify(currentUser))})" title="CNC Profiles">${this.getStyledUsername(currentUser)}</a>`;
         const links = `<a href="https://archive.nemelex.cards/morgue/${encodedUser}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${encodedUser}/">ttyrecs</a> <a href="https://archive.nemelex.cards/rcfiles/?user=${encodedUser}">rcfiles</a>`;
         const message = locale === 'ko'
             ? `안녕하세요, ${profileLink}! <br>여기서 기록을 확인할 수 있습니다: ${links}`
@@ -253,6 +254,13 @@ export default class BannerTemplate {
             DWEM.Modules.CNCBanner.colorizeText();
         </script>
         `;
+    }
+
+    getStyledUsername(username) {
+        const userinfo = globalThis.DWEM?.Modules?.CNCUserinfo;
+        return userinfo?.applyStyledUsername
+            ? userinfo.applyStyledUsername(username)
+            : escapeHtml(username);
     }
 
     getAprilFoolsEnglishUserLinks(currentUser) {

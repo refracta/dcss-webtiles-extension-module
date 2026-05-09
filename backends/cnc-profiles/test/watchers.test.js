@@ -22,7 +22,13 @@ test("donation watcher creates and removes conditional donor banners", async () 
   });
 
   assert.equal(await watcher.syncDonation(), true);
-  assert.equal(database.getProfile("donoruser").banners.donator.usernameStyle.data.donation, 30000);
+  const donorBanner = database.getProfile("donoruser").banners.donator;
+  assert.equal(donorBanner.title, "Donator");
+  assert.deepEqual(donorBanner.detail, {
+    label: "This month",
+    value: "30,000 KRW"
+  });
+  assert.equal(donorBanner.usernameStyle.data.donation, 30000);
   assert.equal(database.getProfile("DonorUser").currentBannerId, "donator");
 
   const emptyWatcher = new WatcherService({

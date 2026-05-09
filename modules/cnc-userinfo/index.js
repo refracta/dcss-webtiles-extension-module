@@ -94,7 +94,7 @@ class UserDropdown extends HTMLDivElement {
         const profile = DWEM.Modules.CNCUserinfo.getProfile(realUsername);
         const currentBanner = profile?.currentBanner;
         const titleDiv = currentBanner
-            ? `<div style="font-style: italic; font-size: 0.9em; margin-top: -4px; margin-bottom: 4px;"><a href="${DWEM.Modules.CNCUserinfo.escapeHtml(currentBanner.url)}" target="_blank">${DWEM.Modules.CNCUserinfo.escapeHtml(currentBanner.title)}</a></div>`
+            ? DWEM.Modules.CNCUserinfo.createBannerTitleDiv(currentBanner)
             : '';
 
         this.dropdownContent.innerHTML = `
@@ -276,6 +276,16 @@ export default class CNCUserinfo {
         }
 
         return this.escapeHtml(username);
+    }
+
+    createBannerTitleDiv(banner) {
+        const title = this.escapeHtml(banner.title);
+        const url = this.escapeHtml(banner.url);
+        const detail = banner.detail?.value
+            ? `<span style="margin-left: 12px; color: #d6c895; white-space: nowrap;">${banner.detail.label ? `${this.escapeHtml(banner.detail.label)}: ` : ''}${this.escapeHtml(banner.detail.value)}</span>`
+            : '';
+
+        return `<div style="display: flex; justify-content: space-between; gap: 12px; align-items: baseline; font-style: italic; font-size: 0.9em; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank">${title}</a>${detail}</div>`;
     }
 
     getNemelexColors(colors) {
@@ -603,5 +613,6 @@ export default class CNCUserinfo {
         CNCUserinfo.preloadProfiles = this.preloadProfiles.bind(this);
         CNCUserinfo.getProfile = this.getProfile.bind(this);
         CNCUserinfo.escapeHtml = this.escapeHtml.bind(this);
+        CNCUserinfo.createBannerTitleDiv = this.createBannerTitleDiv.bind(this);
     }
 }

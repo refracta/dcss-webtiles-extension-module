@@ -41,7 +41,11 @@ test("seeds initial profiles preserving username casing", async () => {
   }
   for (const [index, amount] of PSEUDO_DONATOR_AMOUNTS.entries()) {
     const banner = adminProfile.banners[`pseudo-donator-${index + 1}`];
-    assert.equal(banner.title, `Pseudo Donator ${index + 1} (${amount.toLocaleString("en-US")} KRW)`);
+    assert.equal(banner.title, `Pseudo Donator ${index + 1}`);
+    assert.deepEqual(banner.detail, {
+      label: "This month",
+      value: `${amount.toLocaleString("en-US")} KRW`
+    });
     assert.equal(banner.usernameStyle.id, "donator");
     assert.equal(banner.usernameStyle.data.donation, amount);
   }

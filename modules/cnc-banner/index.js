@@ -35,7 +35,7 @@ const PROFILES_TOKEN_LOGIN_URL = `${PROFILES_URL}/session/cnc-token`;
 export default class CNCBanner {
     static name = 'CNCBanner';
     static version = '1.0';
-    static dependencies = ['IOHook', 'SiteInformation', 'ModuleManager', 'WebSocketFactory', 'WTRec'];
+    static dependencies = ['IOHook', 'SiteInformation', 'ModuleManager', 'WebSocketFactory', 'WTRec', 'CNCUserinfo'];
     static description = 'This module sets the banner for the CNC server.';
 
     constructor() {
@@ -106,20 +106,21 @@ export default class CNCBanner {
         newWindow.document.write(`<!DOCTYPE html><html><head><title>RC Links</title></head><body><pre>${RC_LINKS}</pre></body></html>`);
     }
 
-    openProfilesWithToken(event) {
+    openProfilesWithToken(event, next = '/') {
         event?.preventDefault?.();
         this.installProfilesTokenListener();
+        const nextPath = this.getSafeProfilesPath(next);
 
         const loginCookie = DWEM.Modules.WebSocketFactory?.get_login_cookie?.();
         if (!loginCookie) {
-            window.open(PROFILES_URL, '_blank');
+            window.open(`${PROFILES_URL}${nextPath}`, '_blank');
             return false;
         }
 
         const windowName = `cnc_profiles_${Date.now()}`;
         const popup = window.open('', windowName);
         if (!popup) {
-            window.open(PROFILES_URL, '_blank');
+            window.open(`${PROFILES_URL}${nextPath}`, '_blank');
             return false;
         }
 
@@ -131,12 +132,30 @@ export default class CNCBanner {
 
         this.appendHiddenField(form, 'token', loginCookie);
         this.appendHiddenField(form, 'openerOrigin', window.location.origin);
-        this.appendHiddenField(form, 'next', '/');
+        this.appendHiddenField(form, 'next', nextPath);
 
         document.body.append(form);
         form.submit();
         form.remove();
         return false;
+    }
+
+    openUserInfo(event, username) {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        const cleanUsername = String(username || '').trim();
+        if (cleanUsername) {
+            DWEM.Modules.CNCUserinfo?.open?.(cleanUsername, event);
+        }
+        return false;
+    }
+
+    getSafeProfilesPath(value) {
+        const path = String(value || '/');
+        if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\')) {
+            return '/';
+        }
+        return path;
     }
 
     appendHiddenField(form, name, value) {

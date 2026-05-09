@@ -156,15 +156,13 @@ function createBannerButton(profile, banner) {
   button.dataset.active = String(profile.currentBannerId === banner.id);
   button.addEventListener("click", () => selectBanner(banner.id));
 
-  const title = document.createElement("span");
-  title.className = "banner-title";
-  title.textContent = banner.title;
+  const titleRow = createBannerTitleRow(banner);
 
   const preview = document.createElement("span");
   preview.className = "banner-preview";
   preview.innerHTML = renderStyledUsername(profile.username, banner.usernameStyle);
 
-  button.append(title, preview);
+  button.append(titleRow, preview);
   return button;
 }
 
@@ -173,21 +171,38 @@ function createPublicBannerCard(profile, banner) {
   card.className = "banner-card";
   card.dataset.active = String(profile.currentBannerId === banner.id);
 
-  const title = banner.url ? document.createElement("a") : document.createElement("span");
-  title.className = "banner-title";
-  title.textContent = banner.title;
-  if (banner.url) {
-    title.href = banner.url;
-    title.target = "_blank";
-    title.rel = "noopener noreferrer";
-  }
+  const titleRow = createBannerTitleRow(banner, { linkTitle: true });
 
   const preview = document.createElement("span");
   preview.className = "banner-preview";
   preview.innerHTML = renderStyledUsername(profile.username, banner.usernameStyle);
 
-  card.append(title, preview);
+  card.append(titleRow, preview);
   return card;
+}
+
+function createBannerTitleRow(banner, { linkTitle = false } = {}) {
+  const row = document.createElement("span");
+  row.className = "banner-title-row";
+
+  const title = linkTitle && banner.url ? document.createElement("a") : document.createElement("span");
+  title.className = "banner-title";
+  title.textContent = banner.title;
+  if (linkTitle && banner.url) {
+    title.href = banner.url;
+    title.target = "_blank";
+    title.rel = "noopener noreferrer";
+  }
+  row.append(title);
+
+  if (banner.detail?.value) {
+    const detail = document.createElement("span");
+    detail.className = "banner-detail";
+    detail.textContent = `${banner.detail.label ? `${banner.detail.label}: ` : ""}${banner.detail.value}`;
+    row.append(detail);
+  }
+
+  return row;
 }
 
 function renderStyledUsername(username, usernameStyle) {
