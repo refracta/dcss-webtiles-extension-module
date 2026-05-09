@@ -8,6 +8,8 @@ export const BANNER_URLS = {
 };
 
 export const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
+export const PSEUDO_CNC_RANKS = [1, 2, 3];
+export const PSEUDO_DONATOR_AMOUNTS = [20000, 40000, 60000, 80000, 100000];
 
 export const BANNER_DEFINITIONS = [
   {
@@ -69,7 +71,15 @@ export const BANNER_DEFINITIONS = [
     title: "Bot",
     url: BANNER_URLS.profiles,
     usernameStyle: { id: "bot", data: { prefix: "🤖" } }
-  }
+  },
+  ...PSEUDO_CNC_RANKS.map((rank) => createPseudoCncBanner(rank)),
+  ...PSEUDO_DONATOR_AMOUNTS.map((amount, index) => createPseudoDonatorBanner(index + 1, amount))
+];
+
+const ASCII_PHILIA_ADMIN_BANNER_IDS = [
+  "bot",
+  ...PSEUDO_CNC_RANKS.map((rank) => `pseudo-cnc-${rank}`),
+  ...PSEUDO_DONATOR_AMOUNTS.map((_, index) => `pseudo-donator-${index + 1}`)
 ];
 
 export const INITIAL_PROFILES = [
@@ -112,7 +122,11 @@ export const INITIAL_PROFILES = [
   {
     username: "wtrec",
     banner: getBannerDefinition("bot")
-  }
+  },
+  ...ASCII_PHILIA_ADMIN_BANNER_IDS.map((id) => ({
+    username: "ASCIIPhilia",
+    banner: getBannerDefinition(id)
+  }))
 ];
 
 export function getBannerDefinition(id) {
@@ -127,6 +141,35 @@ function createNemelexUsernameStyle(split, time = 60) {
       split,
       time,
       colors: [...NEMELEX_COLORS]
+    }
+  };
+}
+
+function createPseudoCncBanner(rank) {
+  return {
+    id: `pseudo-cnc-${rank}`,
+    title: getPseudoCncTitle(rank),
+    url: BANNER_URLS.tournamentResults,
+    usernameStyle: createNemelexUsernameStyle(rank)
+  };
+}
+
+function getPseudoCncTitle(rank) {
+  if (rank === 1) return "Pseudo CNC Champion";
+  if (rank === 2) return "Pseudo CNC Runner-up";
+  if (rank === 3) return "Pseudo CNC Third Place";
+  return `Pseudo CNC Rank ${rank}`;
+}
+
+function createPseudoDonatorBanner(index, amount) {
+  const donation = Math.max(0, Math.floor(Number(amount) || 0));
+  return {
+    id: `pseudo-donator-${index}`,
+    title: `Pseudo Donator ${index} (${donation.toLocaleString("en-US")} KRW)`,
+    url: BANNER_URLS.donation,
+    usernameStyle: {
+      id: "donator",
+      data: { donation }
     }
   };
 }

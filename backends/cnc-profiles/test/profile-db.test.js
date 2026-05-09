@@ -6,6 +6,8 @@ import test from "node:test";
 import { ProfileDatabase } from "../src/db/profile-db.js";
 import {
   NEMELEX_COLORS,
+  PSEUDO_CNC_RANKS,
+  PSEUDO_DONATOR_AMOUNTS,
   createDonatorBanner,
   getBannerDefinition
 } from "../src/domain/banners.js";
@@ -25,6 +27,24 @@ test("seeds initial profiles preserving username casing", async () => {
   assert.equal(botProfile.banners.bot.title, "Bot");
   assert.equal(botProfile.banners.bot.usernameStyle.id, "bot");
   assert.equal(botProfile.banners.bot.usernameStyle.data.prefix, "🤖");
+
+  const adminProfile = database.getProfile("asciiphilia");
+  assert.equal(adminProfile.username, "ASCIIPhilia");
+  assert.equal(adminProfile.currentBannerId, "bot");
+  assert.equal(adminProfile.banners.bot.usernameStyle.id, "bot");
+  for (const rank of PSEUDO_CNC_RANKS) {
+    const banner = adminProfile.banners[`pseudo-cnc-${rank}`];
+    assert.equal(banner.title, getPseudoCncTitle(rank));
+    assert.equal(banner.usernameStyle.id, "nemelex");
+    assert.equal(banner.usernameStyle.data.split, rank);
+    assert.deepEqual(banner.usernameStyle.data.colors, NEMELEX_COLORS);
+  }
+  for (const [index, amount] of PSEUDO_DONATOR_AMOUNTS.entries()) {
+    const banner = adminProfile.banners[`pseudo-donator-${index + 1}`];
+    assert.equal(banner.title, `Pseudo Donator ${index + 1} (${amount.toLocaleString("en-US")} KRW)`);
+    assert.equal(banner.usernameStyle.id, "donator");
+    assert.equal(banner.usernameStyle.data.donation, amount);
+  }
 });
 
 test("manual none selection blocks auto equip", async () => {
@@ -82,4 +102,11 @@ async function createDatabase() {
   const database = new ProfileDatabase(path.join(dir, "profiles.json"));
   await database.init();
   return database;
+}
+
+function getPseudoCncTitle(rank) {
+  if (rank === 1) return "Pseudo CNC Champion";
+  if (rank === 2) return "Pseudo CNC Runner-up";
+  if (rank === 3) return "Pseudo CNC Third Place";
+  return `Pseudo CNC Rank ${rank}`;
 }
