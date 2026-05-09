@@ -307,20 +307,17 @@ function createEntityCard(entity, type, scope) {
   const title = document.createElement("div");
   title.className = type === "item" ? "entity-title item-title" : "entity-title";
   if (type === "item") {
-    const swatch = document.createElement("span");
-    swatch.className = "item-swatch";
-    swatch.style.backgroundColor = isSafeCssColor(entity.color) ? entity.color : "#687066";
-
     const text = document.createElement("span");
     text.textContent = entity.item || `Item #${entity.number}`;
-    title.append(swatch, text);
+    text.style.color = isSafeCssColor(entity.color) ? entity.color : "#20231f";
+    title.append(text);
   } else {
     title.textContent = `Game #${entity.number}`;
   }
 
   const media = document.createElement("a");
   media.className = "entity-media";
-  media.href = type === "game" ? entity.file : (entity.url || entity.file);
+  media.href = entity.file;
   media.target = "_blank";
   media.rel = "noopener noreferrer";
   if (type === "game") {
@@ -328,6 +325,12 @@ function createEntityCard(entity, type, scope) {
     media.addEventListener("click", (event) => {
       event.preventDefault();
       openImagePopup(entity.file, getEntityDownloadName(entity, type));
+    });
+  } else if (type === "item") {
+    media.download = getEntityDownloadName(entity, type);
+    media.addEventListener("click", (event) => {
+      event.preventDefault();
+      downloadImage(entity.file, getEntityDownloadName(entity, type));
     });
   }
 
@@ -402,6 +405,27 @@ function openImagePopup(url, filename) {
   image.onerror = () => {
     popup.location.href = url;
   };
+}
+
+async function downloadImage(url, filename) {
+  try {
+    const response = await fetch(url, { mode: "cors" });
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = filename || "image.png";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  } catch (error) {
+    window.open(url, "_blank");
+  }
 }
 
 function renderPager(scope, type) {
