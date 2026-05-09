@@ -8,6 +8,7 @@ import {
   NEMELEX_COLORS,
   PSEUDO_CNC_RANKS,
   PSEUDO_DONATOR_AMOUNTS,
+  PSEUDO_TRANSLATOR_SCORES,
   createDonatorBanner,
   getBannerDefinition
 } from "../src/domain/banners.js";
@@ -51,9 +52,17 @@ test("seeds initial profiles preserving username casing", async () => {
     assert.equal(banner.usernameStyle.id, "donator");
     assert.equal(banner.usernameStyle.data.donation, amount);
   }
-  assert.equal(exampleProfile.banners.translator.title, "Translation Contributor (5,000)");
-  assert.equal(exampleProfile.banners.translator.usernameStyle.id, "translator");
-  assert.equal(exampleProfile.banners.translator.usernameStyle.data.intensity, 1);
+  assert.equal(exampleProfile.banners.translator, undefined);
+  for (const score of PSEUDO_TRANSLATOR_SCORES) {
+    const banner = exampleProfile.banners[`pseudo-translator-${score}`];
+    assert.equal(banner.title, `Pseudo Translation Example (${score.toLocaleString("en-US")})`);
+    assert.equal(banner.usernameStyle.id, "translator");
+    assert.equal(banner.usernameStyle.data.score, score);
+  }
+  assert.deepEqual(
+    PSEUDO_TRANSLATOR_SCORES.map((score) => exampleProfile.banners[`pseudo-translator-${score}`].usernameStyle.data.intensity),
+    [0, 0.5, 1]
+  );
   assert.deepEqual(
     [
       exampleProfile.banners["example-ranking-rank-1"].usernameStyle.data.badge,
@@ -64,6 +73,24 @@ test("seeds initial profiles preserving username casing", async () => {
       exampleProfile.banners["example-ranking-rank-51-100"].usernameStyle.data.badge
     ],
     ["👑", "🏆", "🥇", "💎", "🌟", "⭐"]
+  );
+  assert.deepEqual(
+    [
+      exampleProfile.banners["example-ranking-rank-1"].title,
+      exampleProfile.banners["example-ranking-rank-2-3"].title,
+      exampleProfile.banners["example-ranking-rank-4-10"].title,
+      exampleProfile.banners["example-ranking-rank-11-25"].title,
+      exampleProfile.banners["example-ranking-rank-26-50"].title,
+      exampleProfile.banners["example-ranking-rank-51-100"].title
+    ],
+    [
+      "Server Ranking #1 Badge Example",
+      "Server Ranking #2-3 Badge Example",
+      "Server Ranking #4-10 Badge Example",
+      "Server Ranking #11-25 Badge Example",
+      "Server Ranking #26-50 Badge Example",
+      "Server Ranking #51-100 Badge Example"
+    ]
   );
 });
 

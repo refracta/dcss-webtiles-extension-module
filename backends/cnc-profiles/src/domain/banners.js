@@ -12,13 +12,14 @@ export const BANNER_URLS = {
 export const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
 export const PSEUDO_CNC_RANKS = [1, 2, 3];
 export const PSEUDO_DONATOR_AMOUNTS = [20000, 40000, 60000, 80000, 100000];
+export const PSEUDO_TRANSLATOR_SCORES = [500, 2750, 5000];
 const RANKING_EXAMPLES = [
-  { id: "rank-1", title: "Trunk Game Ranking #1", rank: 1, serverRank: 1, score: 50000000 },
-  { id: "rank-2-3", title: "Trunk Game Ranking #2-3", rank: 2, serverRank: 2, score: 45000000 },
-  { id: "rank-4-10", title: "Trunk Game Ranking #4-10", rank: 4, serverRank: 4, score: 40000000 },
-  { id: "rank-11-25", title: "Trunk Game Ranking #11-25", rank: 11, serverRank: 11, score: 35000000 },
-  { id: "rank-26-50", title: "Trunk Game Ranking #26-50", rank: 26, serverRank: 26, score: 30000000 },
-  { id: "rank-51-100", title: "Trunk Game Ranking #51-100", rank: 51, serverRank: 51, score: 25000000 }
+  { id: "rank-1", title: "Server Ranking #1 Badge Example", rank: 1, serverRank: 1, score: 50000000 },
+  { id: "rank-2-3", title: "Server Ranking #2-3 Badge Example", rank: 2, serverRank: 2, score: 45000000 },
+  { id: "rank-4-10", title: "Server Ranking #4-10 Badge Example", rank: 4, serverRank: 4, score: 40000000 },
+  { id: "rank-11-25", title: "Server Ranking #11-25 Badge Example", rank: 11, serverRank: 11, score: 35000000 },
+  { id: "rank-26-50", title: "Server Ranking #26-50 Badge Example", rank: 26, serverRank: 26, score: 30000000 },
+  { id: "rank-51-100", title: "Server Ranking #51-100 Badge Example", rank: 51, serverRank: 51, score: 25000000 }
 ];
 
 export const BANNER_DEFINITIONS = [
@@ -101,7 +102,7 @@ const BANNER_EXAMPLE_BANNER_IDS = [
 
 const BANNER_EXAMPLE_BANNERS = [
   ...BANNER_EXAMPLE_BANNER_IDS.map((id) => getBannerDefinition(id)),
-  createTranslatorBanner(5000),
+  ...PSEUDO_TRANSLATOR_SCORES.map((score) => createPseudoTranslatorBanner(score)),
   ...RANKING_EXAMPLES.map((example) => createRankingExampleBanner(example))
 ].filter(Boolean);
 
@@ -195,6 +196,15 @@ function createPseudoDonatorBanner(index, amount) {
       id: "donator",
       data: { donation }
     }
+  };
+}
+
+function createPseudoTranslatorBanner(score) {
+  const banner = createTranslatorBanner(score);
+  return {
+    ...banner,
+    id: `pseudo-translator-${score}`,
+    title: `Pseudo Translation Example (${score.toLocaleString("en-US")})`
   };
 }
 
