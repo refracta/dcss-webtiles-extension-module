@@ -10,6 +10,8 @@ from .views_build import serve_build
 
 urlpatterns = [
     path("", lambda r: redirect("admin:index")),
+    path("statistics", core_views.user_activity_statistics, name="statistics-json"),
+    path("statistics/", core_views.user_activity_statistics, name="statistics-json-slash"),
     path("user-statistics/", core_views.user_activity_report, name="user-statistics"),
 
     path("admin/", admin.site.urls),

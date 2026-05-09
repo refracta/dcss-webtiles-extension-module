@@ -6,7 +6,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 import graphviz
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.urls import reverse
 from django.contrib.admin.views.decorators import staff_member_required
 from django.conf import settings
@@ -43,32 +43,40 @@ from django.urls import reverse
 
 User = get_user_model()
 
-@staff_member_required
-def user_activity_report(request):
-    # ① 최근 90 일만 보려면 filter(action_time__gte=…)
+def build_user_activity_statistics():
     logs = LogEntry.objects.filter(
         action_flag__in=[ADDITION, CHANGE, DELETION]
     ).values_list("user_id", "action_flag")
 
-    # ② Counter( (user_id, flag) )
-    add_cnt   = Counter(uid for uid, flag in logs if flag == ADDITION)
-    edit_cnt  = Counter(uid for uid, flag in logs if flag == CHANGE)
-    delete_cnt  = Counter(uid for uid, flag in logs if flag == DELETION)
+    add_cnt = Counter(uid for uid, flag in logs if flag == ADDITION)
+    edit_cnt = Counter(uid for uid, flag in logs if flag == CHANGE)
+    delete_cnt = Counter(uid for uid, flag in logs if flag == DELETION)
 
-    # ③ 모든 유저 id 집합
-    user_ids  = add_cnt.keys() | edit_cnt.keys()
-    users     = {u.pk: u for u in User.objects.filter(id__in=user_ids)}
+    user_ids = add_cnt.keys() | edit_cnt.keys() | delete_cnt.keys()
+    users = {u.pk: u for u in User.objects.filter(id__in=user_ids)}
+    active_user_ids = [uid for uid in user_ids if uid in users]
 
-    # ④ HTML 테이블 렌더
+    return [
+        {
+            "username": users[uid].username,
+            "created": add_cnt.get(uid, 0),
+            "edited": edit_cnt.get(uid, 0),
+            "deleted": delete_cnt.get(uid, 0),
+        }
+        for uid in sorted(active_user_ids, key=lambda x: users[x].username.lower())
+    ]
+
+
+@staff_member_required
+def user_activity_report(request):
     rows = []
-    for uid in sorted(user_ids, key=lambda x: users[x].username.lower()):
-        u = users[uid]
+    for row in build_user_activity_statistics():
         rows.append(
             f"<tr>"
-            f"<td>{u.username}</td>"
-            f"<td style='text-align:right;'>{add_cnt.get(uid,0):,}</td>"
-            f"<td style='text-align:right;'>{edit_cnt.get(uid,0):,}</td>"
-            f"<td style='text-align:right;'>{delete_cnt.get(uid,0):,}</td>"
+            f"<td>{row['username']}</td>"
+            f"<td style='text-align:right;'>{row['created']:,}</td>"
+            f"<td style='text-align:right;'>{row['edited']:,}</td>"
+            f"<td style='text-align:right;'>{row['deleted']:,}</td>"
             f"</tr>"
         )
 
@@ -82,6 +90,13 @@ def user_activity_report(request):
             f"<p><a href='#' onclick='history.back();return false;' >← Back</a></p>"
     )
     return HttpResponse(html)
+
+
+def user_activity_statistics(request):
+    return JsonResponse({
+        "period": "all_time",
+        "users": build_user_activity_statistics(),
+    })
 
 # ─────────────────────────────────────────────────────────
 # 1) matcher 파일 목록 페이지  /builds/

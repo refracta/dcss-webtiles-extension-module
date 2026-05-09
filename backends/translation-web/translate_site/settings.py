@@ -59,6 +59,7 @@ ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     "jazzmin",
+    "corsheaders",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -195,5 +196,5 @@ JAZZMIN_SETTINGS = {
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_METHODS = ["GET", "OPTIONS", "HEAD"]
 
-# ② build/ 경로만 CORS 헤더를 달고 싶다면:
-CORS_URLS_REGEX = r"^/build/.*$"
+# ② build/와 공개 statistics JSON 경로에 CORS 헤더 적용
+CORS_URLS_REGEX = r"^/(build/.*|statistics/?$)"
