@@ -285,11 +285,15 @@ export default class CNCUserinfo {
     createBannerTitleDiv(banner) {
         const title = this.escapeHtml(banner.title);
         const url = this.escapeHtml(banner.url);
+        const isCompactRanking = banner.id === 'ranking';
+        const fontSize = isCompactRanking ? '0.82em' : '0.9em';
+        const lineHeight = isCompactRanking ? '1.15' : 'normal';
+        const titleStyle = isCompactRanking ? ' style="white-space: nowrap;"' : '';
         const detail = this.getBannerDetailLines(banner.detail)
             .map((line) => `<span style="display: block; color: #d6c895; white-space: nowrap;">${this.escapeHtml(line)}</span>`)
             .join('');
 
-        return `<div style="font-style: italic; font-size: 0.9em; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank">${title}</a>${detail}</div>`;
+        return `<div style="font-style: italic; font-size: ${fontSize}; line-height: ${lineHeight}; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank"${titleStyle}>${title}</a>${detail}</div>`;
     }
 
     getBannerDetailLines(detail) {
