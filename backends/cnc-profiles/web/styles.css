@@ -325,19 +325,22 @@ input:focus {
   flex-wrap: wrap;
   gap: 0;
   min-width: 0;
-  border: 1px solid transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
+  background: #161817;
+  color: #f0eee8;
   padding: 3px 6px;
 }
 
 .item-chat-row:hover {
-  border-color: rgba(216, 210, 197, 0.75);
-  background: rgba(255, 255, 255, 0.56);
+  border-color: rgba(255, 255, 255, 0.16);
+  background: #1d201f;
 }
 
-.chat-sender {
-  color: var(--accent-strong);
-  font-weight: 900;
+.item-chat-time {
+  color: #aab1aa;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .chat-message {
@@ -369,13 +372,6 @@ input:focus {
   margin-left: 0.5em;
   font-weight: 800;
   overflow-wrap: anywhere;
-}
-
-.item-chat-meta {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  margin-left: 9px;
 }
 
 .pager {

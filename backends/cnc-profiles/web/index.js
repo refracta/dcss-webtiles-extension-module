@@ -281,16 +281,13 @@ function createEntityCard(entity, type, scope) {
   return document.createElement("article");
 }
 
-function createItemEntityCard(entity, scope) {
-  const profile = scope === "private" ? state.profile : state.publicProfile;
-  const username = entity.user || profile?.username || "";
-
+function createItemEntityCard(entity) {
   const card = document.createElement("article");
   card.className = "item-chat-row";
 
-  const author = document.createElement("span");
-  author.className = "chat-sender";
-  author.innerHTML = `${renderStyledUsername(username, profile?.currentBanner?.usernameStyle)}'s Item`;
+  const time = document.createElement("span");
+  time.className = "item-chat-time";
+  time.textContent = formatDate(entity.timestamp);
 
   const separator = document.createTextNode(": ");
   const message = document.createElement("span");
@@ -318,12 +315,8 @@ function createItemEntityCard(entity, scope) {
   item.style.color = isSafeCssColor(entity.color) ? entity.color : "#20231f";
   item.textContent = entity.item || `Item #${entity.number}`;
 
-  const meta = document.createElement("span");
-  meta.className = "item-chat-meta";
-  meta.textContent = formatDate(entity.timestamp);
-
   message.append(media, item);
-  card.append(author, separator, message, meta);
+  card.append(time, separator, message);
   return card;
 }
 
