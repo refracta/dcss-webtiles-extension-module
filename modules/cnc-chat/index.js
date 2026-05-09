@@ -91,7 +91,11 @@ export default class CNCChat {
         parse: (content) => {
             const container = document.createElement('div');
             container.innerHTML = content;
-            const sender = container.querySelector('.chat_sender')?.textContent;
+            const senderElement = container.querySelector('.chat_sender');
+            const profileElement = senderElement?.querySelector('[data-cnc-profile-username]');
+            const sender = senderElement?.getAttribute('data-cnc-username') ||
+                profileElement?.getAttribute('data-cnc-profile-username') ||
+                senderElement?.textContent;
             const message = container.querySelector('.chat_msg')?.textContent;
             let json;
             try {
@@ -482,7 +486,13 @@ export default class CNCChat {
                     var msg = $("<div>").append(data.content);
                     var sender = msg.find('.chat_sender');
                     if (sender.text() !== '') {
-                        sender.html(DWEM.Modules.CNCUserinfo.applyStyledUsername(sender.text()))
+                        var username = DWEM.Modules.CNCUserinfo.normalizeUsername(sender.text());
+                        if (username !== '') {
+                            sender.attr('data-cnc-username', username);
+                            sender.attr('onclick', 'DWEM.Modules.CNCUserinfo.openFromElement(this, event);');
+                            sender.attr('oncontextmenu', 'DWEM.Modules.CNCUserinfo.openFromElement(this, event);');
+                            sender.html(DWEM.Modules.CNCUserinfo.applyStyledUsername(username));
+                        }
                     }
                     msg.find(".chat_msg").html(linkify(msg.find(".chat_msg").text()));
                     $("#chat_history").append(msg.html() + "<br>");
@@ -701,12 +711,16 @@ export default class CNCChat {
                         if (data.type === 'game' || data.type === 'menu') {
                             const container = document.createElement('div');
                             const senderSpan = document.createElement('span');
+                            const cleanSender = DWEM.Modules.CNCUserinfo.normalizeUsername(sender);
                             senderSpan.classList.add('chat_sender');
+                            senderSpan.setAttribute('data-cnc-username', cleanSender);
+                            senderSpan.setAttribute('onclick', 'DWEM.Modules.CNCUserinfo.openFromElement(this, event);');
+                            senderSpan.setAttribute('oncontextmenu', 'DWEM.Modules.CNCUserinfo.openFromElement(this, event);');
                             // PROJECT_A: Apply styled username
                             if (DWEM.Modules.CNCUserinfo) {
-                                senderSpan.innerHTML = `${DWEM.Modules.CNCUserinfo.applyStyledUsername(sender)}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
+                                senderSpan.innerHTML = `${DWEM.Modules.CNCUserinfo.applyStyledUsername(cleanSender)}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
                             } else {
-                                senderSpan.textContent = `${sender}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
+                                senderSpan.textContent = `${cleanSender}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
                             }
                             let messageSpan = document.createElement('span');
                             messageSpan.classList.add('chat_msg');
@@ -719,12 +733,16 @@ export default class CNCChat {
                         } else if (data.type === 'item') {
                             const container = document.createElement('div');
                             const senderSpan = document.createElement('span');
+                            const cleanSender = DWEM.Modules.CNCUserinfo.normalizeUsername(sender);
                             senderSpan.classList.add('chat_sender');
+                            senderSpan.setAttribute('data-cnc-username', cleanSender);
+                            senderSpan.setAttribute('onclick', 'DWEM.Modules.CNCUserinfo.openFromElement(this, event);');
+                            senderSpan.setAttribute('oncontextmenu', 'DWEM.Modules.CNCUserinfo.openFromElement(this, event);');
                             // PROJECT_A: Apply styled username
                             if (DWEM.Modules.CNCUserinfo) {
-                                senderSpan.innerHTML = `${DWEM.Modules.CNCUserinfo.applyStyledUsername(sender)}'s Item`;
+                                senderSpan.innerHTML = `${DWEM.Modules.CNCUserinfo.applyStyledUsername(cleanSender)}'s Item`;
                             } else {
-                                senderSpan.textContent = `${sender}'s Item`;
+                                senderSpan.textContent = `${cleanSender}'s Item`;
                             }
                             let messageSpan = document.createElement('span');
                             messageSpan.classList.add('chat_msg');

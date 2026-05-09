@@ -89,8 +89,9 @@ class UserDropdown extends HTMLDivElement {
     open(username, x, y) {
         this.style.visibility = 'hidden';
         this.dropdownContent.style.display = 'block';
-        const isAdmin = username.includes(' (admin)');
-        const realUsername = username.replaceAll(' (admin)', '');
+        const normalizedUsername = DWEM.Modules.CNCUserinfo.normalizeUsername(username);
+        const isAdmin = String(username || '').includes(' (admin)');
+        const realUsername = normalizedUsername;
         const lowerUsername = realUsername.toLowerCase();
         const profileUrl = `https://profiles.nemelex.cards/${encodeURIComponent(realUsername)}`;
         const profile = DWEM.Modules.CNCUserinfo.getProfile(realUsername);
@@ -164,11 +165,32 @@ export default class CNCUserinfo {
     static PROFILE_API_BASE = 'https://profiles.nemelex.cards';
 
     open(username, event) {
+        const cleanUsername = this.normalizeUsername(username);
+        if (!cleanUsername) return;
+
         const x = Number.isFinite(event?.clientX) ? event.clientX : (Number.isFinite(event?.pageX) ? event.pageX - window.scrollX : 0);
         const y = Number.isFinite(event?.clientY) ? event.clientY : (Number.isFinite(event?.pageY) ? event.pageY - window.scrollY : 0);
-        this.userDropdown.open(username, x, y);
+        this.trackProfileUsername(cleanUsername);
+        this.userDropdown.open(cleanUsername, x, y);
         event?.preventDefault?.();
         event?.stopPropagation?.();
+    }
+
+    openFromElement(element, event) {
+        const username = this.getUsernameFromElement(element || event?.currentTarget || event?.target);
+        this.open(username, event);
+    }
+
+    getUsernameFromElement(element) {
+        if (!element) return '';
+
+        const profileElement = element.querySelector?.('[data-cnc-profile-username]') ||
+            element.closest?.('[data-cnc-profile-username]');
+        return this.normalizeUsername(
+            element.getAttribute?.('data-cnc-username') ||
+            profileElement?.getAttribute('data-cnc-profile-username') ||
+            element.textContent
+        );
     }
 
     async openTournamentPage(username) {
@@ -185,9 +207,11 @@ export default class CNCUserinfo {
             container.innerHTML = data.names;
             const anchors = container.querySelectorAll('a');
             for (const anchor of anchors) {
-                const username = anchor.textContent.replaceAll(' (admin)', '');
-                anchor.href = 'javascript:void(0);'
-                anchor.setAttribute('onclick', `DWEM.Modules.CNCUserinfo.open('${username}', event);`);
+                const username = this.normalizeUsername(anchor.textContent);
+                anchor.href = 'javascript:void(0);';
+                anchor.setAttribute('data-cnc-username', username);
+                anchor.setAttribute('onclick', 'DWEM.Modules.CNCUserinfo.openFromElement(this, event);');
+                anchor.setAttribute('oncontextmenu', 'DWEM.Modules.CNCUserinfo.openFromElement(this, event);');
                 anchor.textContent = username;
                 anchor.removeAttribute('target');
                 anchor.innerHTML = this.applyStyledUsername(username);
@@ -241,7 +265,7 @@ export default class CNCUserinfo {
     applyStyledUsername(username) {
         if (!username) return '';
 
-        const cleanUsername = username.replaceAll(' (admin)', '');
+        const cleanUsername = this.normalizeUsername(username);
         const profile = this.getProfile(cleanUsername);
         const key = this.getProfileKey(cleanUsername);
         this.trackProfileUsername(cleanUsername);
@@ -501,8 +525,12 @@ export default class CNCUserinfo {
             .replaceAll("'", '&#39;');
     }
 
+    normalizeUsername(username) {
+        return String(username || '').replaceAll(' (admin)', '').trim();
+    }
+
     getProfileKey(username) {
-        return String(username || '').trim().toLowerCase();
+        return this.normalizeUsername(username).toLowerCase();
     }
 
     getProfile(username) {
@@ -534,7 +562,7 @@ export default class CNCUserinfo {
         const seen = new Set();
 
         for (const username of usernames || []) {
-            const cleanUsername = String(username || '').replaceAll(' (admin)', '').trim();
+            const cleanUsername = this.normalizeUsername(username);
             const key = this.getProfileKey(cleanUsername);
             if (!key || seen.has(key)) continue;
 
@@ -700,11 +728,7 @@ export default class CNCUserinfo {
             comm.register_handlers({lobby_entry: lobby_entry});
             $(document).on('contextmenu', '#player_list .username a', function (e) {
                 e.preventDefault();
-                const profileElement = this.querySelector('[data-cnc-profile-username]');
-                const username = this.getAttribute('data-cnc-username') ||
-                    (profileElement ? profileElement.getAttribute('data-cnc-profile-username') : '') ||
-                    this.textContent;
-                DWEM.Modules.CNCUserinfo.open(username, e);
+                DWEM.Modules.CNCUserinfo.openFromElement(this, e);
             });
         }
 
@@ -712,6 +736,7 @@ export default class CNCUserinfo {
         SMR.add('client', lobbyEntryMapper);
 
         CNCUserinfo.open = this.open.bind(this);
+        CNCUserinfo.openFromElement = this.openFromElement.bind(this);
 
         // Make instance methods available as static methods for other modules
         CNCUserinfo.createNemelexSpan = this.createNemelexSpan.bind(this);
@@ -719,6 +744,7 @@ export default class CNCUserinfo {
         CNCUserinfo.preloadProfiles = this.preloadProfiles.bind(this);
         CNCUserinfo.getProfile = this.getProfile.bind(this);
         CNCUserinfo.escapeHtml = this.escapeHtml.bind(this);
+        CNCUserinfo.normalizeUsername = this.normalizeUsername.bind(this);
         CNCUserinfo.createBannerTitleDiv = this.createBannerTitleDiv.bind(this);
     }
 }
