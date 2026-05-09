@@ -240,7 +240,7 @@ export default class BannerTemplate {
 
     getUserLinks(locale, currentUser) {
         const encodedUser = encodeURIComponent(currentUser);
-        const profilePath = `/${encodedUser}`;
+        const profilePath = '/';
         const profileLink = `<a href="${PROFILES_URL}${profilePath}" onclick="return DWEM.Modules.CNCBanner.openProfilesWithToken(event, ${escapeHtml(JSON.stringify(profilePath))})" oncontextmenu="return DWEM.Modules.CNCBanner.openUserInfo(event, ${escapeHtml(JSON.stringify(currentUser))})" title="CNC Profiles">${this.getStyledUsername(currentUser)}</a>`;
         const links = `<a href="https://archive.nemelex.cards/morgue/${encodedUser}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${encodedUser}/">ttyrecs</a> <a href="https://archive.nemelex.cards/rcfiles/?user=${encodedUser}">rcfiles</a>`;
         const message = locale === 'ko'
