@@ -2,6 +2,8 @@ const state = {
   profile: null
 };
 
+const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
+
 const elements = {
   loginPanel: document.querySelector("#login-panel"),
   profilePanel: document.querySelector("#profile-panel"),
@@ -138,7 +140,7 @@ function renderStyledUsername(username, usernameStyle) {
 }
 
 function createNemelexSpan(text, data = {}) {
-  const colors = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
+  const colors = getNemelexColors(data.colors);
   const split = Math.max(1, Number(data.split) || 1);
   const time = Number(data.time) || 60;
   const intervalMs = Math.abs(time) * 1000;
@@ -154,6 +156,15 @@ function createNemelexSpan(text, data = {}) {
   return parts.map((part, index) =>
     `<span style="color: ${rotated[index % rotated.length]}">${escapeHtml(part)}</span>`
   ).join("");
+}
+
+function getNemelexColors(colors) {
+  const safeColors = Array.isArray(colors)
+    ? colors
+      .map((color) => String(color || "").trim())
+      .filter((color) => /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(color))
+    : [];
+  return safeColors.length > 0 ? safeColors : NEMELEX_COLORS;
 }
 
 function getDonatorStyle(amount) {

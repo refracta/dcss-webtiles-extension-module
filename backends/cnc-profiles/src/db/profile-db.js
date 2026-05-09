@@ -204,20 +204,32 @@ export class ProfileDatabase {
       if (!seed.banner) continue;
 
       const profile = this.ensureProfile(seed.username, now);
-      if (profile.banners[seed.banner.id]) {
-        continue;
+      const bannerId = seed.banner.id;
+      const nextBanner = cloneBanner(seed.banner);
+      const previousBanner = profile.banners[bannerId];
+      const source = profile.sources[bannerId]?.source;
+      let changed = false;
+
+      if (!previousBanner || !source || source === "seed") {
+        if (JSON.stringify(previousBanner) !== JSON.stringify(nextBanner) || source !== "seed") {
+          profile.banners[bannerId] = nextBanner;
+          profile.sources[bannerId] = {
+            source: "seed",
+            updatedAt: now.toISOString()
+          };
+          changed = true;
+        }
       }
 
-      profile.banners[seed.banner.id] = cloneBanner(seed.banner);
-      profile.sources[seed.banner.id] = {
-        source: "seed",
-        updatedAt: now.toISOString()
-      };
       profile.selectionMode = profile.selectionMode ?? "auto";
       if (!profile.currentBannerId && profile.selectionMode !== "manual") {
-        profile.currentBannerId = seed.banner.id;
+        profile.currentBannerId = bannerId;
+        changed = true;
       }
-      this.touchProfile(profile, now);
+
+      if (changed) {
+        this.touchProfile(profile, now);
+      }
     }
   }
 }

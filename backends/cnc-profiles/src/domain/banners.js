@@ -7,48 +7,50 @@ export const BANNER_URLS = {
   profiles: "https://profiles.nemelex.cards"
 };
 
+export const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
+
 export const BANNER_DEFINITIONS = [
   {
     id: "wizard-account",
     title: "Wizard Account",
     url: BANNER_URLS.tournamentResults,
-    usernameStyle: { id: "nemelex", data: { split: 1, time: 60 } }
+    usernameStyle: createNemelexUsernameStyle(1)
   },
   {
     id: "cnc-1st-anniversary-skill-champion",
     title: "CNC 1st Anniversary Tournament Champion (Skill Category)",
     url: BANNER_URLS.tournamentResults,
-    usernameStyle: { id: "nemelex", data: { split: 1, time: 60 } }
+    usernameStyle: createNemelexUsernameStyle(1)
   },
   {
     id: "cnc-1st-anniversary-skill-2",
     title: "CNC 1st Anniversary Tournament 2nd Place (Skill Category)",
     url: BANNER_URLS.tournamentResults,
-    usernameStyle: { id: "nemelex", data: { split: 2, time: 60 } }
+    usernameStyle: createNemelexUsernameStyle(2)
   },
   {
     id: "cnc-1st-anniversary-skill-3",
     title: "CNC 1st Anniversary Tournament 3rd Place (Skill Category)",
     url: BANNER_URLS.tournamentResults,
-    usernameStyle: { id: "nemelex", data: { split: 3, time: 60 } }
+    usernameStyle: createNemelexUsernameStyle(3)
   },
   {
     id: "cnc-1st-anniversary-ent-champion",
     title: "CNC 1st Anniversary Tournament Champion (Ent Category)",
     url: BANNER_URLS.tournamentResults,
-    usernameStyle: { id: "nemelex", data: { split: 1, time: 60 } }
+    usernameStyle: createNemelexUsernameStyle(1)
   },
   {
     id: "cnc-1st-anniversary-ent-2",
     title: "CNC 1st Anniversary Tournament 2nd Place (Ent Category)",
     url: BANNER_URLS.tournamentResults,
-    usernameStyle: { id: "nemelex", data: { split: 2, time: 60 } }
+    usernameStyle: createNemelexUsernameStyle(2)
   },
   {
     id: "cnc-1st-anniversary-ent-3",
     title: "CNC 1st Anniversary Tournament 3rd Place (Ent Category)",
     url: BANNER_URLS.tournamentResults,
-    usernameStyle: { id: "nemelex", data: { split: 3, time: 60 } }
+    usernameStyle: createNemelexUsernameStyle(3)
   },
   {
     id: "donator",
@@ -116,6 +118,17 @@ export const INITIAL_PROFILES = [
 export function getBannerDefinition(id) {
   const banner = BANNER_DEFINITIONS.find((item) => item.id === id);
   return banner ? cloneBanner(banner) : null;
+}
+
+function createNemelexUsernameStyle(split, time = 60) {
+  return {
+    id: "nemelex",
+    data: {
+      split,
+      time,
+      colors: [...NEMELEX_COLORS]
+    }
+  };
 }
 
 export function createDonatorBanner(amount) {

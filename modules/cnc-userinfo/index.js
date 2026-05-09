@@ -256,7 +256,7 @@ export default class CNCUserinfo {
             const data = usernameStyle.data || {};
             return this.createNemelexSpan(
                 username,
-                CNCUserinfo.NEMELEX_COLORS,
+                this.getNemelexColors(data.colors),
                 data.split || 1,
                 data.time || 60
             );
@@ -275,6 +275,15 @@ export default class CNCUserinfo {
         }
 
         return this.escapeHtml(username);
+    }
+
+    getNemelexColors(colors) {
+        const safeColors = Array.isArray(colors)
+            ? colors
+                .map((color) => String(color || '').trim())
+                .filter((color) => /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(color))
+            : [];
+        return safeColors.length > 0 ? safeColors : CNCUserinfo.NEMELEX_COLORS;
     }
 
     getDonatorStyle(amount) {
