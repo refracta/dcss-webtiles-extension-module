@@ -436,6 +436,12 @@ input:focus {
   height: 1px;
 }
 
+.entity-spacer {
+  grid-column: 1 / -1;
+  min-height: 0;
+  pointer-events: none;
+}
+
 .empty-state {
   border: 1px dashed var(--line);
   border-radius: 8px;

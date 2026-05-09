@@ -11,8 +11,10 @@ const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
 const CHAT_API_BASE = "https://chat.nemelex.cards";
 const ENTITY_PAGE_SIZES = {
   game: 24,
-  item: 12
+  item: 24
 };
+const ENTITY_INFINITE_SCROLL_MARGIN = 1200;
+const ENTITY_MAX_RENDERED_ITEMS = 300;
 
 const elements = {
   loginPanel: document.querySelector("#login-panel"),
@@ -223,7 +225,7 @@ function showTab(scope, tabName) {
   }
 }
 
-async function loadEntityPage(scope, type, offset, { append = false } = {}) {
+async function loadEntityPage(scope, type, offset, { append = false, prepend = false, limit = null } = {}) {
   const profile = scope === "private" ? state.profile : state.publicProfile;
   if (!profile?.username) return;
 
@@ -234,13 +236,14 @@ async function loadEntityPage(scope, type, offset, { append = false } = {}) {
   page.offset = Math.max(0, offset);
   const list = getEntityListElement(scope, type);
   const status = getEntityStatusElement(scope, type);
-  status.textContent = append ? "Loading more..." : "Loading...";
+  status.textContent = append || prepend ? "Loading more..." : "Loading...";
   const pageSize = getEntityPageSize(type);
+  const requestLimit = limit || pageSize;
 
   try {
     const params = new URLSearchParams({
       type,
-      limit: String(pageSize),
+      limit: String(requestLimit),
       offset: String(page.offset),
       order: "desc"
     });
@@ -254,39 +257,176 @@ async function loadEntityPage(scope, type, offset, { append = false } = {}) {
     page.total = data.total || 0;
     page.offset = data.offset || 0;
     if (type === "game" || type === "item") {
-      page.loadedCount = append
-        ? Math.max(page.loadedCount, page.offset + entities.length)
-        : entities.length;
+      if (!append && !prepend) {
+        page.renderedStart = page.offset;
+        page.renderedEnd = page.offset + entities.length;
+        page.loadedCount = page.renderedEnd;
+        page.topSpacerHeight = 0;
+        page.bottomSpacerHeight = 0;
+      }
     }
-    renderEntityPage(scope, type, entities, { append });
+    renderEntityPage(scope, type, entities, { append, prepend, offset: page.offset });
     status.textContent = "";
-    if (type === "game" || type === "item") {
-      window.setTimeout(() => loadMoreVisibleEntity(scope, type), 0);
-    }
   } catch (error) {
-    if (!append) {
+    if (!append && !prepend) {
       list.replaceChildren();
     }
     renderPager(scope, type);
     status.textContent = error.message;
   } finally {
     page.loading = false;
+    if (type === "game" || type === "item") {
+      queueEntityInfiniteScrollCheck();
+    }
   }
 }
 
-function renderEntityPage(scope, type, entities, { append = false } = {}) {
+function renderEntityPage(scope, type, entities, { append = false, prepend = false, offset = 0 } = {}) {
   const list = getEntityListElement(scope, type);
-  if (!entities.length && !append) {
+  if (!entities.length && !append && !prepend) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
     empty.textContent = type === "game" ? "No game images." : "No items.";
     list.replaceChildren(empty);
+  } else if (prepend) {
+    renderPrependedEntities(scope, type, entities, offset);
   } else if (append) {
-    list.append(...entities.map((entity) => createEntityCard(entity, type, scope)));
+    renderAppendedEntities(scope, type, entities, offset);
   } else {
-    list.replaceChildren(...entities.map((entity) => createEntityCard(entity, type, scope)));
+    renderInitialEntities(scope, type, entities, offset);
   }
   renderPager(scope, type);
+}
+
+function renderInitialEntities(scope, type, entities, offset) {
+  const list = getEntityListElement(scope, type);
+  list.replaceChildren();
+
+  const page = state.entityPages[scope][type];
+  page.renderedStart = offset;
+  page.renderedEnd = offset + entities.length;
+  page.loadedCount = page.renderedEnd;
+  page.topSpacerHeight = 0;
+  page.bottomSpacerHeight = 0;
+
+  const { bottom } = ensureEntitySpacers(scope, type);
+  bottom.before(...createEntityCards(scope, type, entities, offset));
+  updateEntitySpacerHeights(scope, type);
+}
+
+function renderAppendedEntities(scope, type, entities, offset) {
+  if (!entities.length) return;
+
+  const page = state.entityPages[scope][type];
+  const { bottom } = ensureEntitySpacers(scope, type);
+  const cards = createEntityCards(scope, type, entities, offset);
+  bottom.before(...cards);
+
+  const insertedHeight = measureEntityBlock(cards);
+  page.renderedEnd = Math.max(page.renderedEnd, offset + entities.length);
+  page.loadedCount = page.renderedEnd;
+  page.bottomSpacerHeight = Math.max(0, page.bottomSpacerHeight - insertedHeight);
+  trimEntityWindow(scope, type, "top");
+  updateEntitySpacerHeights(scope, type);
+}
+
+function renderPrependedEntities(scope, type, entities, offset) {
+  if (!entities.length) return;
+
+  const page = state.entityPages[scope][type];
+  const { top } = ensureEntitySpacers(scope, type);
+  const cards = createEntityCards(scope, type, entities, offset);
+  top.after(...cards);
+
+  const insertedHeight = measureEntityBlock(cards);
+  page.renderedStart = Math.min(page.renderedStart, offset);
+  page.topSpacerHeight = Math.max(0, page.topSpacerHeight - insertedHeight);
+  trimEntityWindow(scope, type, "bottom");
+  updateEntitySpacerHeights(scope, type);
+}
+
+function createEntityCards(scope, type, entities, offset) {
+  return entities.map((entity, index) => {
+    const card = createEntityCard(entity, type, scope);
+    card.dataset.entityCard = `${scope}:${type}`;
+    card.dataset.entityIndex = String(offset + index);
+    return card;
+  });
+}
+
+function ensureEntitySpacers(scope, type) {
+  const list = getEntityListElement(scope, type);
+  let top = getEntitySpacer(scope, type, "top");
+  let bottom = getEntitySpacer(scope, type, "bottom");
+
+  if (!top) {
+    top = document.createElement("div");
+    top.className = "entity-spacer";
+    top.dataset.entitySpacer = `${scope}:${type}:top`;
+    list.prepend(top);
+  }
+
+  if (!bottom) {
+    bottom = document.createElement("div");
+    bottom.className = "entity-spacer";
+    bottom.dataset.entitySpacer = `${scope}:${type}:bottom`;
+    list.append(bottom);
+  }
+
+  return { top, bottom };
+}
+
+function getEntitySpacer(scope, type, position) {
+  return getEntityListElement(scope, type)
+    .querySelector(`[data-entity-spacer="${scope}:${type}:${position}"]`);
+}
+
+function getRenderedEntityCards(scope, type) {
+  return Array.from(getEntityListElement(scope, type)
+    .querySelectorAll(`[data-entity-card="${scope}:${type}"]`));
+}
+
+function updateEntitySpacerHeights(scope, type) {
+  const page = state.entityPages[scope][type];
+  const { top, bottom } = ensureEntitySpacers(scope, type);
+  top.style.height = `${Math.max(0, Math.round(page.topSpacerHeight || 0))}px`;
+  bottom.style.height = `${Math.max(0, Math.round(page.bottomSpacerHeight || 0))}px`;
+}
+
+function trimEntityWindow(scope, type, side) {
+  const page = state.entityPages[scope][type];
+  let cards = getRenderedEntityCards(scope, type);
+
+  while (cards.length > ENTITY_MAX_RENDERED_ITEMS) {
+    const removeCount = Math.min(getEntityPageSize(type), cards.length - ENTITY_MAX_RENDERED_ITEMS);
+    const removed = side === "bottom"
+      ? cards.slice(-removeCount)
+      : cards.slice(0, removeCount);
+    const height = measureEntityBlock(removed);
+
+    for (const card of removed) {
+      card.remove();
+    }
+
+    if (side === "bottom") {
+      page.renderedEnd = Math.max(page.renderedStart, page.renderedEnd - removed.length);
+      page.bottomSpacerHeight += height;
+    } else {
+      page.renderedStart += removed.length;
+      page.topSpacerHeight += height;
+    }
+
+    cards = getRenderedEntityCards(scope, type);
+  }
+}
+
+function measureEntityBlock(nodes) {
+  const visibleNodes = nodes.filter((node) => node.isConnected);
+  if (!visibleNodes.length) return 0;
+
+  const first = visibleNodes[0].getBoundingClientRect();
+  const last = visibleNodes[visibleNodes.length - 1].getBoundingClientRect();
+  return Math.max(0, last.bottom - first.top);
 }
 
 function createEntityCard(entity, type, scope) {
@@ -489,8 +629,9 @@ function renderPager(scope, type) {
   const pageSize = getEntityPageSize(type);
 
   if (type === "game" || type === "item") {
-    const loaded = Math.min(page.loadedCount || 0, page.total);
-    pageText.textContent = `${loaded} / ${page.total}`;
+    const start = page.total === 0 ? 0 : page.renderedStart + 1;
+    const end = Math.min(page.renderedEnd || 0, page.total);
+    pageText.textContent = `${start}-${end} / ${page.total}`;
     prev.hidden = true;
     next.hidden = true;
     return;
@@ -525,8 +666,24 @@ function resetEntityScope(scope) {
 
 function createEntityPageState() {
   return {
-    game: { offset: 0, total: 0, loaded: false, loading: false, loadedCount: 0, q: "" },
-    item: { offset: 0, total: 0, loaded: false, loading: false, loadedCount: 0, q: "" }
+    game: createSingleEntityPageState(),
+    item: createSingleEntityPageState()
+  };
+}
+
+function createSingleEntityPageState() {
+  return {
+    offset: 0,
+    total: 0,
+    loaded: false,
+    loading: false,
+    retryScheduled: false,
+    loadedCount: 0,
+    renderedStart: 0,
+    renderedEnd: 0,
+    topSpacerHeight: 0,
+    bottomSpacerHeight: 0,
+    q: ""
   };
 }
 
@@ -534,28 +691,65 @@ function setupEntityInfiniteScroll() {
   const sentinels = Array.from(document.querySelectorAll("[data-entity-sentinel]"));
   if (!sentinels.length) return;
 
-  if (!("IntersectionObserver" in window)) {
-    window.addEventListener("scroll", () => {
-      for (const sentinel of sentinels) {
-        if (sentinel.getBoundingClientRect().top < window.innerHeight + 700) {
-          loadMoreEntityFromSentinel(sentinel);
+  window.addEventListener("scroll", queueEntityInfiniteScrollCheck, { passive: true });
+  window.addEventListener("resize", queueEntityInfiniteScrollCheck, { passive: true });
+
+  if ("IntersectionObserver" in window) {
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          loadMoreEntityFromSentinel(entry.target);
         }
       }
-    }, { passive: true });
-    return;
-  }
+    }, { rootMargin: `${ENTITY_INFINITE_SCROLL_MARGIN}px 0px` });
 
-  const observer = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (entry.isIntersecting) {
-        loadMoreEntityFromSentinel(entry.target);
-      }
+    for (const sentinel of sentinels) {
+      observer.observe(sentinel);
     }
-  }, { rootMargin: "700px 0px" });
-
-  for (const sentinel of sentinels) {
-    observer.observe(sentinel);
   }
+}
+
+function queueEntityInfiniteScrollCheck() {
+  if (queueEntityInfiniteScrollCheck.pending) return;
+
+  queueEntityInfiniteScrollCheck.pending = true;
+  window.requestAnimationFrame(() => {
+    queueEntityInfiniteScrollCheck.pending = false;
+    checkVisibleEntitySentinels();
+    window.setTimeout(checkVisibleEntitySentinels, 100);
+  });
+}
+
+function checkVisibleEntitySentinels() {
+  for (const sentinel of document.querySelectorAll("[data-entity-sentinel]")) {
+    if (sentinel.getBoundingClientRect().top < window.innerHeight + ENTITY_INFINITE_SCROLL_MARGIN) {
+      loadMoreEntityFromSentinel(sentinel);
+    }
+  }
+
+  for (const panel of document.querySelectorAll('[data-tab-panel-scope][data-tab-panel-name="game"], [data-tab-panel-scope][data-tab-panel-name="item"]')) {
+    if (!panel.hidden) {
+      loadPreviousEntityIfVisible(panel.dataset.tabPanelScope, panel.dataset.tabPanelName);
+    }
+  }
+}
+
+function scheduleEntityInfiniteScrollRetry(scope, type) {
+  const page = state.entityPages[scope]?.[type];
+  if (!page || page.retryScheduled) return;
+
+  page.retryScheduled = true;
+  for (const delay of [100, 350, 800]) {
+    window.setTimeout(() => {
+      const sentinel = document.querySelector(`[data-entity-sentinel="${scope}:${type}"]`);
+      if (sentinel) {
+        loadMoreEntityFromSentinel(sentinel);
+      }
+    }, delay);
+  }
+  window.setTimeout(() => {
+    page.retryScheduled = false;
+  }, 900);
 }
 
 function loadMoreEntityFromSentinel(sentinel) {
@@ -566,18 +760,25 @@ function loadMoreEntityFromSentinel(sentinel) {
   if (!panel || panel.hidden) return;
 
   const page = state.entityPages[scope]?.[type];
-  if (!page?.loaded || page.loading || page.loadedCount >= page.total) return;
+  if (!page?.loaded || page.renderedEnd >= page.total) return;
+  if (page.loading) {
+    scheduleEntityInfiniteScrollRetry(scope, type);
+    return;
+  }
 
-  loadEntityPage(scope, type, page.loadedCount, { append: true });
+  loadEntityPage(scope, type, page.renderedEnd, { append: true });
 }
 
-function loadMoreVisibleEntity(scope, type) {
-  const sentinel = document.querySelector(`[data-entity-sentinel="${scope}:${type}"]`);
-  if (!sentinel) return;
+function loadPreviousEntityIfVisible(scope, type) {
+  const page = state.entityPages[scope]?.[type];
+  if (!page?.loaded || page.loading || page.renderedStart <= 0) return;
 
-  if (sentinel.getBoundingClientRect().top < window.innerHeight + 700) {
-    loadMoreEntityFromSentinel(sentinel);
-  }
+  const firstCard = getRenderedEntityCards(scope, type)[0];
+  if (!firstCard || firstCard.getBoundingClientRect().top < -ENTITY_INFINITE_SCROLL_MARGIN) return;
+
+  const previousOffset = Math.max(0, page.renderedStart - getEntityPageSize(type));
+  const limit = page.renderedStart - previousOffset;
+  loadEntityPage(scope, type, previousOffset, { prepend: true, limit });
 }
 
 function parseEntityKey(value) {
