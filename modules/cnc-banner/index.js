@@ -233,8 +233,8 @@ export default class CNCBanner {
         return this.donations.filterCncDonations(donations);
     }
 
-    getTopDonators(donations, locale = getLocale()) {
-        return this.donations.getTopDonators(donations, locale);
+    getTopDonors(donations, locale = getLocale()) {
+        return this.donations.getTopDonors(donations, locale);
     }
 
     getLatestDonation(donations, locale = getLocale()) {
@@ -245,8 +245,8 @@ export default class CNCBanner {
         return this.donations.renderLatestDonation(donation, locale);
     }
 
-    renderTopDonators(donators, locale = getLocale()) {
-        return this.donations.renderTopDonators(donators, locale);
+    renderTopDonors(donors, locale = getLocale()) {
+        return this.donations.renderTopDonors(donors, locale);
     }
 
     formatDonationMessagePreview(message) {

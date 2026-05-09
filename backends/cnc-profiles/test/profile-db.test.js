@@ -7,10 +7,10 @@ import { ProfileDatabase } from "../src/db/profile-db.js";
 import {
   NEMELEX_COLORS,
   PSEUDO_CNC_RANKS,
-  PSEUDO_DONATOR_AMOUNTS,
+  PSEUDO_DONOR_AMOUNTS,
   PSEUDO_TRANSLATOR_SCORES,
   compareBannerByTitle,
-  createDonatorBanner,
+  createDonorBanner,
   getBannerDefinition
 } from "../src/domain/banners.js";
 
@@ -53,14 +53,14 @@ test("seeds initial profiles preserving username casing", async () => {
     assert.equal(banner.usernameStyle.data.split, rank);
     assert.deepEqual(banner.usernameStyle.data.colors, NEMELEX_COLORS);
   }
-  for (const [index, amount] of PSEUDO_DONATOR_AMOUNTS.entries()) {
-    const banner = exampleProfile.banners[`pseudo-donator-${index + 1}`];
-    assert.equal(banner.title, `Donator ${index + 1}`);
+  for (const [index, amount] of PSEUDO_DONOR_AMOUNTS.entries()) {
+    const banner = exampleProfile.banners[`pseudo-donor-${index + 1}`];
+    assert.equal(banner.title, `Donor ${index + 1}`);
     assert.deepEqual(banner.detail, {
       label: "This month",
       value: `${amount.toLocaleString("en-US")} KRW`
     });
-    assert.equal(banner.usernameStyle.id, "donator");
+    assert.equal(banner.usernameStyle.id, "donor");
     assert.equal(banner.usernameStyle.data.donation, amount);
   }
   assert.equal(exampleProfile.banners.translator, undefined);
@@ -198,7 +198,7 @@ test("manual none selection blocks auto equip", async () => {
   const database = await createDatabase();
 
   database.setCurrentBanner("ExampleUser", null);
-  database.upsertBanner("ExampleUser", createDonatorBanner(30000), {
+  database.upsertBanner("ExampleUser", createDonorBanner(30000), {
     source: "watcher:donation",
     autoEquip: true
   });
@@ -206,7 +206,7 @@ test("manual none selection blocks auto equip", async () => {
   const profile = database.getProfile("exampleuser");
   assert.equal(profile.currentBannerId, null);
   assert.equal(profile.selectionMode, "manual");
-  assert.ok(profile.banners.donator);
+  assert.ok(profile.banners.donor);
 });
 
 test("updates seed-managed banners when definitions change", async () => {

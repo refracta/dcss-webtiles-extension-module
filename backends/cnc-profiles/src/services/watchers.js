@@ -1,6 +1,6 @@
 import {
   createDcssContributorBanner,
-  createDonatorBanner,
+  createDonorBanner,
   createFastestWinBanner,
   createOspContributorBanner,
   createRankingBanner,
@@ -102,12 +102,17 @@ export class WatcherService {
       totals.set(key, current);
     }
 
+    const legacyChanged = this.#removeManagedBanners({
+      source: WATCHER_SOURCES.donation,
+      bannerId: "donator"
+    });
+
     return this.#replaceManagedBanners({
       source: WATCHER_SOURCES.donation,
-      bannerId: "donator",
+      bannerId: "donor",
       activeEntries: [...totals.values()].filter((entry) => entry.amount > 0),
-      createBanner: (entry) => createDonatorBanner(entry.amount)
-    });
+      createBanner: (entry) => createDonorBanner(entry.amount)
+    }) || legacyChanged;
   }
 
   async syncCredits() {
@@ -248,6 +253,18 @@ export class WatcherService {
         source,
         autoEquip: true
       }).changed || changed;
+    }
+
+    return changed;
+  }
+
+  #removeManagedBanners({ source, bannerId }) {
+    let changed = false;
+
+    for (const profile of Object.values(this.database.data.profiles)) {
+      if (profile.sources?.[bannerId]?.source === source) {
+        changed = this.database.removeManagedBanner(profile.username, bannerId, source).changed || changed;
+      }
     }
 
     return changed;

@@ -22,14 +22,14 @@ test("donation watcher creates and removes conditional donor banners", async () 
   });
 
   assert.equal(await watcher.syncDonation(), true);
-  const donorBanner = database.getProfile("donoruser").banners.donator;
-  assert.equal(donorBanner.title, "Donator");
+  const donorBanner = database.getProfile("donoruser").banners.donor;
+  assert.equal(donorBanner.title, "Donor");
   assert.deepEqual(donorBanner.detail, {
     label: "This month",
     value: "30,000 KRW"
   });
   assert.equal(donorBanner.usernameStyle.data.donation, 30000);
-  assert.equal(database.getProfile("DonorUser").currentBannerId, "donator");
+  assert.equal(database.getProfile("DonorUser").currentBannerId, "donor");
 
   const emptyWatcher = new WatcherService({
     database,
@@ -37,7 +37,7 @@ test("donation watcher creates and removes conditional donor banners", async () 
     fetchImpl: async () => okJson({ currentMonth: { donations: [] } })
   });
   assert.equal(await emptyWatcher.syncDonation(), true);
-  assert.equal(database.getProfile("DonorUser").banners.donator, undefined);
+  assert.equal(database.getProfile("DonorUser").banners.donor, undefined);
   assert.equal(database.getProfile("DonorUser").currentBannerId, null);
 });
 

@@ -114,7 +114,7 @@ export default class DonationSummary {
                 });
             const ledger = await this.ledgerRequest;
             const locale = container.dataset.donationLocale || getLocale();
-            await this.preloadVisibleDonatorProfiles(ledger, locale);
+            await this.preloadVisibleDonorProfiles(ledger, locale);
             const html = this.renderSummary(ledger, locale);
             this.setHTML(locale, html);
         } catch (error) {
@@ -146,8 +146,8 @@ export default class DonationSummary {
         const currentMonthDonations = this.filterCncDonations(ledger?.currentMonth?.donations);
         const overallDonations = this.filterCncDonations(ledger?.overall?.donations);
         const monthlyTotal = currentMonthDonations.reduce((sum, donation) => sum + this.getAmount(donation), 0);
-        const monthlyTop = this.getTopDonators(currentMonthDonations, locale);
-        const overallTop = this.getTopDonators(overallDonations, locale);
+        const monthlyTop = this.getTopDonors(currentMonthDonations, locale);
+        const overallTop = this.getTopDonors(overallDonations, locale);
         const latestDonation = this.getLatestDonation(overallDonations, locale);
 
         return `
@@ -157,11 +157,11 @@ export default class DonationSummary {
             </div>
             <div class="cnc-donation-rank">
                 <span class="cnc-donation-rank-title">${texts.monthlyTopLabel}:</span>
-                ${this.renderTopDonators(monthlyTop, locale)}
+                ${this.renderTopDonors(monthlyTop, locale)}
             </div>
             <div class="cnc-donation-rank">
                 <span class="cnc-donation-rank-title">${texts.overallTopLabel}:</span>
-                ${this.renderTopDonators(overallTop, locale)}
+                ${this.renderTopDonors(overallTop, locale)}
             </div>
             ${this.renderLatestDonation(latestDonation, locale)}
             <div class="cnc-donation-thanks">
@@ -215,7 +215,7 @@ export default class DonationSummary {
         return Array.isArray(donations) ? donations.filter(donation => donation?.type === 'CNC') : [];
     }
 
-    getTopDonators(donations, locale = getLocale()) {
+    getTopDonors(donations, locale = getLocale()) {
         const texts = this.getTexts(locale);
         const totals = new Map();
         for (let index = 0; index < donations.length; index++) {
@@ -281,27 +281,27 @@ export default class DonationSummary {
         return `
             <div class="cnc-donation-last">
                 <span class="cnc-donation-last-label">${texts.latestLabel}:</span>
-                <span class="cnc-donation-name">${this.renderDonatorUsername(donation.username, locale)}</span>
+                <span class="cnc-donation-name">${this.renderDonorUsername(donation.username, locale)}</span>
                 (${this.formatKrw(donation.amount, locale)})${message}
             </div>
         `;
     }
 
-    renderTopDonators(donators, locale = getLocale()) {
+    renderTopDonors(donors, locale = getLocale()) {
         const texts = this.getTexts(locale);
-        if (!donators.length) {
+        if (!donors.length) {
             return `<span class="cnc-donation-empty">${texts.empty}</span>`;
         }
 
-        return donators
-            .map(donator => {
-                const message = this.formatMessagePreview(donator.lastDonationMessage);
-                return `<span class="cnc-donation-name">${this.renderDonatorUsername(donator.username, locale)}${message}</span> - ${this.formatKrw(donator.amount, locale)}`;
+        return donors
+            .map(donor => {
+                const message = this.formatMessagePreview(donor.lastDonationMessage);
+                return `<span class="cnc-donation-name">${this.renderDonorUsername(donor.username, locale)}${message}</span> - ${this.formatKrw(donor.amount, locale)}`;
             })
             .join(', ');
     }
 
-    renderDonatorUsername(username, locale = getLocale()) {
+    renderDonorUsername(username, locale = getLocale()) {
         const texts = this.getTexts(locale);
         const normalized = String(username || texts.anonymous).trim() || texts.anonymous;
         if (normalized === texts.anonymous) {
@@ -324,13 +324,13 @@ export default class DonationSummary {
         return globalThis.DWEM?.Modules?.CNCUserinfo;
     }
 
-    async preloadVisibleDonatorProfiles(ledger, locale = getLocale()) {
+    async preloadVisibleDonorProfiles(ledger, locale = getLocale()) {
         const userinfo = this.getUserinfoModule();
         if (!userinfo?.preloadProfiles) {
             return;
         }
 
-        const usernames = this.getVisibleDonatorUsernames(ledger, locale);
+        const usernames = this.getVisibleDonorUsernames(ledger, locale);
         if (!usernames.length) {
             return;
         }
@@ -338,13 +338,13 @@ export default class DonationSummary {
         await userinfo.preloadProfiles(usernames);
     }
 
-    getVisibleDonatorUsernames(ledger, locale = getLocale()) {
+    getVisibleDonorUsernames(ledger, locale = getLocale()) {
         const currentMonthDonations = this.filterCncDonations(ledger?.currentMonth?.donations);
         const overallDonations = this.filterCncDonations(ledger?.overall?.donations);
         const latestDonation = this.getLatestDonation(overallDonations, locale);
         const usernames = [
-            ...this.getTopDonators(currentMonthDonations, locale).map(donator => donator.username),
-            ...this.getTopDonators(overallDonations, locale).map(donator => donator.username),
+            ...this.getTopDonors(currentMonthDonations, locale).map(donor => donor.username),
+            ...this.getTopDonors(overallDonations, locale).map(donor => donor.username),
             latestDonation?.username
         ];
 

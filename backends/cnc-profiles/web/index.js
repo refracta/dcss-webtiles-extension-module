@@ -1166,8 +1166,8 @@ function renderStyledUsername(username, usernameStyle) {
     return createNemelexSpan(username, usernameStyle.data);
   }
 
-  if (usernameStyle.id === "donator") {
-    return `<span style="${styleToText(getDonatorStyle(usernameStyle.data?.donation))}">${escapeHtml(username)}</span>`;
+  if (usernameStyle.id === "donor") {
+    return `<span style="${styleToText(getDonorStyle(usernameStyle.data?.donation))}">${escapeHtml(username)}</span>`;
   }
 
   if (usernameStyle.id === "translator") {
@@ -1284,7 +1284,7 @@ function getNemelexColors(colors) {
   return safeColors.length > 0 ? safeColors : NEMELEX_COLORS;
 }
 
-function getDonatorStyle(amount) {
+function getDonorStyle(amount) {
   const maxAmount = 500000;
   const clamped = Math.max(0, Math.min(maxAmount, Number(amount) || 0));
   const progress = clamped / maxAmount;

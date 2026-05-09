@@ -13,7 +13,7 @@ export const BANNER_URLS = {
 
 export const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
 export const PSEUDO_CNC_RANKS = [1, 2, 3];
-export const PSEUDO_DONATOR_AMOUNTS = [20000, 40000, 60000, 80000, 100000];
+export const PSEUDO_DONOR_AMOUNTS = [20000, 40000, 60000, 80000, 100000];
 export const PSEUDO_TRANSLATOR_SCORES = [500, 2750, 5000];
 const RANKING_EXAMPLES = [
   { id: "rank-1", serverRankLabel: "#1", rank: 1, serverRank: 1, score: 50000000 },
@@ -75,11 +75,11 @@ export const BANNER_DEFINITIONS = [
     usernameStyle: createNemelexUsernameStyle(3)
   },
   {
-    id: "donator",
-    title: "Donator",
+    id: "donor",
+    title: "Donor",
     url: BANNER_URLS.donation,
     detail: createDonationDetail(0),
-    usernameStyle: { id: "donator", data: { donation: 0 } }
+    usernameStyle: { id: "donor", data: { donation: 0 } }
   },
   {
     id: "translator",
@@ -125,14 +125,14 @@ export const BANNER_DEFINITIONS = [
     usernameStyle: { id: "osp-contributor", data: { count: 1 } }
   },
   ...PSEUDO_CNC_RANKS.map((rank) => createPseudoCncBanner(rank)),
-  ...PSEUDO_DONATOR_AMOUNTS.map((amount, index) => createPseudoDonatorBanner(index + 1, amount))
+  ...PSEUDO_DONOR_AMOUNTS.map((amount, index) => createPseudoDonorBanner(index + 1, amount))
 ];
 
 const BANNER_EXAMPLE_BANNER_IDS = [
   "bot",
   "dcss-contributor",
   ...PSEUDO_CNC_RANKS.map((rank) => `pseudo-cnc-${rank}`),
-  ...PSEUDO_DONATOR_AMOUNTS.map((_, index) => `pseudo-donator-${index + 1}`)
+  ...PSEUDO_DONOR_AMOUNTS.map((_, index) => `pseudo-donor-${index + 1}`)
 ];
 
 const BANNER_EXAMPLE_BANNERS = [
@@ -223,15 +223,15 @@ function getPseudoCncTitle(rank) {
   return `CNC (1st) Rank ${rank}`;
 }
 
-function createPseudoDonatorBanner(index, amount) {
+function createPseudoDonorBanner(index, amount) {
   const donation = Math.max(0, Math.floor(Number(amount) || 0));
   return {
-    id: `pseudo-donator-${index}`,
-    title: `Donator ${index}`,
+    id: `pseudo-donor-${index}`,
+    title: `Donor ${index}`,
     url: BANNER_URLS.donation,
     detail: createDonationDetail(donation),
     usernameStyle: {
-      id: "donator",
+      id: "donor",
       data: { donation }
     }
   };
@@ -246,15 +246,15 @@ function createPseudoTranslatorBanner(score) {
   };
 }
 
-export function createDonatorBanner(amount) {
+export function createDonorBanner(amount) {
   const donation = Math.max(0, Math.floor(Number(amount) || 0));
   return {
-    id: "donator",
-    title: "Donator",
+    id: "donor",
+    title: "Donor",
     url: BANNER_URLS.donation,
     detail: createDonationDetail(donation),
     usernameStyle: {
-      id: "donator",
+      id: "donor",
       data: { donation }
     }
   };

@@ -207,7 +207,7 @@ export default class CNCUserinfo {
             container.innerHTML = data.names;
             const anchors = container.querySelectorAll('a');
             for (const anchor of anchors) {
-                const username = this.normalizeUsername(anchor.textContent);
+                const username = this.getUsernameFromElement(anchor);
                 anchor.href = 'javascript:void(0);';
                 anchor.setAttribute('data-cnc-username', username);
                 anchor.setAttribute('onclick', 'DWEM.Modules.CNCUserinfo.openFromElement(this, event);');
@@ -289,8 +289,8 @@ export default class CNCUserinfo {
             );
         }
 
-        if (usernameStyle.id === 'donator') {
-            return `<span style="${this.styleObjectToString(this.getDonatorStyle(usernameStyle.data?.donation))}">${this.escapeHtml(username)}</span>`;
+        if (usernameStyle.id === 'donor') {
+            return `<span style="${this.styleObjectToString(this.getDonorStyle(usernameStyle.data?.donation))}">${this.escapeHtml(username)}</span>`;
         }
 
         if (usernameStyle.id === 'translator') {
@@ -420,7 +420,7 @@ export default class CNCUserinfo {
         return safeColors.length > 0 ? safeColors : CNCUserinfo.NEMELEX_COLORS;
     }
 
-    getDonatorStyle(amount) {
+    getDonorStyle(amount) {
         const maxAmount = 500000;
         const clamped = Math.max(0, Math.min(maxAmount, Number(amount) || 0));
         const progress = clamped / maxAmount;
@@ -526,7 +526,11 @@ export default class CNCUserinfo {
     }
 
     normalizeUsername(username) {
-        return String(username || '').replaceAll(' (admin)', '').trim();
+        return String(username || '')
+            .replaceAll(' (admin)', '')
+            .trim()
+            .replace(/^(?:🤖|👑|🏆|🥇|💎|🌟|⭐|⚡|🚀|🏎️?|💨|🛠️?|[0-9]\uFE0F?\u20E3)+/u, '')
+            .trim();
     }
 
     getProfileKey(username) {
