@@ -44,7 +44,7 @@ test("seeds initial profiles preserving username casing", async () => {
   }
   for (const [index, amount] of PSEUDO_DONATOR_AMOUNTS.entries()) {
     const banner = exampleProfile.banners[`pseudo-donator-${index + 1}`];
-    assert.equal(banner.title, `Pseudo Donator ${index + 1}`);
+    assert.equal(banner.title, `Donator ${index + 1}`);
     assert.deepEqual(banner.detail, {
       label: "This month",
       value: `${amount.toLocaleString("en-US")} KRW`
@@ -55,7 +55,7 @@ test("seeds initial profiles preserving username casing", async () => {
   assert.equal(exampleProfile.banners.translator, undefined);
   for (const score of PSEUDO_TRANSLATOR_SCORES) {
     const banner = exampleProfile.banners[`pseudo-translator-${score}`];
-    assert.equal(banner.title, `Pseudo Translation Contributor (${score.toLocaleString("en-US")})`);
+    assert.equal(banner.title, `Translation Contributor (${score.toLocaleString("en-US")})`);
     assert.equal(banner.usernameStyle.id, "translator");
     assert.equal(banner.usernameStyle.data.score, score);
   }
@@ -84,12 +84,12 @@ test("seeds initial profiles preserving username casing", async () => {
       exampleProfile.banners["example-ranking-rank-51-100"].title
     ],
     [
-      "Trunk Game Ranking Example",
-      "Trunk Game Ranking Example",
-      "Trunk Game Ranking Example",
-      "Trunk Game Ranking Example",
-      "Trunk Game Ranking Example",
-      "Trunk Game Ranking Example"
+      "Trunk Game Ranking",
+      "Trunk Game Ranking",
+      "Trunk Game Ranking",
+      "Trunk Game Ranking",
+      "Trunk Game Ranking",
+      "Trunk Game Ranking"
     ]
   );
   assert.deepEqual(
@@ -118,10 +118,10 @@ test("seeds initial profiles preserving username casing", async () => {
       exampleProfile.banners["example-fastest-win-rank-6-10"].title
     ],
     [
-      "Trunk Fastest Wins Example",
-      "Trunk Fastest Wins Example",
-      "Trunk Fastest Wins Example",
-      "Trunk Fastest Wins Example"
+      "Trunk Fastest Wins",
+      "Trunk Fastest Wins",
+      "Trunk Fastest Wins",
+      "Trunk Fastest Wins"
     ]
   );
   assert.deepEqual(
@@ -254,8 +254,8 @@ async function createDatabase() {
 }
 
 function getPseudoCncTitle(rank) {
-  if (rank === 1) return "Pseudo CNC (1st) Champion";
-  if (rank === 2) return "Pseudo CNC (1st) Runner-up";
-  if (rank === 3) return "Pseudo CNC (1st) Third Place";
-  return `Pseudo CNC (1st) Rank ${rank}`;
+  if (rank === 1) return "CNC (1st) Champion";
+  if (rank === 2) return "CNC (1st) Runner-up";
+  if (rank === 3) return "CNC (1st) Third Place";
+  return `CNC (1st) Rank ${rank}`;
 }

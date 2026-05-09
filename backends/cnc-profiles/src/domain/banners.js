@@ -192,17 +192,17 @@ function createPseudoCncBanner(rank) {
 }
 
 function getPseudoCncTitle(rank) {
-  if (rank === 1) return "Pseudo CNC (1st) Champion";
-  if (rank === 2) return "Pseudo CNC (1st) Runner-up";
-  if (rank === 3) return "Pseudo CNC (1st) Third Place";
-  return `Pseudo CNC (1st) Rank ${rank}`;
+  if (rank === 1) return "CNC (1st) Champion";
+  if (rank === 2) return "CNC (1st) Runner-up";
+  if (rank === 3) return "CNC (1st) Third Place";
+  return `CNC (1st) Rank ${rank}`;
 }
 
 function createPseudoDonatorBanner(index, amount) {
   const donation = Math.max(0, Math.floor(Number(amount) || 0));
   return {
     id: `pseudo-donator-${index}`,
-    title: `Pseudo Donator ${index}`,
+    title: `Donator ${index}`,
     url: BANNER_URLS.donation,
     detail: createDonationDetail(donation),
     usernameStyle: {
@@ -217,7 +217,7 @@ function createPseudoTranslatorBanner(score) {
   return {
     ...banner,
     id: `pseudo-translator-${score}`,
-    title: `Pseudo Translation Contributor (${score.toLocaleString("en-US")})`
+    title: `Translation Contributor (${score.toLocaleString("en-US")})`
   };
 }
 
@@ -288,7 +288,7 @@ function createRankingExampleBanner({ id, serverRankLabel, rank, serverRank, sco
   return {
     ...banner,
     id: `example-ranking-${id}`,
-    title: "Trunk Game Ranking Example",
+    title: "Trunk Game Ranking",
     detail: {
       ...banner.detail,
       value: `(Server Ranking ${serverRankLabel})`
@@ -301,7 +301,7 @@ function createFastestWinExampleBanner({ id, serverRankLabel, rank, serverRank, 
   return {
     ...banner,
     id: `example-fastest-win-${id}`,
-    title: "Trunk Fastest Wins Example",
+    title: "Trunk Fastest Wins",
     detail: {
       ...banner.detail,
       value: `(Server Ranking ${serverRankLabel})`
