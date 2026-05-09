@@ -9,7 +9,10 @@ const state = {
 
 const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
 const CHAT_API_BASE = "https://chat.nemelex.cards";
-const ENTITY_PAGE_SIZE = 12;
+const ENTITY_PAGE_SIZES = {
+  game: 24,
+  item: 12
+};
 
 const elements = {
   loginPanel: document.querySelector("#login-panel"),
@@ -70,7 +73,7 @@ for (const button of document.querySelectorAll("[data-entity-prev]")) {
   button.addEventListener("click", () => {
     const { scope, type } = parseEntityKey(button.dataset.entityPrev);
     const page = state.entityPages[scope][type];
-    loadEntityPage(scope, type, Math.max(0, page.offset - ENTITY_PAGE_SIZE));
+    loadEntityPage(scope, type, Math.max(0, page.offset - getEntityPageSize(type)));
   });
 }
 
@@ -78,7 +81,7 @@ for (const button of document.querySelectorAll("[data-entity-next]")) {
   button.addEventListener("click", () => {
     const { scope, type } = parseEntityKey(button.dataset.entityNext);
     const page = state.entityPages[scope][type];
-    loadEntityPage(scope, type, page.offset + ENTITY_PAGE_SIZE);
+    loadEntityPage(scope, type, page.offset + getEntityPageSize(type));
   });
 }
 
@@ -227,11 +230,12 @@ async function loadEntityPage(scope, type, offset) {
   const list = getEntityListElement(scope, type);
   const status = getEntityStatusElement(scope, type);
   status.textContent = "Loading...";
+  const pageSize = getEntityPageSize(type);
 
   try {
     const params = new URLSearchParams({
       type,
-      limit: String(ENTITY_PAGE_SIZE),
+      limit: String(pageSize),
       offset: String(page.offset),
       order: "desc"
     });
@@ -260,29 +264,45 @@ function renderEntityPage(scope, type, entities) {
     empty.textContent = type === "game" ? "No game images." : "No items.";
     list.replaceChildren(empty);
   } else {
-    list.replaceChildren(...entities.map((entity) => createEntityCard(entity, type)));
+    list.replaceChildren(...entities.map((entity) => createEntityCard(entity, type, scope)));
   }
   renderPager(scope, type);
 }
 
-function createEntityCard(entity, type) {
+function createEntityCard(entity, type, scope) {
+  const profile = scope === "private" ? state.profile : state.publicProfile;
+  const username = entity.user || profile?.username || "";
+
   const card = document.createElement("article");
   card.className = "entity-card";
 
-  const media = document.createElement("a");
-  media.className = "entity-media";
-  media.href = entity.url || entity.file;
-  media.target = "_blank";
-  media.rel = "noopener noreferrer";
+  const avatar = document.createElement("span");
+  avatar.className = "entity-avatar";
+  avatar.textContent = getUsernameInitial(username);
 
-  const image = document.createElement("img");
-  image.src = entity.file;
-  image.alt = type === "item" ? (entity.item || "Item image") : "Game image";
-  image.loading = "lazy";
-  media.append(image);
+  const message = document.createElement("div");
+  message.className = "entity-message";
 
-  const body = document.createElement("div");
-  body.className = "entity-body";
+  const header = document.createElement("div");
+  header.className = "entity-message-header";
+
+  const author = document.createElement("span");
+  author.className = "entity-author";
+  author.innerHTML = renderStyledUsername(username, profile?.currentBanner?.usernameStyle);
+
+  const meta = document.createElement(type === "item" && entity.url ? "a" : "span");
+  meta.className = "entity-meta";
+  meta.textContent = formatDate(entity.timestamp);
+  if (type === "item" && entity.url) {
+    meta.href = entity.url;
+    meta.target = "_blank";
+    meta.rel = "noopener noreferrer";
+  }
+
+  header.append(author, meta);
+
+  const bubble = document.createElement("div");
+  bubble.className = type === "item" ? "entity-bubble item-bubble" : "entity-bubble";
 
   const title = document.createElement("div");
   title.className = type === "item" ? "entity-title item-title" : "entity-title";
@@ -298,13 +318,90 @@ function createEntityCard(entity, type) {
     title.textContent = `Game #${entity.number}`;
   }
 
-  const meta = document.createElement("div");
-  meta.className = "entity-meta";
-  meta.textContent = formatDate(entity.timestamp);
+  const media = document.createElement("a");
+  media.className = "entity-media";
+  media.href = type === "game" ? entity.file : (entity.url || entity.file);
+  media.target = "_blank";
+  media.rel = "noopener noreferrer";
+  if (type === "game") {
+    media.download = getEntityDownloadName(entity, type);
+    media.addEventListener("click", (event) => {
+      event.preventDefault();
+      openImagePopup(entity.file, getEntityDownloadName(entity, type));
+    });
+  }
 
-  body.append(title, meta);
-  card.append(media, body);
+  const image = document.createElement("img");
+  image.src = entity.file;
+  image.alt = type === "item" ? (entity.item || "Item image") : "Game image";
+  image.loading = "lazy";
+  media.append(image);
+
+  bubble.append(title, media);
+  message.append(header, bubble);
+  card.append(avatar, message);
   return card;
+}
+
+function getUsernameInitial(username) {
+  const chars = Array.from(String(username || ""));
+  const firstReadable = chars.find((char) => /[A-Za-z0-9]/.test(char)) || chars[0] || "?";
+  return firstReadable.toUpperCase();
+}
+
+function getEntityDownloadName(entity, type) {
+  const number = Number(entity.number) || Date.now();
+  return `cnc-${type}-${number}.png`;
+}
+
+function openImagePopup(url, filename) {
+  const initialWidth = Math.min(960, Math.max(360, (window.screen.availWidth || window.innerWidth || 960) - 80));
+  const initialHeight = Math.min(720, Math.max(360, (window.screen.availHeight || window.innerHeight || 720) - 100));
+  const initialLeft = window.screenX + Math.max(0, (window.innerWidth - initialWidth) / 2);
+  const initialTop = window.screenY + Math.max(0, (window.innerHeight - initialHeight) / 2);
+  const popup = window.open("", "_blank", `width=${initialWidth},height=${initialHeight},left=${initialLeft},top=${initialTop},resizable=yes,scrollbars=yes`);
+
+  if (!popup) {
+    window.open(url, "_blank");
+    return;
+  }
+
+  popup.document.title = filename || "Image viewer";
+  popup.document.body.style.margin = "0";
+  popup.document.body.style.minHeight = "100vh";
+  popup.document.body.style.display = "grid";
+  popup.document.body.style.placeItems = "center";
+  popup.document.body.style.background = "#000";
+
+  const image = new Image();
+  image.src = url;
+  image.onload = () => {
+    const width = image.naturalWidth || image.width || 960;
+    const height = image.naturalHeight || image.height || 720;
+    const maxWidth = Math.max(360, (window.screen.availWidth || window.innerWidth || width) - 80);
+    const maxHeight = Math.max(360, (window.screen.availHeight || window.innerHeight || height) - 100);
+    const popupWidth = Math.min(width, maxWidth);
+    const popupHeight = Math.min(height, maxHeight);
+    const left = window.screenX + Math.max(0, (window.innerWidth - popupWidth) / 2);
+    const top = window.screenY + Math.max(0, (window.innerHeight - popupHeight) / 2);
+    if (!popup.closed) {
+      popup.resizeTo(popupWidth, popupHeight);
+      popup.moveTo(left, top);
+    }
+
+    const popupImage = popup.document.createElement("img");
+    popupImage.src = url;
+    popupImage.alt = filename || "Game image";
+    popupImage.style.display = "block";
+    popupImage.style.maxWidth = "100%";
+    popupImage.style.maxHeight = "100vh";
+    popupImage.style.cursor = "pointer";
+    popupImage.addEventListener("click", () => popup.close());
+    popup.document.body.append(popupImage);
+  };
+  image.onerror = () => {
+    popup.location.href = url;
+  };
 }
 
 function renderPager(scope, type) {
@@ -312,12 +409,17 @@ function renderPager(scope, type) {
   const pageText = getEntityPageElement(scope, type);
   const prev = document.querySelector(`[data-entity-prev="${scope}:${type}"]`);
   const next = document.querySelector(`[data-entity-next="${scope}:${type}"]`);
+  const pageSize = getEntityPageSize(type);
   const start = page.total === 0 ? 0 : page.offset + 1;
-  const end = Math.min(page.offset + ENTITY_PAGE_SIZE, page.total);
+  const end = Math.min(page.offset + pageSize, page.total);
 
   pageText.textContent = `${start}-${end} / ${page.total}`;
   prev.disabled = page.offset <= 0;
-  next.disabled = page.offset + ENTITY_PAGE_SIZE >= page.total;
+  next.disabled = page.offset + pageSize >= page.total;
+}
+
+function getEntityPageSize(type) {
+  return ENTITY_PAGE_SIZES[type] || 12;
 }
 
 function resetEntityScope(scope) {

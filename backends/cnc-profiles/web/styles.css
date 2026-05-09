@@ -247,22 +247,75 @@ input:focus {
 
 .entity-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 12px;
+  gap: 14px;
+  max-width: 980px;
 }
 
 .item-grid {
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  max-width: 760px;
 }
 
 .entity-card {
   display: grid;
-  gap: 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
   min-width: 0;
-  overflow: hidden;
+}
+
+.entity-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(32, 35, 31, 0.16);
+  border-radius: 50%;
+  background: #2d332e;
+  color: #f7f3e8;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.entity-message {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.entity-message-header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+  padding-left: 1px;
+}
+
+.entity-author {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.entity-bubble {
+  display: grid;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  padding: 9px;
+  box-shadow: 0 2px 7px rgba(32, 35, 31, 0.06);
+}
+
+.entity-grid:not(.item-grid) .entity-bubble {
+  width: 100%;
+  max-width: 900px;
+}
+
+.item-bubble {
+  min-width: min(420px, 100%);
 }
 
 .entity-media {
@@ -270,21 +323,21 @@ input:focus {
   background: #161817;
   color: #fff;
   text-decoration: none;
+  overflow: hidden;
+  border-radius: 5px;
 }
 
 .entity-media img {
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
   object-fit: contain;
   background: #161817;
 }
 
-.entity-body {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  padding: 0 12px 12px;
+.item-grid .entity-media img {
+  aspect-ratio: 4 / 3;
+  max-height: 260px;
 }
 
 .entity-title {
@@ -297,8 +350,14 @@ input:focus {
 
 .entity-meta {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
+  text-decoration: none;
+}
+
+.entity-meta[href]:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
 }
 
 .item-title {
