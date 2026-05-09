@@ -427,7 +427,7 @@ export default class CNCBanner {
         return {
             ...entry,
             id: this.getTestLobbyId(entry),
-            game_id: `<a href="${watchUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(gameId)}</a> (test)`,
+            game_id: `${escapeHtml(gameId)} (test)`,
             _cncBannerTestServer: true,
             _cncBannerTestUsername: username,
             _cncBannerTestWatchUrl: watchUrl
@@ -456,12 +456,6 @@ export default class CNCBanner {
             usernameLink.rel = 'noopener noreferrer';
         }
 
-        const gameLink = row.querySelector('.game_id a');
-        if (gameLink) {
-            gameLink.href = data._cncBannerTestWatchUrl;
-            gameLink.target = '_blank';
-            gameLink.rel = 'noopener noreferrer';
-        }
     }
 
     onLoad() {
