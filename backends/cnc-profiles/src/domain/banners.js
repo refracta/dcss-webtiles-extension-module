@@ -142,7 +142,7 @@ const BANNER_EXAMPLE_BANNERS = [
   ...RANKING_EXAMPLES.map((example) => createRankingExampleBanner(example)),
   ...FASTEST_WIN_EXAMPLES.map((example) => createFastestWinExampleBanner(example)),
   ...WIN_STREAK_EXAMPLES.map((streak) => createWinStreakExampleBanner(streak))
-].filter(Boolean);
+].filter(Boolean).sort(compareBannerByTitle);
 
 export const INITIAL_PROFILES = [
   {
@@ -447,4 +447,18 @@ export function createTranslatorBanner(score, { threshold = 500, maxScore = 5000
 
 export function cloneBanner(banner) {
   return JSON.parse(JSON.stringify(banner));
+}
+
+export function compareBannerByTitle(a, b) {
+  return getBannerTitleSortKey(a).localeCompare(getBannerTitleSortKey(b), "en-US", {
+    numeric: true,
+    sensitivity: "base"
+  }) || String(a?.id ?? "").localeCompare(String(b?.id ?? ""), "en-US", {
+    numeric: true,
+    sensitivity: "base"
+  });
+}
+
+function getBannerTitleSortKey(banner) {
+  return String(banner?.title ?? "").replace(/\s+/g, " ").trim();
 }

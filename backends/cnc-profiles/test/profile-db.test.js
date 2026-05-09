@@ -9,6 +9,7 @@ import {
   PSEUDO_CNC_RANKS,
   PSEUDO_DONATOR_AMOUNTS,
   PSEUDO_TRANSLATOR_SCORES,
+  compareBannerByTitle,
   createDonatorBanner,
   getBannerDefinition
 } from "../src/domain/banners.js";
@@ -184,6 +185,12 @@ test("seeds initial profiles preserving username casing", async () => {
       { id: "win-streak", data: { streak: 10 } },
       { id: "win-streak", data: { streak: 100 } }
     ]
+  );
+
+  const publicExampleProfile = database.toPublicProfile(exampleProfile);
+  assert.deepEqual(
+    publicExampleProfile.banners.map((banner) => banner.id),
+    [...publicExampleProfile.banners].sort(compareBannerByTitle).map((banner) => banner.id)
   );
 });
 

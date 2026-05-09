@@ -5,7 +5,8 @@ import { JSONFile } from "lowdb/node";
 import {
   INITIAL_PROFILES,
   PROFILE_SCHEMA_VERSION,
-  cloneBanner
+  cloneBanner,
+  compareBannerByTitle
 } from "../domain/banners.js";
 
 export function createDefaultProfileDatabase() {
@@ -163,6 +164,9 @@ export class ProfileDatabase {
     if (!profile) return null;
 
     const banners = Object.values(profile.banners ?? {}).map(cloneBanner);
+    if (normalizeUsernameKey(profile.username) === "bannerexamples") {
+      banners.sort(compareBannerByTitle);
+    }
     const currentBanner = profile.currentBannerId
       ? cloneBanner(profile.banners?.[profile.currentBannerId] ?? null)
       : null;
