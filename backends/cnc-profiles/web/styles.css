@@ -258,7 +258,8 @@ input:focus {
 
 .item-grid {
   gap: 7px;
-  max-width: 900px;
+  max-width: none;
+  width: 100%;
 }
 
 .game-card {

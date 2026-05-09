@@ -98,7 +98,7 @@ for (const input of document.querySelectorAll("[data-entity-search]")) {
   });
 }
 
-setupGameInfiniteScroll();
+setupEntityInfiniteScroll();
 
 const publicProfileUsername = getPublicProfileUsername();
 if (publicProfileUsername) {
@@ -253,15 +253,15 @@ async function loadEntityPage(scope, type, offset, { append = false } = {}) {
     page.loaded = true;
     page.total = data.total || 0;
     page.offset = data.offset || 0;
-    if (type === "game") {
+    if (type === "game" || type === "item") {
       page.loadedCount = append
         ? Math.max(page.loadedCount, page.offset + entities.length)
         : entities.length;
     }
     renderEntityPage(scope, type, entities, { append });
     status.textContent = "";
-    if (type === "game") {
-      window.setTimeout(() => loadMoreVisibleGame(scope), 0);
+    if (type === "game" || type === "item") {
+      window.setTimeout(() => loadMoreVisibleEntity(scope, type), 0);
     }
   } catch (error) {
     if (!append) {
@@ -486,7 +486,7 @@ function renderPager(scope, type) {
   const next = document.querySelector(`[data-entity-next="${scope}:${type}"]`);
   const pageSize = getEntityPageSize(type);
 
-  if (type === "game") {
+  if (type === "game" || type === "item") {
     const loaded = Math.min(page.loadedCount || 0, page.total);
     pageText.textContent = `${loaded} / ${page.total}`;
     prev.hidden = true;
@@ -524,11 +524,11 @@ function resetEntityScope(scope) {
 function createEntityPageState() {
   return {
     game: { offset: 0, total: 0, loaded: false, loading: false, loadedCount: 0, q: "" },
-    item: { offset: 0, total: 0, loaded: false, loading: false, q: "" }
+    item: { offset: 0, total: 0, loaded: false, loading: false, loadedCount: 0, q: "" }
   };
 }
 
-function setupGameInfiniteScroll() {
+function setupEntityInfiniteScroll() {
   const sentinels = Array.from(document.querySelectorAll("[data-entity-sentinel]"));
   if (!sentinels.length) return;
 
@@ -536,7 +536,7 @@ function setupGameInfiniteScroll() {
     window.addEventListener("scroll", () => {
       for (const sentinel of sentinels) {
         if (sentinel.getBoundingClientRect().top < window.innerHeight + 700) {
-          loadMoreGameFromSentinel(sentinel);
+          loadMoreEntityFromSentinel(sentinel);
         }
       }
     }, { passive: true });
@@ -546,7 +546,7 @@ function setupGameInfiniteScroll() {
   const observer = new IntersectionObserver((entries) => {
     for (const entry of entries) {
       if (entry.isIntersecting) {
-        loadMoreGameFromSentinel(entry.target);
+        loadMoreEntityFromSentinel(entry.target);
       }
     }
   }, { rootMargin: "700px 0px" });
@@ -556,25 +556,25 @@ function setupGameInfiniteScroll() {
   }
 }
 
-function loadMoreGameFromSentinel(sentinel) {
+function loadMoreEntityFromSentinel(sentinel) {
   const { scope, type } = parseEntityKey(sentinel.dataset.entitySentinel);
-  if (type !== "game") return;
+  if (type !== "game" && type !== "item") return;
 
   const panel = sentinel.closest("[data-tab-panel-scope][data-tab-panel-name]");
   if (!panel || panel.hidden) return;
 
-  const page = state.entityPages[scope]?.game;
+  const page = state.entityPages[scope]?.[type];
   if (!page?.loaded || page.loading || page.loadedCount >= page.total) return;
 
-  loadEntityPage(scope, "game", page.loadedCount, { append: true });
+  loadEntityPage(scope, type, page.loadedCount, { append: true });
 }
 
-function loadMoreVisibleGame(scope) {
-  const sentinel = document.querySelector(`[data-entity-sentinel="${scope}:game"]`);
+function loadMoreVisibleEntity(scope, type) {
+  const sentinel = document.querySelector(`[data-entity-sentinel="${scope}:${type}"]`);
   if (!sentinel) return;
 
   if (sentinel.getBoundingClientRect().top < window.innerHeight + 700) {
-    loadMoreGameFromSentinel(sentinel);
+    loadMoreEntityFromSentinel(sentinel);
   }
 }
 
