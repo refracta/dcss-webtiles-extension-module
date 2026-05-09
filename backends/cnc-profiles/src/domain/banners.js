@@ -14,12 +14,12 @@ export const PSEUDO_CNC_RANKS = [1, 2, 3];
 export const PSEUDO_DONATOR_AMOUNTS = [20000, 40000, 60000, 80000, 100000];
 export const PSEUDO_TRANSLATOR_SCORES = [500, 2750, 5000];
 const RANKING_EXAMPLES = [
-  { id: "rank-1", title: "Server Ranking #1 Badge Example", rank: 1, serverRank: 1, score: 50000000 },
-  { id: "rank-2-3", title: "Server Ranking #2-3 Badge Example", rank: 2, serverRank: 2, score: 45000000 },
-  { id: "rank-4-10", title: "Server Ranking #4-10 Badge Example", rank: 4, serverRank: 4, score: 40000000 },
-  { id: "rank-11-25", title: "Server Ranking #11-25 Badge Example", rank: 11, serverRank: 11, score: 35000000 },
-  { id: "rank-26-50", title: "Server Ranking #26-50 Badge Example", rank: 26, serverRank: 26, score: 30000000 },
-  { id: "rank-51-100", title: "Server Ranking #51-100 Badge Example", rank: 51, serverRank: 51, score: 25000000 }
+  { id: "rank-1", serverRankLabel: "#1", rank: 1, serverRank: 1, score: 50000000 },
+  { id: "rank-2-3", serverRankLabel: "#2-#3", rank: 2, serverRank: 2, score: 45000000 },
+  { id: "rank-4-10", serverRankLabel: "#4-#10", rank: 4, serverRank: 4, score: 40000000 },
+  { id: "rank-11-25", serverRankLabel: "#11-#25", rank: 11, serverRank: 11, score: 35000000 },
+  { id: "rank-26-50", serverRankLabel: "#26-#50", rank: 26, serverRank: 26, score: 30000000 },
+  { id: "rank-51-100", serverRankLabel: "#51-#100", rank: 51, serverRank: 51, score: 25000000 }
 ];
 
 export const BANNER_DEFINITIONS = [
@@ -246,11 +246,16 @@ export function createRankingBanner({ rank, serverRank, score }) {
   };
 }
 
-function createRankingExampleBanner({ id, title, rank, serverRank, score }) {
+function createRankingExampleBanner({ id, serverRankLabel, rank, serverRank, score }) {
+  const banner = createRankingBanner({ rank, serverRank, score });
   return {
-    ...createRankingBanner({ rank, serverRank, score }),
+    ...banner,
     id: `example-ranking-${id}`,
-    title
+    title: "Trunk Game Ranking Example",
+    detail: {
+      ...banner.detail,
+      value: `(Server Ranking ${serverRankLabel})`
+    }
   };
 }
 

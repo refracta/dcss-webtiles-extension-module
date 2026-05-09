@@ -84,12 +84,30 @@ test("seeds initial profiles preserving username casing", async () => {
       exampleProfile.banners["example-ranking-rank-51-100"].title
     ],
     [
-      "Server Ranking #1 Badge Example",
-      "Server Ranking #2-3 Badge Example",
-      "Server Ranking #4-10 Badge Example",
-      "Server Ranking #11-25 Badge Example",
-      "Server Ranking #26-50 Badge Example",
-      "Server Ranking #51-100 Badge Example"
+      "Trunk Game Ranking Example",
+      "Trunk Game Ranking Example",
+      "Trunk Game Ranking Example",
+      "Trunk Game Ranking Example",
+      "Trunk Game Ranking Example",
+      "Trunk Game Ranking Example"
+    ]
+  );
+  assert.deepEqual(
+    [
+      exampleProfile.banners["example-ranking-rank-1"].detail.value,
+      exampleProfile.banners["example-ranking-rank-2-3"].detail.value,
+      exampleProfile.banners["example-ranking-rank-4-10"].detail.value,
+      exampleProfile.banners["example-ranking-rank-11-25"].detail.value,
+      exampleProfile.banners["example-ranking-rank-26-50"].detail.value,
+      exampleProfile.banners["example-ranking-rank-51-100"].detail.value
+    ],
+    [
+      "(Server Ranking #1)",
+      "(Server Ranking #2-#3)",
+      "(Server Ranking #4-#10)",
+      "(Server Ranking #11-#25)",
+      "(Server Ranking #26-#50)",
+      "(Server Ranking #51-#100)"
     ]
   );
 });
