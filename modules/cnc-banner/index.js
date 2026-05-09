@@ -427,7 +427,7 @@ export default class CNCBanner {
         return {
             ...entry,
             id: this.getTestLobbyId(entry),
-            game_id: `<a href="${watchUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(gameId)} (test)</a>`,
+            game_id: `<a href="${watchUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(gameId)}</a> (test)`,
             _cncBannerTestServer: true,
             _cncBannerTestUsername: username,
             _cncBannerTestWatchUrl: watchUrl
