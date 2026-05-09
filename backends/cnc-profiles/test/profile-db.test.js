@@ -291,6 +291,58 @@ test("removes obsolete seed-managed banners after moving examples", async () => 
   assert.equal(profile.currentBannerId, null);
 });
 
+test("migrates legacy donator banners to donor preserving manual selection", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "cnc-profiles-"));
+  const filePath = path.join(dir, "profiles.json");
+
+  await writeFile(filePath, JSON.stringify({
+    schemaVersion: 1,
+    profiles: {
+      DonorUser: {
+        username: "DonorUser",
+        banners: {
+          donator: {
+            id: "donator",
+            title: "Donator",
+            url: "https://donation.abstr.net/list",
+            detail: {
+              label: "This month",
+              value: "30,000 KRW"
+            },
+            usernameStyle: {
+              id: "donator",
+              data: { donation: 30000 }
+            }
+          }
+        },
+        currentBannerId: "donator",
+        selectionMode: "manual",
+        sources: {
+          donator: {
+            source: "watcher:donation",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        },
+        createdAt: "2026-01-01T00:00:00.000Z",
+        lastUpdatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    }
+  }));
+
+  const database = new ProfileDatabase(filePath);
+  await database.init();
+
+  const profile = database.getProfile("DonorUser");
+  assert.equal(profile.banners.donator, undefined);
+  assert.equal(profile.sources.donator, undefined);
+  assert.equal(profile.currentBannerId, "donor");
+  assert.equal(profile.selectionMode, "manual");
+  assert.equal(profile.banners.donor.title, "Donor");
+  assert.equal(profile.banners.donor.usernameStyle.id, "donor");
+  assert.equal(profile.banners.donor.usernameStyle.data.donation, 30000);
+  assert.equal(profile.sources.donor.source, "watcher:donation");
+});
+
 async function createDatabase() {
   const dir = await mkdtemp(path.join(os.tmpdir(), "cnc-profiles-"));
   const database = new ProfileDatabase(path.join(dir, "profiles.json"));

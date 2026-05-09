@@ -182,6 +182,7 @@ export class ProfileDatabase {
   }
 
   #migrate() {
+    const now = new Date();
     this.db.data.schemaVersion ??= PROFILE_SCHEMA_VERSION;
     this.db.data.profiles ??= {};
     this.db.data.watcherState ??= {};
@@ -194,9 +195,14 @@ export class ProfileDatabase {
       profile.sources ??= {};
       profile.createdAt ??= new Date().toISOString();
       profile.lastUpdatedAt ??= profile.createdAt;
+      const donorMigrated = migrateLegacyDonorBanner(profile);
 
       if (profile.currentBannerId && !profile.banners[profile.currentBannerId]) {
         profile.currentBannerId = null;
+      }
+
+      if (donorMigrated) {
+        this.touchProfile(profile, now);
       }
     }
 
@@ -300,4 +306,56 @@ function normalizeBanners(value) {
   }
 
   return {};
+}
+
+function migrateLegacyDonorBanner(profile) {
+  let changed = false;
+
+  for (const [bannerId, banner] of Object.entries(profile.banners ?? {})) {
+    const migrated = migrateLegacyDonorBannerFields(banner);
+    if (JSON.stringify(migrated) !== JSON.stringify(banner)) {
+      profile.banners[bannerId] = migrated;
+      changed = true;
+    }
+  }
+
+  if (profile.banners.donator) {
+    const donorBanner = migrateLegacyDonorBannerFields(profile.banners.donor ?? profile.banners.donator);
+    donorBanner.id = "donor";
+    profile.banners.donor = donorBanner;
+    delete profile.banners.donator;
+    changed = true;
+  }
+
+  if (profile.sources?.donator) {
+    profile.sources.donor ??= profile.sources.donator;
+    delete profile.sources.donator;
+    changed = true;
+  }
+
+  if (profile.currentBannerId === "donator") {
+    profile.currentBannerId = profile.banners.donor ? "donor" : null;
+    changed = true;
+  }
+
+  return changed;
+}
+
+function migrateLegacyDonorBannerFields(banner) {
+  const next = cloneBanner(banner);
+
+  if (next.id === "donator") {
+    next.id = "donor";
+  }
+  if (typeof next.title === "string") {
+    next.title = next.title.replaceAll("Donator", "Donor");
+  }
+  if (next.usernameStyle?.id === "donator") {
+    next.usernameStyle = {
+      ...next.usernameStyle,
+      id: "donor"
+    };
+  }
+
+  return next;
 }
