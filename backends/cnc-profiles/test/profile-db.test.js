@@ -35,7 +35,7 @@ test("seeds initial profiles preserving username casing", async () => {
   assert.equal(exampleProfile.username, "BannerExamples");
   assert.equal(exampleProfile.currentBannerId, "bot");
   assert.equal(exampleProfile.banners.bot.usernameStyle.id, "bot");
-  assert.equal(exampleProfile.banners["dcss-contributor"].title, "DCSS Contributor");
+  assert.equal(exampleProfile.banners["dcss-contributor"].title, "DCSS Contributor from CREDITS.txt");
   assert.equal(exampleProfile.banners["dcss-contributor"].url, "https://github.com/crawl/crawl/blob/master/crawl-ref/CREDITS.txt");
   assert.equal(exampleProfile.banners["dcss-contributor"].usernameStyle.id, "dcss-contributor");
   assert.equal(exampleProfile.banners["dcss-contributor"].usernameStyle.data.badge, "🛠️");
