@@ -270,6 +270,10 @@ export default class CNCUserinfo {
             return `<span style="${this.styleObjectToString(this.getTranslatorStyle(usernameStyle.data?.intensity))}">${this.escapeHtml(username)}</span>`;
         }
 
+        if (usernameStyle.id === 'bot') {
+            return `${this.escapeHtml(usernameStyle.data?.prefix || '🤖')}${this.escapeHtml(username)}`;
+        }
+
         return this.escapeHtml(username);
     }
 

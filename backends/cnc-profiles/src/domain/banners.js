@@ -3,7 +3,8 @@ export const PROFILE_SCHEMA_VERSION = 1;
 export const BANNER_URLS = {
   tournamentResults: "https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html",
   donation: "https://donation.abstr.net/list",
-  translation: "https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing"
+  translation: "https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing",
+  profiles: "https://profiles.nemelex.cards"
 };
 
 export const BANNER_DEFINITIONS = [
@@ -60,6 +61,12 @@ export const BANNER_DEFINITIONS = [
     title: "Translation Contributor",
     url: BANNER_URLS.translation,
     usernameStyle: { id: "translator", data: { score: 500, intensity: 0 } }
+  },
+  {
+    id: "bot",
+    title: "Bot",
+    url: BANNER_URLS.profiles,
+    usernameStyle: { id: "bot", data: { prefix: "🤖" } }
   }
 ];
 
@@ -91,6 +98,18 @@ export const INITIAL_PROFILES = [
   {
     username: "Dogchiho",
     banner: getBannerDefinition("cnc-1st-anniversary-ent-3")
+  },
+  {
+    username: "beem",
+    banner: getBannerDefinition("bot")
+  },
+  {
+    username: "CNCPublicChat",
+    banner: getBannerDefinition("bot")
+  },
+  {
+    username: "wtrec",
+    banner: getBannerDefinition("bot")
   }
 ];
 

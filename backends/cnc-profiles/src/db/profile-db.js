@@ -213,8 +213,10 @@ export class ProfileDatabase {
         source: "seed",
         updatedAt: now.toISOString()
       };
-      profile.currentBannerId ??= seed.banner.id;
       profile.selectionMode = profile.selectionMode ?? "auto";
+      if (!profile.currentBannerId && profile.selectionMode !== "manual") {
+        profile.currentBannerId = seed.banner.id;
+      }
       this.touchProfile(profile, now);
     }
   }

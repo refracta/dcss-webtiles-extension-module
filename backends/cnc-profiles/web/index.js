@@ -130,6 +130,10 @@ function renderStyledUsername(username, usernameStyle) {
     return `<span style="${styleToText(getTranslatorStyle(usernameStyle.data?.intensity))}">${escapeHtml(username)}</span>`;
   }
 
+  if (usernameStyle.id === "bot") {
+    return `${escapeHtml(usernameStyle.data?.prefix || "🤖")}${escapeHtml(username)}`;
+  }
+
   return escapeHtml(username);
 }
 

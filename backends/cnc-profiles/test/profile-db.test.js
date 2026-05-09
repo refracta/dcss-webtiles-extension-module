@@ -13,6 +13,13 @@ test("seeds initial profiles preserving username casing", async () => {
 
   assert.equal(profile.username, "WizardModePhilia");
   assert.equal(profile.currentBannerId, "wizard-account");
+
+  const botProfile = database.getProfile("cncpublicchat");
+  assert.equal(botProfile.username, "CNCPublicChat");
+  assert.equal(botProfile.currentBannerId, "bot");
+  assert.equal(botProfile.banners.bot.title, "Bot");
+  assert.equal(botProfile.banners.bot.usernameStyle.id, "bot");
+  assert.equal(botProfile.banners.bot.usernameStyle.data.prefix, "🤖");
 });
 
 test("manual none selection blocks auto equip", async () => {
