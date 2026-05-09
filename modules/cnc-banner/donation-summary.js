@@ -31,6 +31,10 @@ const DONATION_SUMMARY_STYLE = `
     #banner .cnc-donation-profile-link {
         cursor: pointer;
     }
+    #banner .cnc-donation-profile-link > [data-cnc-profile-username] {
+        color: #ffffff;
+        text-shadow: none;
+    }
     #banner .cnc-donation-line,
     #banner .cnc-donation-rank,
     #banner .cnc-donation-last {
