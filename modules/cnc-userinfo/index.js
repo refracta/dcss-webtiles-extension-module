@@ -56,6 +56,8 @@ class UserDropdown extends HTMLDivElement {
                 border-bottom: 1px solid #626262;
                 padding: 4px 8px;
                 cursor: pointer;
+                font-size: 0.88em;
+                white-space: nowrap;
             }
             .dropdown-content > div > a {
                 text-decoration: none;
