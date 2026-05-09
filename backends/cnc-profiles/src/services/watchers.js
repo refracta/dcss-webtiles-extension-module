@@ -52,23 +52,23 @@ export class WatcherService {
       let changed = false;
 
       if (this.config.watchers?.donation?.enabled) {
-        changed = (await this.syncDonation()) || changed;
+        changed = (await this.#runWatcher("donation", () => this.syncDonation())) || changed;
       }
 
       if (this.config.watchers?.translation?.enabled) {
-        changed = (await this.syncTranslation()) || changed;
+        changed = (await this.#runWatcher("translation", () => this.syncTranslation())) || changed;
       }
 
       if (this.config.watchers?.credits?.enabled && this.#shouldRun("credits", this.config.watchers.credits.pullPeriod)) {
-        changed = (await this.syncCredits()) || changed;
+        changed = (await this.#runWatcher("credits", () => this.syncCredits())) || changed;
       }
 
       if (this.config.watchers?.osp?.enabled && this.#shouldRun("osp", this.config.watchers.osp.pullPeriod)) {
-        changed = (await this.syncOsp()) || changed;
+        changed = (await this.#runWatcher("osp", () => this.syncOsp())) || changed;
       }
 
       if (this.config.watchers?.logfile?.enabled && this.#shouldRun("logfile", this.config.watchers.logfile.pullPeriod)) {
-        changed = (await this.syncLogfile()) || changed;
+        changed = (await this.#runWatcher("logfile", () => this.syncLogfile())) || changed;
       }
 
       if (changed) {
@@ -76,6 +76,15 @@ export class WatcherService {
       }
     } finally {
       this.running = false;
+    }
+  }
+
+  async #runWatcher(name, sync) {
+    try {
+      return await sync();
+    } catch (error) {
+      console.error(`Profile ${name} watcher sync failed:`, error);
+      return false;
     }
   }
 

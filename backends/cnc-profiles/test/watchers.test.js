@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -57,6 +57,57 @@ test("translation watcher grants threshold banner", async () => {
   assert.equal(await watcher.syncTranslation(), true);
   assert.ok(database.getProfile("TranslatorUser").banners.translator);
   assert.equal(database.getProfile("SmallUser"), null);
+});
+
+test("syncAll continues after a watcher fetch failure and writes later changes", async () => {
+  const database = await createDatabase();
+  const calls = [];
+  const errors = [];
+  const originalConsoleError = console.error;
+
+  console.error = (...args) => errors.push(args);
+  try {
+    const watcher = new WatcherService({
+      database,
+      config: createConfig({
+        donation: {
+          enabled: true,
+          url: "https://example.test/donation"
+        },
+        translation: {
+          enabled: true,
+          url: "https://example.test/translation",
+          threshold: 500,
+          maxScore: 5000
+        }
+      }),
+      fetchImpl: async (url) => {
+        calls.push(url);
+        if (url === "https://example.test/donation") {
+          throw new Error("donation unavailable");
+        }
+        return okJson({
+          users: [
+            { username: "TranslatorUser", created: 500, edited: 0, deleted: 0 }
+          ]
+        });
+      }
+    });
+
+    await watcher.syncAll();
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.deepEqual(calls, [
+    "https://example.test/donation",
+    "https://example.test/translation"
+  ]);
+  assert.match(String(errors[0]?.[0] ?? ""), /donation watcher sync failed/);
+  assert.ok(database.getProfile("TranslatorUser").banners.translator);
+
+  const persisted = JSON.parse(await readFile(database.filePath, "utf8"));
+  assert.ok(persisted.profiles.TranslatorUser.banners.translator);
 });
 
 test("credits watcher grants DCSS contributor banners from credits text", async () => {
