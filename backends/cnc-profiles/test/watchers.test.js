@@ -95,7 +95,7 @@ test("credits watcher grants DCSS contributor banners from credits text", async 
 
   assert.equal(await watcher.syncCredits(), true);
   const banner = database.getProfile("ASCIIPhilia").banners["dcss-contributor"];
-  assert.equal(banner.title, "DCSS Contributor from CREDITS.txt");
+  assert.equal(banner.title, "DCSS Contributor\nfrom CREDITS.txt");
   assert.equal(banner.url, "https://github.com/crawl/crawl/blob/master/crawl-ref/CREDITS.txt");
   assert.equal(banner.usernameStyle.id, "dcss-contributor");
   assert.equal(banner.usernameStyle.data.badge, "🛠️");

@@ -105,7 +105,7 @@ export const BANNER_DEFINITIONS = [
   },
   {
     id: "dcss-contributor",
-    title: "DCSS Contributor from CREDITS.txt",
+    title: "DCSS Contributor\nfrom CREDITS.txt",
     url: BANNER_URLS.credits,
     usernameStyle: { id: "dcss-contributor", data: { badge: "🛠️" } }
   },
