@@ -11,7 +11,7 @@ const WATCHER_SOURCES = {
   translation: "watcher:translation"
 };
 
-const LOGFILE_KEEP_MULTIPLIER = 5;
+const LOGFILE_RANKING_MODE = "game-server-v1";
 
 export class WatcherService {
   constructor({ database, config, fetchImpl = fetch }) {
@@ -137,7 +137,7 @@ export class WatcherService {
       stateChanged = true;
     }
 
-    const processed = await this.#processLogfileResponse(response, state, startOffset);
+    const processed = await this.#processLogfileResponse(response, state, startOffset, limit);
     stateChanged = processed.changed || stateChanged;
     state.lastSyncAt = new Date().toISOString();
 
@@ -228,19 +228,27 @@ export class WatcherService {
   #getLogfileState() {
     this.database.data.watcherState ??= {};
     const state = this.database.data.watcherState.logfile ??= {};
-    state.offset = Math.max(0, Math.floor(Number(state.offset) || 0));
-    state.partialLine = String(state.partialLine ?? "");
-    state.players ??= {};
+    if (state.rankingMode !== LOGFILE_RANKING_MODE) {
+      this.#resetLogfileState(state);
+    } else {
+      state.offset = Math.max(0, Math.floor(Number(state.offset) || 0));
+      state.partialLine = String(state.partialLine ?? "");
+      state.games = Array.isArray(state.games) ? state.games : [];
+      state.nextGameOrder = Math.max(0, Math.floor(Number(state.nextGameOrder) || 0));
+    }
     return state;
   }
 
   #resetLogfileState(state) {
+    state.rankingMode = LOGFILE_RANKING_MODE;
     state.offset = 0;
     state.partialLine = "";
-    state.players = {};
+    state.games = [];
+    state.nextGameOrder = 0;
+    delete state.players;
   }
 
-  async #processLogfileResponse(response, state, startOffset) {
+  async #processLogfileResponse(response, state, startOffset, limit) {
     let receivedBytes = 0;
     let lineBuffer = startOffset === 0 ? "" : state.partialLine;
     let changed = false;
@@ -254,7 +262,7 @@ export class WatcherService {
       lineBuffer = lines.pop() ?? "";
 
       for (const line of lines) {
-        changed = this.#updateLogfileScore(state, line.replace(/\r$/, "")) || changed;
+        changed = this.#updateLogfileScore(state, line.replace(/\r$/, ""), limit) || changed;
       }
     }
 
@@ -263,51 +271,64 @@ export class WatcherService {
     return { changed: changed || receivedBytes > 0 };
   }
 
-  #updateLogfileScore(state, line) {
+  #updateLogfileScore(state, line, limit) {
     const game = parseLogfileLine(line);
     if (!game || game.score <= 0) {
       return false;
     }
 
-    const key = normalizeUsernameKey(game.username);
-    if (!key) {
+    const order = state.nextGameOrder;
+    state.nextGameOrder += 1;
+    state.games = Array.isArray(state.games) ? state.games : [];
+
+    if (state.games.length >= limit && game.score <= Number(state.games.at(-1)?.score)) {
       return false;
     }
 
-    const previous = state.players[key];
-    if (previous && previous.score >= game.score) {
-      return false;
-    }
-
-    state.players[key] = {
+    state.games.push({
       username: resolveExistingUsername(this.database, game.username) ?? game.username,
-      score: game.score
-    };
+      score: game.score,
+      order
+    });
+    this.#pruneLogfileGames(state, limit);
     return true;
   }
 
-  #pruneLogfilePlayers(state, keepLimit) {
-    const entries = Object.entries(state.players)
-      .filter(([, entry]) => entry?.username && Number(entry.score) > 0)
-      .sort(([, a], [, b]) => Number(b.score) - Number(a.score) || String(a.username).localeCompare(String(b.username)))
-      .slice(0, keepLimit);
-    state.players = Object.fromEntries(entries);
+  #pruneLogfileGames(state, limit) {
+    state.games = (Array.isArray(state.games) ? state.games : [])
+      .filter((entry) => entry?.username && Number(entry.score) > 0)
+      .sort(compareLogfileGames)
+      .slice(0, limit);
   }
 
   #getTopRankingEntries(state, limit) {
-    return Object.values(state.players)
+    const entries = [];
+    const seen = new Set();
+    let serverRank = 0;
+    const games = (Array.isArray(state.games) ? state.games : [])
       .filter((entry) => entry?.username && Number(entry.score) > 0)
-      .sort((a, b) => Number(b.score) - Number(a.score) || String(a.username).localeCompare(String(b.username)))
-      .slice(0, limit)
-      .map((entry, index) => ({
+      .sort(compareLogfileGames)
+      .slice(0, limit);
+
+    for (const [index, entry] of games.entries()) {
+      const key = normalizeUsernameKey(entry.username);
+      if (!key || seen.has(key)) continue;
+
+      serverRank += 1;
+      seen.add(key);
+      entries.push({
         username: entry.username,
         score: Number(entry.score),
-        rank: index + 1
-      }));
+        rank: index + 1,
+        serverRank
+      });
+    }
+
+    return entries;
   }
 
   #replaceRankingBannersFromLogfileState(state, limit) {
-    this.#pruneLogfilePlayers(state, Math.max(limit * LOGFILE_KEEP_MULTIPLIER, limit));
+    this.#pruneLogfileGames(state, limit);
     return this.#replaceManagedBanners({
       source: WATCHER_SOURCES.logfile,
       bannerId: "ranking",
@@ -320,6 +341,12 @@ export class WatcherService {
 function resolveExistingUsername(database, username) {
   const profile = database.getProfile(username);
   return profile?.username ?? null;
+}
+
+function compareLogfileGames(a, b) {
+  return Number(b.score) - Number(a.score) ||
+    Number(a.order ?? 0) - Number(b.order ?? 0) ||
+    String(a.username).localeCompare(String(b.username));
 }
 
 async function* readResponseTextChunks(response) {

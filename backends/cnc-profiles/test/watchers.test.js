@@ -64,19 +64,23 @@ test("logfile watcher ranks best scores from range deltas", async () => {
   let logfile = [
     createLogLine("Alice", 1000),
     createLogLine("Bob", 3000),
+    createLogLine("Bob", 2500),
     createLogLine("Carol", 2000)
   ].join("\n") + "\n";
   const requests = [];
   const watcher = new WatcherService({
     database,
-    config: createConfig({ logfile: { limit: 2 } }),
+    config: createConfig({ logfile: { limit: 3 } }),
     fetchImpl: createLogfileFetch(() => logfile, requests)
   });
 
   assert.equal(await watcher.syncLogfile(), true);
   assert.equal(database.getProfile("Bob").banners.ranking.title, "Trunk Game Ranking #1");
   assert.equal(database.getProfile("Bob").banners.ranking.usernameStyle.data.badge, "👑");
-  assert.equal(database.getProfile("Carol").banners.ranking.title, "Trunk Game Ranking #2");
+  assert.equal(database.getProfile("Bob").banners.ranking.detail.value, "(Server Ranking #1)");
+  assert.equal(database.getProfile("Carol").banners.ranking.title, "Trunk Game Ranking #3");
+  assert.equal(database.getProfile("Carol").banners.ranking.detail.value, "(Server Ranking #2)");
+  assert.equal(database.getProfile("Carol").banners.ranking.usernameStyle.data.badge, "🏆");
   assert.equal(database.getProfile("Alice"), null);
 
   const offset = database.data.watcherState.logfile.offset;
@@ -87,7 +91,56 @@ test("logfile watcher ranks best scores from range deltas", async () => {
   assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Game Ranking #1");
   assert.equal(database.getProfile("Alice").banners.ranking.usernameStyle.data.badge, "👑");
   assert.equal(database.getProfile("Bob").banners.ranking.title, "Trunk Game Ranking #2");
+  assert.equal(database.getProfile("Bob").banners.ranking.detail.value, "(Server Ranking #2)");
+  assert.equal(database.getProfile("Bob").banners.ranking.usernameStyle.data.badge, "🏆");
   assert.equal(database.getProfile("Carol").banners.ranking, undefined);
+});
+
+test("logfile watcher uses the best game rank for duplicate player entries", async () => {
+  const database = await createDatabase();
+  const logfile = [
+    createLogLine("TopPlayer", 5000),
+    createLogLine("TopPlayer", 4500),
+    createLogLine("TargetPlayer", 4000),
+    createLogLine("OtherPlayer", 3000)
+  ].join("\n") + "\n";
+  const watcher = new WatcherService({
+    database,
+    config: createConfig({ logfile: { limit: 4 } }),
+    fetchImpl: createLogfileFetch(() => logfile)
+  });
+
+  assert.equal(await watcher.syncLogfile(), true);
+  assert.equal(database.getProfile("TopPlayer").banners.ranking.title, "Trunk Game Ranking #1");
+  assert.equal(database.getProfile("TargetPlayer").banners.ranking.title, "Trunk Game Ranking #3");
+  assert.equal(database.getProfile("TargetPlayer").banners.ranking.detail.value, "(Server Ranking #2)");
+  assert.equal(database.getProfile("TargetPlayer").banners.ranking.usernameStyle.data.badge, "🏆");
+  assert.equal(database.getProfile("OtherPlayer").banners.ranking.title, "Trunk Game Ranking #4");
+  assert.equal(database.getProfile("OtherPlayer").banners.ranking.detail.value, "(Server Ranking #3)");
+});
+
+test("logfile watcher resets old unique-player ranking state", async () => {
+  const database = await createDatabase();
+  database.data.watcherState.logfile = {
+    offset: 999,
+    partialLine: "",
+    players: {
+      alice: { username: "Alice", score: 1000 }
+    }
+  };
+  const logfile = createLogLine("Alice", 1000) + "\n";
+  const requests = [];
+  const watcher = new WatcherService({
+    database,
+    config: createConfig({ logfile: { limit: 100 } }),
+    fetchImpl: createLogfileFetch(() => logfile, requests)
+  });
+
+  assert.equal(await watcher.syncLogfile(), true);
+  assert.equal(requests.at(-1).range, "bytes=0-");
+  assert.equal(database.data.watcherState.logfile.players, undefined);
+  assert.equal(database.data.watcherState.logfile.rankingMode, "game-server-v1");
+  assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Game Ranking #1");
 });
 
 test("logfile watcher keeps partial lines for the next delta", async () => {

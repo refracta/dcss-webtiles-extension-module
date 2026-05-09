@@ -198,23 +198,24 @@ export function createDonatorBanner(amount) {
   };
 }
 
-export function createRankingBanner({ rank, score }) {
+export function createRankingBanner({ rank, serverRank, score }) {
   const safeRank = Math.max(1, Math.floor(Number(rank) || 1));
+  const safeServerRank = Math.max(1, Math.floor(Number(serverRank) || safeRank));
   const safeScore = Math.max(0, Math.floor(Number(score) || 0));
   return {
     id: "ranking",
     title: `Trunk Game Ranking #${safeRank}`,
     url: BANNER_URLS.logfileViewer,
     detail: {
-      label: "Score",
-      value: safeScore.toLocaleString("en-US")
+      value: `(Server Ranking #${safeServerRank})`
     },
     usernameStyle: {
       id: "ranking",
       data: {
         rank: safeRank,
+        serverRank: safeServerRank,
         score: safeScore,
-        badge: getRankingBadge(safeRank)
+        badge: getRankingBadge(safeServerRank)
       }
     }
   };
