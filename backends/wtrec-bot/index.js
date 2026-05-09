@@ -9,6 +9,30 @@ import JSZip from "jszip";
 fs.mkdirSync('data/resources', {recursive: true});
 fs.mkdirSync('data/wtrec', {recursive: true});
 const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+const activeRecordings = new Set();
+const queuedRecordings = new Set();
+
+function shouldRecordLobbyEntry(data) {
+    const start = new Date(Date.UTC(2026, 2 - 1, 6, 20, 0, 0));  // 2026-02-06 20:00:00 UTC
+    const end = new Date(Date.UTC(2026, 2 - 1, 22, 20, 0, 0)); // 2026-02-22 20:00:00 UTC
+    const now = new Date();
+    const isBetween = now >= start && now <= end;
+    return data.username !== 'CNCPublicChat' && (isBetween || Math.random() > 0.8);
+}
+
+function enqueueWTREC(socket, username) {
+    if (!username || activeRecordings.has(username) || queuedRecordings.has(username)) {
+        return;
+    }
+    queuedRecordings.add(username);
+    socket.launchQueue.push(username);
+}
+
+function clearQueuedRecordings(queue = []) {
+    for (const username of queue) {
+        queuedRecordings.delete(username);
+    }
+}
 
 while (true) {
     let lobby, socket, interval;
@@ -21,14 +45,8 @@ while (true) {
                         socket.pong();
                     } else if (data.msg === 'lobby_entry') {
                         if (!lobby[data.id]) {
-                            // 기준 구간
-                            const start = new Date(Date.UTC(2026, 2 - 1, 6, 20, 0, 0));  // 2026-02-06 20:00:00 UTC
-                            const end = new Date(Date.UTC(2026, 2 - 1, 22, 20, 0, 0)); // 2026-02-22 20:00:00 UTC
-                            const now = new Date();           // 로컬 시간. 필요하면 new Date().toUTCString() 등으로 UTC 변환
-                            const isBetween = now >= start && now <= end;
-                            const condition = isBetween || Math.random() > 0.8;
-                            if (condition && data.username !== 'CNCPublicChat') {
-                                socket.launchQueue.push(data.username);
+                            if (shouldRecordLobbyEntry(data)) {
+                                enqueueWTREC(socket, data.username);
                             }
                         }
                         lobby[data.id] = data;
@@ -45,13 +63,16 @@ while (true) {
             }
             interval = setInterval(_ => {
                 if (socket.launchQueue.length > 0) {
-                    launchWTREC(socket.launchQueue.shift());
+                    const username = socket.launchQueue.shift();
+                    queuedRecordings.delete(username);
+                    launchWTREC(username);
                 }
             }, 1000);
         })
     } catch (e) {
         console.error(new Date(), e.reason);
     } finally {
+        clearQueuedRecordings(socket?.launchQueue);
         clearInterval(interval);
         await new Promise(resolve => setTimeout(resolve, 1000 * 10));
     }
@@ -112,7 +133,16 @@ function generateWTRecName() {
 }
 
 function launchWTREC(username) {
-    const socket = extend(WebsocketFactory.create(config.websocket, {
+    if (activeRecordings.has(username)) {
+        return;
+    }
+    activeRecordings.add(username);
+
+    let socket;
+    const cleanup = () => activeRecordings.delete(username);
+
+    try {
+        socket = extend(WebsocketFactory.create(config.websocket, {
         handle_message: async function (data) {
             if (data.msg === 'ping') {
                 socket.pong();
@@ -205,6 +235,7 @@ function launchWTREC(username) {
                     console.error(e);
                     console.log(username, 'record save error');
                 } finally {
+                    cleanup();
                     socket.close();
                 }
             } else if (socket.isRecording) {
@@ -216,7 +247,12 @@ function launchWTREC(username) {
                 socket.data.push({...data, wtrec: {type: 'receive', timing}});
             }
         }
-    }));
+        }));
+        socket.onclose = socket.onerror = cleanup;
+    } catch (e) {
+        cleanup();
+        throw e;
+    }
 }
 
 function extend(socket) {
