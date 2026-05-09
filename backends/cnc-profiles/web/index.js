@@ -270,86 +270,98 @@ function renderEntityPage(scope, type, entities) {
 }
 
 function createEntityCard(entity, type, scope) {
+  if (type === "game") {
+    return createGameEntityCard(entity);
+  }
+
+  if (type === "item") {
+    return createItemEntityCard(entity, scope);
+  }
+
+  return document.createElement("article");
+}
+
+function createItemEntityCard(entity, scope) {
   const profile = scope === "private" ? state.profile : state.publicProfile;
   const username = entity.user || profile?.username || "";
 
   const card = document.createElement("article");
-  card.className = "entity-card";
-
-  const avatar = document.createElement("span");
-  avatar.className = "entity-avatar";
-  avatar.textContent = getUsernameInitial(username);
-
-  const message = document.createElement("div");
-  message.className = "entity-message";
-
-  const header = document.createElement("div");
-  header.className = "entity-message-header";
+  card.className = "item-chat-row";
 
   const author = document.createElement("span");
-  author.className = "entity-author";
-  author.innerHTML = renderStyledUsername(username, profile?.currentBanner?.usernameStyle);
+  author.className = "chat-sender";
+  author.innerHTML = `${renderStyledUsername(username, profile?.currentBanner?.usernameStyle)}'s Item`;
 
-  const meta = document.createElement(type === "item" && entity.url ? "a" : "span");
-  meta.className = "entity-meta";
+  const separator = document.createTextNode(": ");
+  const message = document.createElement("span");
+  message.className = "chat-message";
+
+  const media = document.createElement("a");
+  media.className = "item-chat-media";
+  media.href = entity.file;
+  media.target = "_blank";
+  media.rel = "noopener noreferrer";
+  media.download = getEntityDownloadName(entity, "item");
+  media.addEventListener("click", (event) => {
+    event.preventDefault();
+    downloadImage(entity.file, getEntityDownloadName(entity, "item"));
+  });
+
+  const image = document.createElement("img");
+  image.src = entity.file;
+  image.alt = entity.item || "Item image";
+  image.loading = "lazy";
+  media.append(image);
+
+  const item = document.createElement("span");
+  item.className = "item-chat-name";
+  item.style.color = isSafeCssColor(entity.color) ? entity.color : "#20231f";
+  item.textContent = entity.item || `Item #${entity.number}`;
+
+  const meta = document.createElement("span");
+  meta.className = "item-chat-meta";
   meta.textContent = formatDate(entity.timestamp);
-  if (type === "item" && entity.url) {
-    meta.href = entity.url;
-    meta.target = "_blank";
-    meta.rel = "noopener noreferrer";
-  }
 
-  header.append(author, meta);
+  message.append(media, item);
+  card.append(author, separator, message, meta);
+  return card;
+}
 
-  const bubble = document.createElement("div");
-  bubble.className = type === "item" ? "entity-bubble item-bubble" : "entity-bubble";
-
-  const title = document.createElement("div");
-  title.className = type === "item" ? "entity-title item-title" : "entity-title";
-  if (type === "item") {
-    const text = document.createElement("span");
-    text.textContent = entity.item || `Item #${entity.number}`;
-    text.style.color = isSafeCssColor(entity.color) ? entity.color : "#20231f";
-    title.append(text);
-  } else {
-    title.textContent = `Game #${entity.number}`;
-  }
+function createGameEntityCard(entity) {
+  const card = document.createElement("article");
+  card.className = "game-card";
 
   const media = document.createElement("a");
   media.className = "entity-media";
   media.href = entity.file;
   media.target = "_blank";
   media.rel = "noopener noreferrer";
-  if (type === "game") {
-    media.download = getEntityDownloadName(entity, type);
-    media.addEventListener("click", (event) => {
-      event.preventDefault();
-      openImagePopup(entity.file, getEntityDownloadName(entity, type));
-    });
-  } else if (type === "item") {
-    media.download = getEntityDownloadName(entity, type);
-    media.addEventListener("click", (event) => {
-      event.preventDefault();
-      downloadImage(entity.file, getEntityDownloadName(entity, type));
-    });
-  }
+  media.download = getEntityDownloadName(entity, "game");
+  media.addEventListener("click", (event) => {
+    event.preventDefault();
+    openImagePopup(entity.file, getEntityDownloadName(entity, "game"));
+  });
 
   const image = document.createElement("img");
   image.src = entity.file;
-  image.alt = type === "item" ? (entity.item || "Item image") : "Game image";
+  image.alt = "Game image";
   image.loading = "lazy";
   media.append(image);
 
-  bubble.append(title, media);
-  message.append(header, bubble);
-  card.append(avatar, message);
-  return card;
-}
+  const body = document.createElement("div");
+  body.className = "game-card-body";
 
-function getUsernameInitial(username) {
-  const chars = Array.from(String(username || ""));
-  const firstReadable = chars.find((char) => /[A-Za-z0-9]/.test(char)) || chars[0] || "?";
-  return firstReadable.toUpperCase();
+  const title = document.createElement("div");
+  title.className = "entity-title";
+  title.textContent = `Game #${entity.number}`;
+
+  const meta = document.createElement("span");
+  meta.className = "entity-meta";
+  meta.textContent = formatDate(entity.timestamp);
+
+  body.append(title, meta);
+  card.append(media, body);
+  return card;
 }
 
 function getEntityDownloadName(entity, type) {
