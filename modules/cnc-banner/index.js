@@ -31,6 +31,8 @@ https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
 `;
 const PROFILES_URL = 'https://profiles.nemelex.cards';
 const PROFILES_TOKEN_LOGIN_URL = `${PROFILES_URL}/session/cnc-token`;
+const TEST_SERVER_URL = 'https://test.nemelex.cards';
+const TEST_SOCKET_SERVER = 'wss://test.nemelex.cards:443/socket';
 
 export default class CNCBanner {
     static name = 'CNCBanner';
@@ -42,6 +44,8 @@ export default class CNCBanner {
         this.donations = new DonationSummary();
         this.actions = new LobbyActions();
         this.banner = new BannerTemplate(this.donations);
+        this.testLobby = {};
+        this.testLobbySocket = null;
     }
 
     get donationApiUrl() {
@@ -349,6 +353,117 @@ export default class CNCBanner {
         return this.actions.enhanceWTRecLinks();
     }
 
+    startTestLobbySocket() {
+        if (this.testLobbySocket) {
+            return;
+        }
+
+        const {WebSocketFactory} = DWEM.Modules;
+        this.testLobbySocket = WebSocketFactory.create((data) => {
+            this.handleTestLobbyMessage(data);
+        }, TEST_SOCKET_SERVER);
+        this.testLobbySocket.onclose = () => {
+            this.testLobbySocket = null;
+            setTimeout(() => this.startTestLobbySocket(), 5000);
+        };
+        this.testLobbySocket.onerror = () => {
+            this.testLobbySocket?.close();
+        };
+    }
+
+    handleTestLobbyMessage(data) {
+        if (data.msg === 'ping') {
+            this.testLobbySocket?.send(JSON.stringify({msg: 'pong'}));
+            return;
+        }
+
+        if (data.msg === 'lobby_clear') {
+            for (const entry of Object.values(this.testLobby)) {
+                this.removeTestLobbyEntry(entry);
+            }
+            this.testLobby = {};
+            return;
+        }
+
+        if (data.msg === 'lobby_entry') {
+            this.testLobby[data.id] = data;
+            this.renderTestLobbyEntry(data);
+            return;
+        }
+
+        if (data.msg === 'lobby_remove') {
+            const entry = this.testLobby[data.id] || data;
+            delete this.testLobby[data.id];
+            this.removeTestLobbyEntry(entry);
+        }
+    }
+
+    renderTestLobbyEntries() {
+        for (const entry of Object.values(this.testLobby)) {
+            this.renderTestLobbyEntry(entry);
+        }
+    }
+
+    renderTestLobbyEntry(entry) {
+        const {IOHook} = DWEM.Modules;
+        const data = this.getTestLobbyEntry(entry);
+        IOHook.handle_message(data);
+        this.decorateTestLobbyRow(data);
+    }
+
+    removeTestLobbyEntry(entry) {
+        const {IOHook} = DWEM.Modules;
+        IOHook.handle_message({
+            msg: 'lobby_remove',
+            id: this.getTestLobbyId(entry),
+            _cncBannerTestServer: true
+        });
+    }
+
+    getTestLobbyEntry(entry) {
+        const username = String(entry.username || '');
+        const gameId = String(entry.game_id || '');
+        const watchUrl = this.getTestWatchUrl(username);
+        return {
+            ...entry,
+            id: this.getTestLobbyId(entry),
+            game_id: `<a href="${watchUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(gameId)} (test)</a>`,
+            _cncBannerTestServer: true,
+            _cncBannerTestUsername: username,
+            _cncBannerTestWatchUrl: watchUrl
+        };
+    }
+
+    getTestLobbyId(entry) {
+        return `cnc-test-${String(entry.id || '').replace(/[^A-Za-z0-9_-]/g, '-')}`;
+    }
+
+    getTestWatchUrl(username) {
+        return `${TEST_SERVER_URL}/#watch-${encodeURIComponent(username)}`;
+    }
+
+    decorateTestLobbyRow(data) {
+        const row = document.getElementById(`game-${data.id}`);
+        if (!row) {
+            return;
+        }
+
+        row.classList.add('cnc-test-lobby-entry');
+        const usernameLink = row.querySelector('.username a');
+        if (usernameLink) {
+            usernameLink.href = data._cncBannerTestWatchUrl;
+            usernameLink.target = '_blank';
+            usernameLink.rel = 'noopener noreferrer';
+        }
+
+        const gameLink = row.querySelector('.game_id a');
+        if (gameLink) {
+            gameLink.href = data._cncBannerTestWatchUrl;
+            gameLink.target = '_blank';
+            gameLink.rel = 'noopener noreferrer';
+        }
+    }
+
     onLoad() {
         const {IOHook, SiteInformation} = DWEM.Modules;
         const refreshDonationSummary = () => this.scheduleDonationSummaryUpdate();
@@ -375,6 +490,9 @@ export default class CNCBanner {
         const lobbySpan = document.querySelector('#lobby_body span');
         IOHook.handle_message.after.addHandler('cnc-banner', (data) => {
             if (!(data.msg === 'lobby_entry' || data.msg === 'lobby_remove')) {
+                if (data.msg === 'lobby_complete' && !data._cncBannerTestServer) {
+                    setTimeout(() => this.renderTestLobbyEntries(), 0);
+                }
                 return;
             }
             if (data.msg === 'lobby_entry') {
@@ -387,6 +505,8 @@ export default class CNCBanner {
                 lobbySpan.textContent = `Games currently running (${numberOfPlayers} players):`;
             }
         });
+
+        DWEM.Modules.WebSocketFactory.ready.then(() => this.startTestLobbySocket());
 
         if (shouldUseXMasTheme()) {
             this.applyXMasTheme();

@@ -21,7 +21,7 @@ export default class WebSocketFactory {
         }
     }
 
-    create(handle_message) {
+    create(handle_message, socketServer = socket_server) {
         function enqueue_messages(msgtext) {
             if (msgtext.match(/^{/)) {
                 let msgobj;
@@ -45,9 +45,9 @@ export default class WebSocketFactory {
             inflater = new Inflater();
         }
         if (inflater)
-            socket = new WebSocket(socket_server);
+            socket = new WebSocket(socketServer);
         else
-            socket = new WebSocket(socket_server, 'no-compression');
+            socket = new WebSocket(socketServer, 'no-compression');
         socket.binaryType = 'arraybuffer';
         socket.onmessage = (msg) => {
             if (inflater && msg.data instanceof ArrayBuffer) {
