@@ -135,10 +135,24 @@ setupEntityInfiniteScroll();
 setupWTRecInfiniteScroll();
 
 const publicProfileUsername = getPublicProfileUsername();
-if (publicProfileUsername) {
-  loadPublicProfile(publicProfileUsername);
-} else {
-  loadMe();
+loadInitialRoute(publicProfileUsername);
+
+async function loadInitialRoute(publicProfileUsername) {
+  if (!publicProfileUsername) {
+    await loadMe();
+    return;
+  }
+
+  try {
+    const data = await requestJson("/api/me");
+    if (data.authenticated && isSameUsername(data.profile?.username, publicProfileUsername)) {
+      setProfile(data.profile);
+      return;
+    }
+  } catch {
+  }
+
+  await loadPublicProfile(publicProfileUsername);
 }
 
 async function loadPublicProfile(username) {
@@ -1419,6 +1433,10 @@ function getPublicProfileUsername() {
   } catch {
     return "";
   }
+}
+
+function isSameUsername(a, b) {
+  return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
 }
 
 async function requestJson(url, options = {}) {
