@@ -1,13 +1,17 @@
 import {
   createDonatorBanner,
+  createRankingBanner,
   createTranslatorBanner
 } from "../domain/banners.js";
 import { normalizeUsernameKey } from "../db/profile-db.js";
 
 const WATCHER_SOURCES = {
   donation: "watcher:donation",
+  logfile: "watcher:logfile",
   translation: "watcher:translation"
 };
+
+const LOGFILE_KEEP_MULTIPLIER = 5;
 
 export class WatcherService {
   constructor({ database, config, fetchImpl = fetch }) {
@@ -16,6 +20,7 @@ export class WatcherService {
     this.fetch = fetchImpl;
     this.timer = null;
     this.running = false;
+    this.lastWatcherRuns = new Map();
   }
 
   start() {
@@ -46,6 +51,10 @@ export class WatcherService {
 
       if (this.config.watchers?.translation?.enabled) {
         changed = (await this.syncTranslation()) || changed;
+      }
+
+      if (this.config.watchers?.logfile?.enabled && this.#shouldRun("logfile", this.config.watchers.logfile.pullPeriod)) {
+        changed = (await this.syncLogfile()) || changed;
       }
 
       if (changed) {
@@ -85,6 +94,63 @@ export class WatcherService {
       activeEntries: [...totals.values()].filter((entry) => entry.amount > 0),
       createBanner: (entry) => createDonatorBanner(entry.amount)
     });
+  }
+
+  async syncLogfile() {
+    const watcherConfig = this.config.watchers.logfile;
+    const state = this.#getLogfileState();
+    const limit = Math.max(1, Math.floor(Number(watcherConfig.limit) || 100));
+    const url = watcherConfig.url;
+    let stateChanged = false;
+
+    const remoteLength = await this.#getRemoteLogfileLength(url);
+    if (Number.isFinite(remoteLength) && state.offset > remoteLength) {
+      this.#resetLogfileState(state);
+      stateChanged = true;
+    }
+
+    if (Number.isFinite(remoteLength) && state.offset === remoteLength) {
+      return false;
+    }
+
+    const response = await this.fetch(url, {
+      headers: {
+        Accept: "text/plain",
+        "Accept-Encoding": "identity",
+        Range: `bytes=${state.offset}-`
+      }
+    });
+
+    if (response.status === 416) {
+      this.#resetLogfileState(state);
+      stateChanged = true;
+      return (await this.syncLogfile()) || stateChanged;
+    }
+
+    if (!response.ok || (response.status !== 200 && response.status !== 206)) {
+      throw new Error(`Logfile watcher failed: ${response.status}`);
+    }
+
+    const startOffset = response.status === 200 ? 0 : state.offset;
+    if (startOffset === 0 && state.offset !== 0) {
+      this.#resetLogfileState(state);
+      stateChanged = true;
+    }
+
+    const processed = await this.#processLogfileResponse(response, state, startOffset);
+    stateChanged = processed.changed || stateChanged;
+    state.lastSyncAt = new Date().toISOString();
+
+    this.#pruneLogfilePlayers(state, Math.max(limit * LOGFILE_KEEP_MULTIPLIER, limit));
+    const activeEntries = this.#getTopRankingEntries(state, limit);
+    const bannersChanged = this.#replaceManagedBanners({
+      source: WATCHER_SOURCES.logfile,
+      bannerId: "ranking",
+      activeEntries,
+      createBanner: (entry) => createRankingBanner(entry)
+    });
+
+    return stateChanged || bannersChanged;
   }
 
   async syncTranslation() {
@@ -137,9 +203,196 @@ export class WatcherService {
 
     return changed;
   }
+
+  #shouldRun(name, periodSeconds) {
+    const period = Math.max(5, Number(periodSeconds) || 30) * 1000;
+    const now = Date.now();
+    const lastRun = this.lastWatcherRuns.get(name) ?? 0;
+    if (now - lastRun < period) {
+      return false;
+    }
+
+    this.lastWatcherRuns.set(name, now);
+    return true;
+  }
+
+  async #getRemoteLogfileLength(url) {
+    const response = await this.fetch(url, {
+      method: "HEAD",
+      headers: {
+        Accept: "text/plain",
+        "Accept-Encoding": "identity"
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Logfile watcher HEAD failed: ${response.status}`);
+    }
+
+    const length = Number(getHeader(response.headers, "content-length"));
+    return Number.isFinite(length) && length >= 0 ? length : null;
+  }
+
+  #getLogfileState() {
+    this.database.data.watcherState ??= {};
+    const state = this.database.data.watcherState.logfile ??= {};
+    state.offset = Math.max(0, Math.floor(Number(state.offset) || 0));
+    state.partialLine = String(state.partialLine ?? "");
+    state.players ??= {};
+    return state;
+  }
+
+  #resetLogfileState(state) {
+    state.offset = 0;
+    state.partialLine = "";
+    state.players = {};
+  }
+
+  async #processLogfileResponse(response, state, startOffset) {
+    let receivedBytes = 0;
+    let lineBuffer = startOffset === 0 ? "" : state.partialLine;
+    let changed = false;
+
+    for await (const chunk of readResponseTextChunks(response)) {
+      if (!chunk.text) continue;
+
+      receivedBytes += chunk.bytes;
+      lineBuffer += chunk.text;
+      const lines = lineBuffer.split("\n");
+      lineBuffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        changed = this.#updateLogfileScore(state, line.replace(/\r$/, "")) || changed;
+      }
+    }
+
+    state.offset = startOffset + receivedBytes;
+    state.partialLine = lineBuffer;
+    return { changed: changed || receivedBytes > 0 };
+  }
+
+  #updateLogfileScore(state, line) {
+    const game = parseLogfileLine(line);
+    if (!game || game.score <= 0) {
+      return false;
+    }
+
+    const key = normalizeUsernameKey(game.username);
+    if (!key) {
+      return false;
+    }
+
+    const previous = state.players[key];
+    if (previous && previous.score >= game.score) {
+      return false;
+    }
+
+    state.players[key] = {
+      username: resolveExistingUsername(this.database, game.username) ?? game.username,
+      score: game.score
+    };
+    return true;
+  }
+
+  #pruneLogfilePlayers(state, keepLimit) {
+    const entries = Object.entries(state.players)
+      .filter(([, entry]) => entry?.username && Number(entry.score) > 0)
+      .sort(([, a], [, b]) => Number(b.score) - Number(a.score) || String(a.username).localeCompare(String(b.username)))
+      .slice(0, keepLimit);
+    state.players = Object.fromEntries(entries);
+  }
+
+  #getTopRankingEntries(state, limit) {
+    return Object.values(state.players)
+      .filter((entry) => entry?.username && Number(entry.score) > 0)
+      .sort((a, b) => Number(b.score) - Number(a.score) || String(a.username).localeCompare(String(b.username)))
+      .slice(0, limit)
+      .map((entry, index) => ({
+        username: entry.username,
+        score: Number(entry.score),
+        rank: index + 1
+      }));
+  }
 }
 
 function resolveExistingUsername(database, username) {
   const profile = database.getProfile(username);
   return profile?.username ?? null;
+}
+
+async function* readResponseTextChunks(response) {
+  if (response.body?.getReader) {
+    const decoder = new TextDecoder();
+    const reader = response.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      yield {
+        text: decoder.decode(value, { stream: true }),
+        bytes: value.byteLength
+      };
+    }
+
+    const tail = decoder.decode();
+    if (tail) {
+      yield {
+        text: tail,
+        bytes: 0
+      };
+    }
+    return;
+  }
+
+  if (response.body?.[Symbol.asyncIterator]) {
+    const decoder = new TextDecoder();
+    for await (const value of response.body) {
+      yield {
+        text: decoder.decode(value, { stream: true }),
+        bytes: value.byteLength
+      };
+    }
+
+    const tail = decoder.decode();
+    if (tail) {
+      yield {
+        text: tail,
+        bytes: 0
+      };
+    }
+    return;
+  }
+
+  const text = await response.text();
+  yield {
+    text,
+    bytes: Buffer.byteLength(text)
+  };
+}
+
+function parseLogfileLine(line) {
+  if (!line) return null;
+
+  let username = "";
+  let score = 0;
+  for (const field of line.split(":")) {
+    const separator = field.indexOf("=");
+    if (separator < 0) continue;
+
+    const key = field.slice(0, separator);
+    const value = field.slice(separator + 1);
+    if (key === "name") {
+      username = value.trim();
+    } else if (key === "sc") {
+      score = Number.parseInt(value, 10) || 0;
+    }
+  }
+
+  return username ? { username, score } : null;
+}
+
+function getHeader(headers, name) {
+  if (headers?.get) {
+    return headers.get(name);
+  }
+
+  return headers?.[name] ?? headers?.[name.toLowerCase()];
 }

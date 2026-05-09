@@ -275,6 +275,10 @@ export default class CNCUserinfo {
             return `${this.escapeHtml(usernameStyle.data?.prefix || '🤖')}${this.escapeHtml(username)}`;
         }
 
+        if (usernameStyle.id === 'ranking') {
+            return `${this.escapeHtml(usernameStyle.data?.badge || this.getRankingBadge(usernameStyle.data?.rank))}${this.escapeHtml(username)}`;
+        }
+
         return this.escapeHtml(username);
     }
 
@@ -286,6 +290,17 @@ export default class CNCUserinfo {
             : '';
 
         return `<div style="font-style: italic; font-size: 0.9em; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank">${title}</a>${detail}</div>`;
+    }
+
+    getRankingBadge(rank) {
+        const safeRank = Math.max(1, Math.floor(Number(rank) || 1));
+        if (safeRank === 1) return '👑';
+        if (safeRank <= 3) return '🏆';
+        if (safeRank <= 10) return '🥇';
+        if (safeRank <= 25) return '💎';
+        if (safeRank <= 50) return '🌟';
+        if (safeRank <= 100) return '⭐';
+        return '';
     }
 
     getNemelexColors(colors) {

@@ -11,7 +11,8 @@ import {
 export function createDefaultProfileDatabase() {
   return {
     schemaVersion: PROFILE_SCHEMA_VERSION,
-    profiles: {}
+    profiles: {},
+    watcherState: {}
   };
 }
 
@@ -179,6 +180,7 @@ export class ProfileDatabase {
   #migrate() {
     this.db.data.schemaVersion ??= PROFILE_SCHEMA_VERSION;
     this.db.data.profiles ??= {};
+    this.db.data.watcherState ??= {};
 
     for (const [key, profile] of Object.entries(this.db.data.profiles)) {
       profile.username = normalizeUsername(profile.username || key);

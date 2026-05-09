@@ -34,6 +34,12 @@ const DEFAULT_CONFIG = {
       url: "https://translation.nemelex.cards/statistics",
       threshold: 500,
       maxScore: 5000
+    },
+    logfile: {
+      enabled: true,
+      url: "https://archive.nemelex.cards/meta/crawl-git/logfile",
+      pullPeriod: 300,
+      limit: 100
     }
   },
   auth: {

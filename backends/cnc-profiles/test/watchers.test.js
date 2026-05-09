@@ -59,7 +59,58 @@ test("translation watcher grants threshold banner", async () => {
   assert.equal(database.getProfile("SmallUser"), null);
 });
 
-function createConfig() {
+test("logfile watcher ranks best scores from range deltas", async () => {
+  const database = await createDatabase();
+  let logfile = [
+    createLogLine("Alice", 1000),
+    createLogLine("Bob", 3000),
+    createLogLine("Carol", 2000)
+  ].join("\n") + "\n";
+  const requests = [];
+  const watcher = new WatcherService({
+    database,
+    config: createConfig({ logfile: { limit: 2 } }),
+    fetchImpl: createLogfileFetch(() => logfile, requests)
+  });
+
+  assert.equal(await watcher.syncLogfile(), true);
+  assert.equal(database.getProfile("Bob").banners.ranking.title, "CNC Trunk Game Score #1");
+  assert.equal(database.getProfile("Bob").banners.ranking.usernameStyle.data.badge, "👑");
+  assert.equal(database.getProfile("Carol").banners.ranking.title, "CNC Trunk Game Score #2");
+  assert.equal(database.getProfile("Alice"), null);
+
+  const offset = database.data.watcherState.logfile.offset;
+  logfile += createLogLine("Alice", 4000) + "\n";
+
+  assert.equal(await watcher.syncLogfile(), true);
+  assert.equal(requests.at(-1).range, `bytes=${offset}-`);
+  assert.equal(database.getProfile("Alice").banners.ranking.title, "CNC Trunk Game Score #1");
+  assert.equal(database.getProfile("Alice").banners.ranking.usernameStyle.data.badge, "👑");
+  assert.equal(database.getProfile("Bob").banners.ranking.title, "CNC Trunk Game Score #2");
+  assert.equal(database.getProfile("Carol").banners.ranking, undefined);
+});
+
+test("logfile watcher keeps partial lines for the next delta", async () => {
+  const database = await createDatabase();
+  let logfile = createLogLine("Alice", 1000);
+  const watcher = new WatcherService({
+    database,
+    config: createConfig({ logfile: { limit: 100 } }),
+    fetchImpl: createLogfileFetch(() => logfile)
+  });
+
+  assert.equal(await watcher.syncLogfile(), true);
+  assert.equal(database.getProfile("Alice"), null);
+  assert.equal(database.data.watcherState.logfile.partialLine, createLogLine("Alice", 1000));
+
+  logfile += "\n";
+
+  assert.equal(await watcher.syncLogfile(), true);
+  assert.equal(database.getProfile("Alice").banners.ranking.title, "CNC Trunk Game Score #1");
+  assert.equal(database.data.watcherState.logfile.partialLine, "");
+});
+
+function createConfig(overrides = {}) {
   return {
     watchers: {
       donation: { url: "https://example.test/donation" },
@@ -67,7 +118,16 @@ function createConfig() {
         url: "https://example.test/translation",
         threshold: 500,
         maxScore: 5000
-      }
+      },
+      logfile: {
+        url: "https://example.test/logfile",
+        pullPeriod: 300,
+        limit: 100,
+        ...(overrides.logfile ?? {})
+      },
+      ...Object.fromEntries(
+        Object.entries(overrides).filter(([key]) => key !== "logfile")
+      )
     }
   };
 }
@@ -86,4 +146,49 @@ async function createDatabase() {
   const database = new ProfileDatabase(path.join(dir, "profiles.json"));
   await database.init();
   return database;
+}
+
+function createLogLine(username, score) {
+  return `v=0.34-a0:name=${username}:sc=${score}:race=Human:cls=Fighter`;
+}
+
+function createLogfileFetch(getLogfile, requests = []) {
+  return async (url, options = {}) => {
+    const logfile = getLogfile();
+    const length = Buffer.byteLength(logfile);
+
+    if (options.method === "HEAD") {
+      requests.push({ method: "HEAD" });
+      return {
+        ok: true,
+        status: 200,
+        headers: {
+          "content-length": String(length)
+        }
+      };
+    }
+
+    const range = options.headers?.Range ?? options.headers?.range ?? "bytes=0-";
+    const start = Number(/^bytes=(\d+)-$/.exec(range)?.[1] ?? 0);
+    requests.push({ method: "GET", range });
+
+    if (start > length) {
+      return {
+        ok: false,
+        status: 416,
+        headers: {}
+      };
+    }
+
+    return {
+      ok: true,
+      status: 206,
+      headers: {
+        "content-range": `bytes ${start}-${Math.max(start, length) - 1}/${length}`
+      },
+      async text() {
+        return logfile.slice(start);
+      }
+    };
+  };
 }

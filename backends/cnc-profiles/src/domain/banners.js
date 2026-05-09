@@ -3,6 +3,7 @@ export const PROFILE_SCHEMA_VERSION = 1;
 export const BANNER_URLS = {
   tournamentResults: "https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html",
   donation: "https://donation.abstr.net/list",
+  logfile: "https://archive.nemelex.cards/meta/crawl-git/logfile",
   translation: "https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing",
   profiles: "https://profiles.nemelex.cards"
 };
@@ -72,6 +73,12 @@ export const BANNER_DEFINITIONS = [
     title: "Bot",
     url: BANNER_URLS.profiles,
     usernameStyle: { id: "bot", data: { prefix: "🤖" } }
+  },
+  {
+    id: "ranking",
+    title: "CNC Trunk Game Score",
+    url: BANNER_URLS.logfile,
+    usernameStyle: { id: "ranking", data: { rank: 100, badge: getRankingBadge(100) } }
   },
   ...PSEUDO_CNC_RANKS.map((rank) => createPseudoCncBanner(rank)),
   ...PSEUDO_DONATOR_AMOUNTS.map((amount, index) => createPseudoDonatorBanner(index + 1, amount))
@@ -188,6 +195,39 @@ export function createDonatorBanner(amount) {
       data: { donation }
     }
   };
+}
+
+export function createRankingBanner({ rank, score }) {
+  const safeRank = Math.max(1, Math.floor(Number(rank) || 1));
+  const safeScore = Math.max(0, Math.floor(Number(score) || 0));
+  return {
+    id: "ranking",
+    title: `CNC Trunk Game Score #${safeRank}`,
+    url: BANNER_URLS.logfile,
+    detail: {
+      label: "Score",
+      value: safeScore.toLocaleString("en-US")
+    },
+    usernameStyle: {
+      id: "ranking",
+      data: {
+        rank: safeRank,
+        score: safeScore,
+        badge: getRankingBadge(safeRank)
+      }
+    }
+  };
+}
+
+export function getRankingBadge(rank) {
+  const safeRank = Math.max(1, Math.floor(Number(rank) || 1));
+  if (safeRank === 1) return "👑";
+  if (safeRank <= 3) return "🏆";
+  if (safeRank <= 10) return "🥇";
+  if (safeRank <= 25) return "💎";
+  if (safeRank <= 50) return "🌟";
+  if (safeRank <= 100) return "⭐";
+  return "";
 }
 
 function createDonationDetail(donation) {
