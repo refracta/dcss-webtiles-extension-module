@@ -98,6 +98,8 @@ for (const input of document.querySelectorAll("[data-entity-search]")) {
   });
 }
 
+setupGameInfiniteScroll();
+
 const publicProfileUsername = getPublicProfileUsername();
 if (publicProfileUsername) {
   loadPublicProfile(publicProfileUsername);
@@ -221,15 +223,18 @@ function showTab(scope, tabName) {
   }
 }
 
-async function loadEntityPage(scope, type, offset) {
+async function loadEntityPage(scope, type, offset, { append = false } = {}) {
   const profile = scope === "private" ? state.profile : state.publicProfile;
   if (!profile?.username) return;
 
   const page = state.entityPages[scope][type];
+  if (page.loading) return;
+
+  page.loading = true;
   page.offset = Math.max(0, offset);
   const list = getEntityListElement(scope, type);
   const status = getEntityStatusElement(scope, type);
-  status.textContent = "Loading...";
+  status.textContent = append ? "Loading more..." : "Loading...";
   const pageSize = getEntityPageSize(type);
 
   try {
@@ -244,25 +249,40 @@ async function loadEntityPage(scope, type, offset) {
     }
 
     const data = await requestPublicJson(`${CHAT_API_BASE}/users/${encodeURIComponent(profile.username)}/entities?${params}`);
+    const entities = data.entities || [];
     page.loaded = true;
     page.total = data.total || 0;
     page.offset = data.offset || 0;
-    renderEntityPage(scope, type, data.entities || []);
+    if (type === "game") {
+      page.loadedCount = append
+        ? Math.max(page.loadedCount, page.offset + entities.length)
+        : entities.length;
+    }
+    renderEntityPage(scope, type, entities, { append });
     status.textContent = "";
+    if (type === "game") {
+      window.setTimeout(() => loadMoreVisibleGame(scope), 0);
+    }
   } catch (error) {
-    list.replaceChildren();
+    if (!append) {
+      list.replaceChildren();
+    }
     renderPager(scope, type);
     status.textContent = error.message;
+  } finally {
+    page.loading = false;
   }
 }
 
-function renderEntityPage(scope, type, entities) {
+function renderEntityPage(scope, type, entities, { append = false } = {}) {
   const list = getEntityListElement(scope, type);
-  if (!entities.length) {
+  if (!entities.length && !append) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
     empty.textContent = type === "game" ? "No game images." : "No items.";
     list.replaceChildren(empty);
+  } else if (append) {
+    list.append(...entities.map((entity) => createEntityCard(entity, type, scope)));
   } else {
     list.replaceChildren(...entities.map((entity) => createEntityCard(entity, type, scope)));
   }
@@ -352,14 +372,40 @@ function createGameEntityCard(entity) {
   meta.className = "entity-meta";
   meta.textContent = formatDate(entity.timestamp);
 
-  body.append(title, meta);
+  const text = document.createElement("div");
+  text.className = "game-card-text";
+  text.append(title, meta);
+
+  const download = document.createElement("button");
+  download.className = "game-download-button";
+  download.type = "button";
+  download.textContent = "Download";
+  download.title = "Download image";
+  download.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    downloadImage(entity.file, getEntityDownloadName(entity, "game"));
+  });
+
+  body.append(text, download);
   card.append(media, body);
   return card;
 }
 
 function getEntityDownloadName(entity, type) {
   const number = Number(entity.number) || Date.now();
-  return `cnc-${type}-${number}.png`;
+  const extension = getEntityFileExtension(entity.file);
+  return `cnc-${type}-${number}.${extension}`;
+}
+
+function getEntityFileExtension(file) {
+  try {
+    const pathname = new URL(file, window.location.href).pathname;
+    const match = pathname.match(/\.([A-Za-z0-9]+)$/);
+    return match ? match[1].toLowerCase() : "png";
+  } catch (error) {
+    return "png";
+  }
 }
 
 function openImagePopup(url, filename) {
@@ -439,10 +485,21 @@ function renderPager(scope, type) {
   const prev = document.querySelector(`[data-entity-prev="${scope}:${type}"]`);
   const next = document.querySelector(`[data-entity-next="${scope}:${type}"]`);
   const pageSize = getEntityPageSize(type);
+
+  if (type === "game") {
+    const loaded = Math.min(page.loadedCount || 0, page.total);
+    pageText.textContent = `${loaded} / ${page.total}`;
+    prev.hidden = true;
+    next.hidden = true;
+    return;
+  }
+
   const start = page.total === 0 ? 0 : page.offset + 1;
   const end = Math.min(page.offset + pageSize, page.total);
 
   pageText.textContent = `${start}-${end} / ${page.total}`;
+  prev.hidden = false;
+  next.hidden = false;
   prev.disabled = page.offset <= 0;
   next.disabled = page.offset + pageSize >= page.total;
 }
@@ -466,9 +523,59 @@ function resetEntityScope(scope) {
 
 function createEntityPageState() {
   return {
-    game: { offset: 0, total: 0, loaded: false, q: "" },
-    item: { offset: 0, total: 0, loaded: false, q: "" }
+    game: { offset: 0, total: 0, loaded: false, loading: false, loadedCount: 0, q: "" },
+    item: { offset: 0, total: 0, loaded: false, loading: false, q: "" }
   };
+}
+
+function setupGameInfiniteScroll() {
+  const sentinels = Array.from(document.querySelectorAll("[data-entity-sentinel]"));
+  if (!sentinels.length) return;
+
+  if (!("IntersectionObserver" in window)) {
+    window.addEventListener("scroll", () => {
+      for (const sentinel of sentinels) {
+        if (sentinel.getBoundingClientRect().top < window.innerHeight + 700) {
+          loadMoreGameFromSentinel(sentinel);
+        }
+      }
+    }, { passive: true });
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        loadMoreGameFromSentinel(entry.target);
+      }
+    }
+  }, { rootMargin: "700px 0px" });
+
+  for (const sentinel of sentinels) {
+    observer.observe(sentinel);
+  }
+}
+
+function loadMoreGameFromSentinel(sentinel) {
+  const { scope, type } = parseEntityKey(sentinel.dataset.entitySentinel);
+  if (type !== "game") return;
+
+  const panel = sentinel.closest("[data-tab-panel-scope][data-tab-panel-name]");
+  if (!panel || panel.hidden) return;
+
+  const page = state.entityPages[scope]?.game;
+  if (!page?.loaded || page.loading || page.loadedCount >= page.total) return;
+
+  loadEntityPage(scope, "game", page.loadedCount, { append: true });
+}
+
+function loadMoreVisibleGame(scope) {
+  const sentinel = document.querySelector(`[data-entity-sentinel="${scope}:game"]`);
+  if (!sentinel) return;
+
+  if (sentinel.getBoundingClientRect().top < window.innerHeight + 700) {
+    loadMoreGameFromSentinel(sentinel);
+  }
 }
 
 function parseEntityKey(value) {

@@ -277,9 +277,33 @@ input:focus {
 
 .game-card-body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
   gap: 3px;
   min-width: 0;
   padding: 10px 12px 12px;
+}
+
+.game-card-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.game-download-button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 8px;
+}
+
+.game-download-button:hover {
+  border-color: var(--accent);
+  background: #eef5f1;
 }
 
 .entity-media {
@@ -388,6 +412,10 @@ input:focus {
   text-align: center;
   font-size: 13px;
   font-weight: 800;
+}
+
+.entity-sentinel {
+  height: 1px;
 }
 
 .empty-state {
