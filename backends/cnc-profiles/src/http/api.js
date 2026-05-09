@@ -253,13 +253,13 @@ function getSafeRedirectPath(value) {
 
 function createTokenLoginSuccessHtml({ payload, targetOrigin, redirectPath }) {
   return `<!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>CNC Profiles</title>
 </head>
 <body>
-  <p>CNC Profiles로 이동 중입니다.</p>
+  <p>Opening CNC Profiles...</p>
   <script>
     const payload = ${toScriptJson(payload)};
     const targetOrigin = ${toScriptJson(targetOrigin)};
@@ -274,14 +274,14 @@ function createTokenLoginSuccessHtml({ payload, targetOrigin, redirectPath }) {
 
 function createTokenLoginErrorHtml(message) {
   return `<!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>CNC Profiles Login Failed</title>
 </head>
 <body>
-  <p>프로필 자동 로그인에 실패했습니다: ${escapeHtml(message)}</p>
-  <p><a href="/">CNC Profiles에서 직접 로그인하기</a></p>
+  <p>Automatic profile login failed: ${escapeHtml(message)}</p>
+  <p><a href="/">Log in directly on CNC Profiles</a></p>
 </body>
 </html>`;
 }

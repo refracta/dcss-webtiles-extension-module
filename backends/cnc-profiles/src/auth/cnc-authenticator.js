@@ -10,7 +10,7 @@ export class CncAuthenticator {
   async authenticate({ username, password }) {
     const loginUsername = String(username ?? "").trim();
     if (!loginUsername || !password) {
-      const error = new Error("CNC ID와 비밀번호를 입력해 주세요.");
+      const error = new Error("Enter your CNC ID and password.");
       error.statusCode = 400;
       throw error;
     }
@@ -25,7 +25,7 @@ export class CncAuthenticator {
   async authenticateWithToken({ token, refreshLoginCookie = false }) {
     const loginCookie = String(token ?? "").trim();
     if (!loginCookie) {
-      const error = new Error("CNC 로그인 토큰이 없습니다.");
+      const error = new Error("CNC login token is missing.");
       error.statusCode = 400;
       throw error;
     }
@@ -59,7 +59,7 @@ export class CncAuthenticator {
       });
 
       const timeout = setTimeout(() => {
-        const error = new Error("CNC 로그인 응답 시간이 초과되었습니다.");
+        const error = new Error("CNC login response timed out.");
         error.statusCode = 504;
         finishReject(error);
       }, this.timeoutMs);
@@ -112,7 +112,7 @@ export class CncAuthenticator {
       });
 
       socket.on("error", () => {
-        const error = new Error("CNC 로그인 서버에 연결할 수 없습니다.");
+        const error = new Error("Could not connect to the CNC login server.");
         error.statusCode = 502;
         finishReject(error);
       });
@@ -130,7 +130,7 @@ export class CncAuthenticator {
       }
 
       if (message.msg === "login_fail" || message.msg === "auth_error") {
-        const error = new Error(message.reason || "CNC 로그인에 실패했습니다.");
+        const error = new Error(message.reason || "CNC login failed.");
         error.statusCode = 401;
         throw error;
       }
@@ -149,7 +149,7 @@ export class CncAuthenticator {
       }
 
       if (message.msg === "login_fail" || message.msg === "auth_error") {
-        const error = new Error(message.reason || "CNC 로그인 쿠키 갱신에 실패했습니다.");
+        const error = new Error(message.reason || "Could not refresh the CNC login cookie.");
         error.statusCode = 401;
         throw error;
       }

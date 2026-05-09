@@ -58,7 +58,7 @@ async function selectBanner(bannerId) {
       body: JSON.stringify({ bannerId })
     });
     setProfile(data.profile);
-    elements.profileStatus.textContent = "저장되었습니다.";
+    elements.profileStatus.textContent = "Saved.";
   } catch (error) {
     elements.profileStatus.textContent = error.message;
   }
@@ -78,13 +78,13 @@ function setProfile(profile) {
 
 function renderProfile(profile) {
   elements.profileUsername.textContent = profile.username;
-  elements.profileUpdated.textContent = `마지막 업데이트: ${formatDate(profile.lastUpdatedAt)}`;
+  elements.profileUpdated.textContent = `Last updated: ${formatDate(profile.lastUpdatedAt)}`;
   elements.profilePreview.innerHTML = renderStyledUsername(profile.username, profile.currentBanner?.usernameStyle);
 
   const banners = [
     {
       id: null,
-      title: "없음",
+      title: "No banner",
       url: "",
       usernameStyle: null
     },
@@ -250,7 +250,7 @@ function escapeHtml(value) {
 }
 
 function formatDate(value) {
-  return new Date(value).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
+  return new Date(value).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 }
 
 async function requestJson(url, options = {}) {
