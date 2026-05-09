@@ -1,20 +1,29 @@
-const state = {
-  profile: null,
-  publicProfile: null,
-  entityPages: {
-    private: createEntityPageState(),
-    public: createEntityPageState()
-  }
-};
-
 const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
 const CHAT_API_BASE = "https://chat.nemelex.cards";
+const WTREC_INDEX_BASE = "https://wtrec-json.nemelex.cards/wtrec";
+const WTREC_FILE_BASE = "https://wtrec.nemelex.cards/wtrec";
+const WTREC_PLAYER_BASE = "https://crawl.nemelex.cards/";
+const WTREC_PAGE_SIZE = 100;
+const WTREC_INFINITE_SCROLL_MARGIN = 1200;
 const ENTITY_PAGE_SIZES = {
   game: 24,
   item: 24
 };
 const ENTITY_INFINITE_SCROLL_MARGIN = 1200;
 const ENTITY_MAX_RENDERED_ITEMS = 300;
+
+const state = {
+  profile: null,
+  publicProfile: null,
+  entityPages: {
+    private: createEntityPageState(),
+    public: createEntityPageState()
+  },
+  wtrecs: {
+    private: createWTRecState(),
+    public: createWTRecState()
+  }
+};
 
 const elements = {
   loginPanel: document.querySelector("#login-panel"),
@@ -28,11 +37,9 @@ const elements = {
   logoutButton: document.querySelector("#logout-button"),
   profileUsername: document.querySelector("#profile-username"),
   profileUpdated: document.querySelector("#profile-updated"),
-  profilePreview: document.querySelector("#profile-preview"),
   bannerList: document.querySelector("#banner-list"),
   publicProfileUsername: document.querySelector("#public-profile-username"),
   publicProfileUpdated: document.querySelector("#public-profile-updated"),
-  publicProfilePreview: document.querySelector("#public-profile-preview"),
   publicBannerList: document.querySelector("#public-banner-list"),
   tabButtons: document.querySelectorAll("[data-tab-scope][data-tab-name]"),
   tabPanels: document.querySelectorAll("[data-tab-panel-scope][data-tab-panel-name]")
@@ -100,7 +107,32 @@ for (const input of document.querySelectorAll("[data-entity-search]")) {
   });
 }
 
+for (const input of document.querySelectorAll("[data-wtrec-search]")) {
+  let searchTimer = null;
+  input.addEventListener("input", () => {
+    window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => {
+      const scope = input.dataset.wtrecSearch;
+      const page = state.wtrecs[scope];
+      page.q = input.value.trim();
+      page.visibleCount = WTREC_PAGE_SIZE;
+      renderCurrentWTRecList(scope);
+    }, 150);
+  });
+}
+
+for (const select of document.querySelectorAll("[data-wtrec-sort]")) {
+  select.addEventListener("change", () => {
+    const scope = select.dataset.wtrecSort;
+    const page = state.wtrecs[scope];
+    page.sort = select.value;
+    page.visibleCount = WTREC_PAGE_SIZE;
+    renderCurrentWTRecList(scope);
+  });
+}
+
 setupEntityInfiniteScroll();
+setupWTRecInfiniteScroll();
 
 const publicProfileUsername = getPublicProfileUsername();
 if (publicProfileUsername) {
@@ -113,6 +145,7 @@ async function loadPublicProfile(username) {
   state.profile = null;
   state.publicProfile = null;
   resetEntityScope("public");
+  resetWTRecScope("public");
   elements.loginPanel.hidden = true;
   elements.profilePanel.hidden = true;
   elements.publicProfilePanel.hidden = false;
@@ -120,7 +153,6 @@ async function loadPublicProfile(username) {
   elements.sessionUser.textContent = "";
   elements.publicProfileUsername.textContent = username;
   elements.publicProfileUpdated.textContent = "";
-  elements.publicProfilePreview.textContent = "";
   elements.publicBannerList.replaceChildren();
   elements.publicProfileStatus.textContent = "Loading profile...";
 
@@ -160,6 +192,7 @@ async function selectBanner(bannerId) {
 function setProfile(profile) {
   state.profile = profile;
   resetEntityScope("private");
+  resetWTRecScope("private");
   const authenticated = Boolean(profile);
   elements.loginPanel.hidden = authenticated;
   elements.profilePanel.hidden = !authenticated;
@@ -172,9 +205,8 @@ function setProfile(profile) {
 }
 
 function renderProfile(profile) {
-  elements.profileUsername.textContent = profile.username;
+  elements.profileUsername.innerHTML = renderStyledUsername(profile.username, profile.currentBanner?.usernameStyle);
   elements.profileUpdated.textContent = `Last updated: ${formatDate(profile.lastUpdatedAt)}`;
-  elements.profilePreview.innerHTML = renderStyledUsername(profile.username, profile.currentBanner?.usernameStyle);
 
   const banners = [
     {
@@ -196,9 +228,8 @@ function renderPublicProfile(profile) {
   state.publicProfile = profile;
   const banners = Array.isArray(profile.banners) ? profile.banners : [];
   document.title = `${profile.username} - CNC Profiles`;
-  elements.publicProfileUsername.textContent = profile.username;
+  elements.publicProfileUsername.innerHTML = renderStyledUsername(profile.username, profile.currentBanner?.usernameStyle);
   elements.publicProfileUpdated.textContent = `Last updated: ${formatDate(profile.lastUpdatedAt)}`;
-  elements.publicProfilePreview.innerHTML = renderStyledUsername(profile.username, profile.currentBanner?.usernameStyle);
   elements.publicProfileStatus.textContent = banners.length > 0 ? "" : "No banners.";
   elements.publicBannerList.replaceChildren(
     ...banners.map((banner) => createPublicBannerCard(profile, banner))
@@ -222,7 +253,160 @@ function showTab(scope, tabName) {
     if (!page.loaded) {
       loadEntityPage(scope, tabName, 0);
     }
+  } else if (tabName === "wtrec") {
+    loadWTRecs(scope);
   }
+}
+
+async function loadWTRecs(scope) {
+  const profile = scope === "private" ? state.profile : state.publicProfile;
+  if (!profile?.username) return;
+
+  const stateForScope = state.wtrecs[scope];
+  if (stateForScope.loading || stateForScope.loaded) return;
+
+  const list = getWTRecListElement(scope);
+  const status = getWTRecStatusElement(scope);
+  stateForScope.loading = true;
+  status.textContent = "Loading...";
+  list.replaceChildren();
+
+  try {
+    const entries = await requestWTRecIndex(profile.username);
+    const wtrecs = entries
+      .filter((entry) => entry?.type === "file" && String(entry.name || "").endsWith(".wtrec"))
+      .sort(compareWTRecEntries);
+
+    stateForScope.entries = wtrecs;
+    stateForScope.loaded = true;
+    renderCurrentWTRecList(scope);
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    stateForScope.loading = false;
+  }
+}
+
+function renderCurrentWTRecList(scope) {
+  const profile = scope === "private" ? state.profile : state.publicProfile;
+  const page = state.wtrecs[scope];
+  if (!profile?.username || !page.loaded) return;
+
+  const entries = getFilteredWTRecEntries(page);
+  const visibleEntries = entries.slice(0, page.visibleCount);
+  const emptyText = page.entries.length > 0 ? "No matching WTRECs." : "No WTRECs.";
+  renderWTRecList(scope, profile.username, visibleEntries, { emptyText, total: entries.length });
+  getWTRecStatusElement(scope).textContent = entries.length > 0 ? "" : emptyText;
+  queueWTRecInfiniteScrollCheck();
+}
+
+function getFilteredWTRecEntries(page) {
+  const query = page.q.toLowerCase();
+  const entries = query
+    ? page.entries.filter((entry) => String(entry.name || "").toLowerCase().includes(query))
+    : [...page.entries];
+
+  return entries.sort((a, b) => compareWTRecEntriesBySort(a, b, page.sort));
+}
+
+function renderWTRecList(scope, username, entries, { emptyText = "No WTRECs.", total = entries.length } = {}) {
+  const list = getWTRecListElement(scope);
+  if (!entries.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = emptyText;
+    list.replaceChildren(empty);
+    return;
+  }
+
+  const rows = entries.map((entry) => createWTRecRow(username, entry));
+
+  if (total > entries.length) {
+    const notice = document.createElement("div");
+    notice.className = "wtrec-limit-notice";
+    notice.textContent = `Showing ${entries.length} of ${total} WTRECs.`;
+    rows.push(notice);
+  }
+
+  list.replaceChildren(...rows);
+}
+
+function createWTRecRow(username, entry) {
+  const row = document.createElement("a");
+  row.className = "wtrec-row";
+  row.href = getWTRecPlayerURL(username, entry.name);
+  row.target = "_blank";
+  row.rel = "noopener noreferrer";
+
+  const title = document.createElement("span");
+  title.className = "wtrec-title";
+  title.textContent = formatWTRecTitle(entry.name);
+
+  const meta = document.createElement("span");
+  meta.className = "wtrec-meta";
+  meta.textContent = `${formatDate(entry.mtime)} · ${formatBytes(entry.size)}`;
+
+  const action = document.createElement("span");
+  action.className = "wtrec-action";
+  action.textContent = "Play";
+
+  const text = document.createElement("span");
+  text.className = "wtrec-text";
+  text.append(title, meta);
+
+  row.append(text, action);
+  return row;
+}
+
+function getWTRecPlayerURL(username, filename) {
+  const params = new URLSearchParams({
+    wtrec_url: getWTRecFileURL(username, filename)
+  });
+  return `${WTREC_PLAYER_BASE}?${params}`;
+}
+
+function getWTRecFileURL(username, filename) {
+  return `${WTREC_FILE_BASE}/${encodeURIComponent(username)}/${encodeURIComponent(filename)}`;
+}
+
+function formatWTRecTitle(filename) {
+  return String(filename || "").replace(/\.wtrec$/i, "");
+}
+
+function compareWTRecEntries(a, b) {
+  const timeDiff = new Date(b.mtime).getTime() - new Date(a.mtime).getTime();
+  if (timeDiff !== 0) return timeDiff;
+  return String(b.name || "").localeCompare(String(a.name || ""));
+}
+
+function compareWTRecEntriesBySort(a, b, sort) {
+  if (sort === "size-desc") {
+    const sizeDiff = (Number(b.size) || 0) - (Number(a.size) || 0);
+    return sizeDiff || compareWTRecEntries(a, b);
+  }
+
+  if (sort === "size-asc") {
+    const sizeDiff = (Number(a.size) || 0) - (Number(b.size) || 0);
+    return sizeDiff || compareWTRecEntries(a, b);
+  }
+
+  return compareWTRecEntries(a, b);
+}
+
+async function requestWTRecIndex(username) {
+  const response = await fetch(`${WTREC_INDEX_BASE}/${encodeURIComponent(username)}/`);
+  if (response.status === 404) {
+    return [];
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(`WTRec index HTTP ${response.status}`);
+  }
+  if (!Array.isArray(data)) {
+    throw new Error("Invalid WTRec index response.");
+  }
+  return data;
 }
 
 async function loadEntityPage(scope, type, offset, { append = false, prepend = false, limit = null } = {}) {
@@ -664,6 +848,42 @@ function resetEntityScope(scope) {
   }
 }
 
+function resetWTRecScope(scope) {
+  state.wtrecs[scope] = createWTRecState();
+  getWTRecListElement(scope)?.replaceChildren();
+  const status = getWTRecStatusElement(scope);
+  if (status) {
+    status.textContent = "";
+  }
+  const search = document.querySelector(`[data-wtrec-search="${scope}"]`);
+  if (search) {
+    search.value = "";
+  }
+  const sort = document.querySelector(`[data-wtrec-sort="${scope}"]`);
+  if (sort) {
+    sort.value = "mtime-desc";
+  }
+}
+
+function getWTRecListElement(scope) {
+  return document.querySelector(`[data-wtrec-list="${scope}"]`);
+}
+
+function getWTRecStatusElement(scope) {
+  return document.querySelector(`[data-wtrec-status="${scope}"]`);
+}
+
+function createWTRecState() {
+  return {
+    loaded: false,
+    loading: false,
+    entries: [],
+    q: "",
+    sort: "mtime-desc",
+    visibleCount: WTREC_PAGE_SIZE
+  };
+}
+
 function createEntityPageState() {
   return {
     game: createSingleEntityPageState(),
@@ -707,6 +927,60 @@ function setupEntityInfiniteScroll() {
       observer.observe(sentinel);
     }
   }
+}
+
+function setupWTRecInfiniteScroll() {
+  const sentinels = Array.from(document.querySelectorAll("[data-wtrec-sentinel]"));
+  if (!sentinels.length) return;
+
+  window.addEventListener("scroll", queueWTRecInfiniteScrollCheck, { passive: true });
+  window.addEventListener("resize", queueWTRecInfiniteScrollCheck, { passive: true });
+
+  if ("IntersectionObserver" in window) {
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          loadMoreWTRecs(entry.target.dataset.wtrecSentinel);
+        }
+      }
+    }, { rootMargin: `${WTREC_INFINITE_SCROLL_MARGIN}px 0px` });
+
+    for (const sentinel of sentinels) {
+      observer.observe(sentinel);
+    }
+  }
+}
+
+function queueWTRecInfiniteScrollCheck() {
+  if (queueWTRecInfiniteScrollCheck.pending) return;
+
+  queueWTRecInfiniteScrollCheck.pending = true;
+  window.requestAnimationFrame(() => {
+    queueWTRecInfiniteScrollCheck.pending = false;
+    checkVisibleWTRecSentinels();
+  });
+}
+
+function checkVisibleWTRecSentinels() {
+  for (const sentinel of document.querySelectorAll("[data-wtrec-sentinel]")) {
+    if (sentinel.getBoundingClientRect().top < window.innerHeight + WTREC_INFINITE_SCROLL_MARGIN) {
+      loadMoreWTRecs(sentinel.dataset.wtrecSentinel);
+    }
+  }
+}
+
+function loadMoreWTRecs(scope) {
+  const panel = document.querySelector(`[data-tab-panel-scope="${scope}"][data-tab-panel-name="wtrec"]`);
+  if (!panel || panel.hidden) return;
+
+  const page = state.wtrecs[scope];
+  if (!page?.loaded || page.loading) return;
+
+  const total = getFilteredWTRecEntries(page).length;
+  if (page.visibleCount >= total) return;
+
+  page.visibleCount = Math.min(total, page.visibleCount + WTREC_PAGE_SIZE);
+  renderCurrentWTRecList(scope);
 }
 
 function queueEntityInfiniteScrollCheck() {
@@ -1117,6 +1391,19 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function formatBytes(value) {
+  const bytes = Number(value) || 0;
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let size = bytes / 1024;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${size.toFixed(size >= 10 ? 1 : 2)} ${units[unitIndex]}`;
 }
 
 function formatDate(value) {

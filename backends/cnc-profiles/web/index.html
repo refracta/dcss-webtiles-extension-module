@@ -35,16 +35,16 @@
     <section class="panel" id="profile-panel" hidden>
       <div class="profile-header">
         <div>
-          <h1 id="profile-username">Profile</h1>
+          <h1 id="profile-username" class="profile-title">Profile</h1>
           <p id="profile-updated" class="muted"></p>
         </div>
-        <div id="profile-preview" class="preview"></div>
       </div>
 
       <nav class="profile-tabs" aria-label="Profile sections">
         <button class="tab-button" type="button" data-tab-scope="private" data-tab-name="banners" aria-selected="true">Banners</button>
         <button class="tab-button" type="button" data-tab-scope="private" data-tab-name="game" aria-selected="false">Games</button>
         <button class="tab-button" type="button" data-tab-scope="private" data-tab-name="item" aria-selected="false">Items</button>
+        <button class="tab-button" type="button" data-tab-scope="private" data-tab-name="wtrec" aria-selected="false">WTRECs</button>
       </nav>
 
       <section class="tab-panel" data-tab-panel-scope="private" data-tab-panel-name="banners">
@@ -76,21 +76,35 @@
         <p class="status" data-entity-status="private:item" aria-live="polite"></p>
         <div class="entity-sentinel" data-entity-sentinel="private:item"></div>
       </section>
+
+      <section class="tab-panel" data-tab-panel-scope="private" data-tab-panel-name="wtrec" hidden>
+        <div class="entity-toolbar wtrec-toolbar">
+          <input type="search" data-wtrec-search="private" placeholder="Search WTRECs" autocomplete="off">
+          <select data-wtrec-sort="private" aria-label="Sort WTRECs">
+            <option value="mtime-desc">Newest</option>
+            <option value="size-desc">Largest</option>
+            <option value="size-asc">Smallest</option>
+          </select>
+        </div>
+        <div class="wtrec-list" data-wtrec-list="private"></div>
+        <p class="status" data-wtrec-status="private" aria-live="polite"></p>
+        <div class="wtrec-sentinel" data-wtrec-sentinel="private"></div>
+      </section>
     </section>
 
     <section class="panel" id="public-profile-panel" hidden>
       <div class="profile-header">
         <div>
-          <h1 id="public-profile-username">Profile</h1>
+          <h1 id="public-profile-username" class="profile-title">Profile</h1>
           <p id="public-profile-updated" class="muted"></p>
         </div>
-        <div id="public-profile-preview" class="preview"></div>
       </div>
 
       <nav class="profile-tabs" aria-label="Profile sections">
         <button class="tab-button" type="button" data-tab-scope="public" data-tab-name="banners" aria-selected="true">Banners</button>
         <button class="tab-button" type="button" data-tab-scope="public" data-tab-name="game" aria-selected="false">Games</button>
         <button class="tab-button" type="button" data-tab-scope="public" data-tab-name="item" aria-selected="false">Items</button>
+        <button class="tab-button" type="button" data-tab-scope="public" data-tab-name="wtrec" aria-selected="false">WTRECs</button>
       </nav>
 
       <section class="tab-panel" data-tab-panel-scope="public" data-tab-panel-name="banners">
@@ -120,6 +134,20 @@
         </div>
         <p class="status" data-entity-status="public:item" aria-live="polite"></p>
         <div class="entity-sentinel" data-entity-sentinel="public:item"></div>
+      </section>
+
+      <section class="tab-panel" data-tab-panel-scope="public" data-tab-panel-name="wtrec" hidden>
+        <div class="entity-toolbar wtrec-toolbar">
+          <input type="search" data-wtrec-search="public" placeholder="Search WTRECs" autocomplete="off">
+          <select data-wtrec-sort="public" aria-label="Sort WTRECs">
+            <option value="mtime-desc">Newest</option>
+            <option value="size-desc">Largest</option>
+            <option value="size-asc">Smallest</option>
+          </select>
+        </div>
+        <div class="wtrec-list" data-wtrec-list="public"></div>
+        <p class="status" data-wtrec-status="public" aria-live="polite"></p>
+        <div class="wtrec-sentinel" data-wtrec-sentinel="public"></div>
       </section>
       <p class="status" id="public-profile-status" aria-live="polite"></p>
     </section>

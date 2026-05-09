@@ -30,7 +30,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -90,7 +91,8 @@ label {
   font-size: 14px;
 }
 
-input {
+input,
+select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -99,7 +101,8 @@ input {
   padding: 10px 12px;
 }
 
-input:focus {
+input:focus,
+select:focus {
   outline: 2px solid rgba(35, 97, 77, 0.22);
   border-color: var(--accent);
 }
@@ -124,10 +127,19 @@ input:focus {
 }
 
 .profile-header {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 20px;
-  align-items: start;
+  display: block;
+}
+
+.profile-title {
+  display: inline-block;
+  max-width: 100%;
+  margin-bottom: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: #161817;
+  color: #fff;
+  padding: 10px 14px;
+  overflow-wrap: anywhere;
 }
 
 .muted {
@@ -243,6 +255,13 @@ input:focus {
 .entity-toolbar {
   margin-bottom: 12px;
   max-width: 420px;
+}
+
+.wtrec-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  gap: 8px;
+  max-width: 560px;
 }
 
 .entity-grid {
@@ -451,22 +470,94 @@ input:focus {
   text-align: center;
 }
 
+.wtrec-list {
+  display: grid;
+  gap: 8px;
+}
+
+.wtrec-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 12px 14px;
+  text-decoration: none;
+}
+
+.wtrec-row:hover {
+  border-color: var(--accent);
+  background: #f7fbf8;
+}
+
+.wtrec-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.wtrec-title {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wtrec-meta {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wtrec-action {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 850;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.wtrec-limit-notice {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+  padding: 8px 2px;
+  text-align: center;
+}
+
+.wtrec-sentinel {
+  height: 1px;
+}
+
 .status {
   min-height: 24px;
   color: var(--red);
 }
 
 @media (max-width: 680px) {
-  .profile-header {
-    grid-template-columns: 1fr;
-  }
-
   .game-grid {
     grid-template-columns: 1fr;
   }
 
-  .preview {
-    min-width: 0;
+  .wtrec-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .wtrec-action {
+    justify-self: start;
+  }
+
+  .wtrec-toolbar {
+    grid-template-columns: 1fr;
   }
 }
 
