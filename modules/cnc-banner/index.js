@@ -354,6 +354,10 @@ export default class CNCBanner {
     }
 
     startTestLobbySocket() {
+        if (this.isTestServerPage()) {
+            return;
+        }
+
         if (this.testLobbySocket) {
             return;
         }
@@ -369,6 +373,10 @@ export default class CNCBanner {
         this.testLobbySocket.onerror = () => {
             this.testLobbySocket?.close();
         };
+    }
+
+    isTestServerPage() {
+        return window.location.hostname === new URL(TEST_SERVER_URL).hostname;
     }
 
     handleTestLobbyMessage(data) {
