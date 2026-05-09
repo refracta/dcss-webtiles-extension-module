@@ -22,37 +22,37 @@ export const BANNER_DEFINITIONS = [
   },
   {
     id: "cnc-1st-anniversary-skill-champion",
-    title: "CNC 1st Anniversary Tournament Champion (Skill Category)",
+    title: "CNC 1st Anniversary Tournament\nChampion (Skill Category)",
     url: BANNER_URLS.tournamentResults,
     usernameStyle: createNemelexUsernameStyle(1)
   },
   {
     id: "cnc-1st-anniversary-skill-2",
-    title: "CNC 1st Anniversary Tournament 2nd Place (Skill Category)",
+    title: "CNC 1st Anniversary Tournament\n2nd Place (Skill Category)",
     url: BANNER_URLS.tournamentResults,
     usernameStyle: createNemelexUsernameStyle(2)
   },
   {
     id: "cnc-1st-anniversary-skill-3",
-    title: "CNC 1st Anniversary Tournament 3rd Place (Skill Category)",
+    title: "CNC 1st Anniversary Tournament\n3rd Place (Skill Category)",
     url: BANNER_URLS.tournamentResults,
     usernameStyle: createNemelexUsernameStyle(3)
   },
   {
     id: "cnc-1st-anniversary-ent-champion",
-    title: "CNC 1st Anniversary Tournament Champion (Ent Category)",
+    title: "CNC 1st Anniversary Tournament\nChampion (Ent Category)",
     url: BANNER_URLS.tournamentResults,
     usernameStyle: createNemelexUsernameStyle(1)
   },
   {
     id: "cnc-1st-anniversary-ent-2",
-    title: "CNC 1st Anniversary Tournament 2nd Place (Ent Category)",
+    title: "CNC 1st Anniversary Tournament\n2nd Place (Ent Category)",
     url: BANNER_URLS.tournamentResults,
     usernameStyle: createNemelexUsernameStyle(2)
   },
   {
     id: "cnc-1st-anniversary-ent-3",
-    title: "CNC 1st Anniversary Tournament 3rd Place (Ent Category)",
+    title: "CNC 1st Anniversary Tournament\n3rd Place (Ent Category)",
     url: BANNER_URLS.tournamentResults,
     usernameStyle: createNemelexUsernameStyle(3)
   },

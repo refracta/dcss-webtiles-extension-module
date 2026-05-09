@@ -290,7 +290,7 @@ export default class CNCUserinfo {
         const isCompactRanking = banner.id === 'ranking';
         const fontSize = isCompactRanking ? '0.82em' : '0.9em';
         const lineHeight = isCompactRanking ? '1.15' : 'normal';
-        const titleStyle = isCompactRanking ? ' style="white-space: nowrap;"' : '';
+        const titleStyle = isCompactRanking ? ' style="white-space: nowrap;"' : ' style="white-space: pre-line;"';
         const detail = this.getBannerDetailLines(banner.detail)
             .map((line, index) => {
                 const color = isCompactRanking && index === 0 ? 'inherit' : '#d6c895';

@@ -186,6 +186,7 @@ input:focus {
   font-weight: 800;
   text-decoration: none;
   min-width: 0;
+  white-space: pre-line;
 }
 
 .banner-title[href]:hover {
