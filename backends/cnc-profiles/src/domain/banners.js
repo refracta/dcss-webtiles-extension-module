@@ -6,6 +6,7 @@ export const BANNER_URLS = {
   logfile: "https://archive.nemelex.cards/meta/crawl-git/logfile",
   logfileViewer: "https://archive.nemelex.cards/meta/crawl-git?file=logfile",
   translation: "https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing",
+  credits: "https://github.com/crawl/crawl/blob/master/crawl-ref/CREDITS.txt",
   profiles: "https://profiles.nemelex.cards"
 };
 
@@ -101,6 +102,12 @@ export const BANNER_DEFINITIONS = [
     title: "Trunk Fastest Wins",
     url: BANNER_URLS.logfileViewer,
     usernameStyle: { id: "fastest-win", data: { rank: 10, badge: getFastestWinBadge(10) } }
+  },
+  {
+    id: "dcss-contributor",
+    title: "DCSS Contributor",
+    url: BANNER_URLS.credits,
+    usernameStyle: { id: "dcss-contributor", data: { badge: "🛠️" } }
   },
   ...PSEUDO_CNC_RANKS.map((rank) => createPseudoCncBanner(rank)),
   ...PSEUDO_DONATOR_AMOUNTS.map((amount, index) => createPseudoDonatorBanner(index + 1, amount))
@@ -281,6 +288,10 @@ export function createFastestWinBanner({ rank, serverRank, durationSeconds }) {
       }
     }
   };
+}
+
+export function createDcssContributorBanner() {
+  return getBannerDefinition("dcss-contributor");
 }
 
 function createRankingExampleBanner({ id, serverRankLabel, rank, serverRank, score }) {

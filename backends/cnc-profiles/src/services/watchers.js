@@ -1,4 +1,5 @@
 import {
+  createDcssContributorBanner,
   createDonatorBanner,
   createFastestWinBanner,
   createRankingBanner,
@@ -7,6 +8,7 @@ import {
 import { normalizeUsernameKey } from "../db/profile-db.js";
 
 const WATCHER_SOURCES = {
+  credits: "watcher:credits",
   donation: "watcher:donation",
   logfile: "watcher:logfile",
   translation: "watcher:translation"
@@ -54,6 +56,10 @@ export class WatcherService {
         changed = (await this.syncTranslation()) || changed;
       }
 
+      if (this.config.watchers?.credits?.enabled && this.#shouldRun("credits", this.config.watchers.credits.pullPeriod)) {
+        changed = (await this.syncCredits()) || changed;
+      }
+
       if (this.config.watchers?.logfile?.enabled && this.#shouldRun("logfile", this.config.watchers.logfile.pullPeriod)) {
         changed = (await this.syncLogfile()) || changed;
       }
@@ -94,6 +100,22 @@ export class WatcherService {
       bannerId: "donator",
       activeEntries: [...totals.values()].filter((entry) => entry.amount > 0),
       createBanner: (entry) => createDonatorBanner(entry.amount)
+    });
+  }
+
+  async syncCredits() {
+    const watcherConfig = this.config.watchers.credits;
+    const response = await this.fetch(watcherConfig.url, { headers: { Accept: "text/plain" } });
+    if (!response.ok) {
+      throw new Error(`Credits watcher failed: ${response.status}`);
+    }
+
+    const names = parseCreditsContributorNames(await response.text());
+    return this.#replaceManagedBanners({
+      source: WATCHER_SOURCES.credits,
+      bannerId: "dcss-contributor",
+      activeEntries: names.map((username) => ({ username })),
+      createBanner: () => createDcssContributorBanner()
     });
   }
 
@@ -542,6 +564,74 @@ function parseLogfileLine(line) {
   }
 
   return username ? { username, score, durationSeconds, isWin } : null;
+}
+
+export function parseCreditsContributorNames(text) {
+  const names = new Map();
+
+  const addName = (name) => {
+    const cleaned = cleanCreditName(name);
+    const key = normalizeUsernameKey(cleaned);
+    if (key && !names.has(key)) {
+      names.set(key, cleaned);
+    }
+  };
+
+  const addNameCandidates = (value) => {
+    const cleaned = cleanCreditName(value);
+    if (!cleaned) return;
+
+    for (const alias of extractQuotedAliases(cleaned)) {
+      addName(alias);
+    }
+
+    for (const part of splitCreditNameList(cleaned)) {
+      addName(part);
+    }
+  };
+
+  for (const rawLine of String(text ?? "").split(/\r?\n/)) {
+    const line = rawLine.replace(/^\uFEFF/, "");
+    if (/^\s{4,}\S/.test(line)) {
+      addNameCandidates(line.trim());
+      continue;
+    }
+
+    const bullet = /^\*\s+(.+)$/.exec(line);
+    if (!bullet) continue;
+
+    const lead = /^(.+?),\s+/.exec(bullet[1])?.[1];
+    if (!lead || /^(Additional|Members|Other|The)\b/i.test(lead)) continue;
+
+    for (const part of lead.split(/\s+and\s+/i)) {
+      addNameCandidates(part);
+    }
+  }
+
+  return [...names.values()].sort((a, b) => a.localeCompare(b, "en-US"));
+}
+
+function cleanCreditName(value) {
+  return String(value ?? "")
+    .replace(/\s*\([^)]*\)\s*$/g, "")
+    .trim();
+}
+
+function extractQuotedAliases(value) {
+  return [...String(value).matchAll(/['"]([^'"]+)['"]/g)]
+    .map((match) => match[1].trim())
+    .filter(Boolean);
+}
+
+function splitCreditNameList(value) {
+  const name = cleanCreditName(value);
+  if (!name) return [];
+
+  if (/,\s+/.test(name) && !/,\s*(Jr\.|Sr\.|II|III|IV)\.?$/i.test(name)) {
+    return name.split(",").map((part) => part.trim()).filter(Boolean);
+  }
+
+  return [name];
 }
 
 function getHeader(headers, name) {

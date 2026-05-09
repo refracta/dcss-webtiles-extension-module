@@ -30,6 +30,11 @@
       "threshold": 500,
       "maxScore": 5000
     },
+    "credits": {
+      "enabled": true,
+      "url": "https://raw.githubusercontent.com/crawl/crawl/refs/heads/master/crawl-ref/CREDITS.txt",
+      "pullPeriod": 300
+    },
     "logfile": {
       "enabled": true,
       "url": "https://archive.nemelex.cards/meta/crawl-git/logfile",

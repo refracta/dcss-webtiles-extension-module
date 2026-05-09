@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { ProfileDatabase } from "../src/db/profile-db.js";
-import { WatcherService } from "../src/services/watchers.js";
+import { WatcherService, parseCreditsContributorNames } from "../src/services/watchers.js";
 
 test("donation watcher creates and removes conditional donor banners", async () => {
   const database = await createDatabase();
@@ -57,6 +57,57 @@ test("translation watcher grants threshold banner", async () => {
   assert.equal(await watcher.syncTranslation(), true);
   assert.ok(database.getProfile("TranslatorUser").banners.translator);
   assert.equal(database.getProfile("SmallUser"), null);
+});
+
+test("credits watcher grants DCSS contributor banners from credits text", async () => {
+  const database = await createDatabase();
+  const credits = [
+    "The Dungeon Crawl Stone Soup team would like to thank:",
+    "",
+    "* Linley Henzell, the author of Dungeon Crawl.",
+    "* Darshan Shaligram and Erik Piper, for starting the Stone Soup project.",
+    "* Other retired members of the development team:",
+    "    ASCIIPhilia (crawl.nemelex.cards)",
+    "    Medar, Zkyp (crawl.xtahua.com)",
+    "    Vitor 'Baconkid' Costa",
+    "    valerie \"ploomutoo\"",
+    "    William Tanksley, Jr."
+  ].join("\n");
+  const watcher = new WatcherService({
+    database,
+    config: createConfig(),
+    fetchImpl: async () => okText(credits)
+  });
+
+  assert.deepEqual(parseCreditsContributorNames(credits), [
+    "ASCIIPhilia",
+    "Baconkid",
+    "Darshan Shaligram",
+    "Erik Piper",
+    "Linley Henzell",
+    "Medar",
+    "ploomutoo",
+    "valerie \"ploomutoo\"",
+    "Vitor 'Baconkid' Costa",
+    "William Tanksley, Jr.",
+    "Zkyp"
+  ]);
+
+  assert.equal(await watcher.syncCredits(), true);
+  const banner = database.getProfile("ASCIIPhilia").banners["dcss-contributor"];
+  assert.equal(banner.title, "DCSS Contributor");
+  assert.equal(banner.url, "https://github.com/crawl/crawl/blob/master/crawl-ref/CREDITS.txt");
+  assert.equal(banner.usernameStyle.id, "dcss-contributor");
+  assert.equal(banner.usernameStyle.data.badge, "🛠️");
+  assert.ok(database.getProfile("Baconkid").banners["dcss-contributor"]);
+
+  const emptyWatcher = new WatcherService({
+    database,
+    config: createConfig(),
+    fetchImpl: async () => okText("")
+  });
+  assert.equal(await emptyWatcher.syncCredits(), true);
+  assert.equal(database.getProfile("ASCIIPhilia").banners["dcss-contributor"], undefined);
 });
 
 test("logfile watcher ranks best scores from range deltas", async () => {
@@ -235,6 +286,10 @@ function createConfig(overrides = {}) {
         threshold: 500,
         maxScore: 5000
       },
+      credits: {
+        url: "https://example.test/credits",
+        pullPeriod: 300
+      },
       logfile: {
         url: "https://example.test/logfile",
         pullPeriod: 300,
@@ -252,6 +307,15 @@ function okJson(payload) {
   return {
     ok: true,
     async json() {
+      return payload;
+    }
+  };
+}
+
+function okText(payload) {
+  return {
+    ok: true,
+    async text() {
       return payload;
     }
   };

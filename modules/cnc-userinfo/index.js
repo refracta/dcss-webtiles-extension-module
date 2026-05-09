@@ -285,6 +285,10 @@ export default class CNCUserinfo {
             return `${this.escapeHtml(usernameStyle.data?.badge || this.getFastestWinBadge(usernameStyle.data?.rank))}${this.escapeHtml(username)}`;
         }
 
+        if (usernameStyle.id === 'dcss-contributor') {
+            return `${this.escapeHtml(usernameStyle.data?.badge || '🛠️')}${this.escapeHtml(username)}`;
+        }
+
         return this.escapeHtml(username);
     }
 

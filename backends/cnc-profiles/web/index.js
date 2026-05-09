@@ -247,6 +247,10 @@ function renderStyledUsername(username, usernameStyle) {
     return `${escapeHtml(usernameStyle.data?.badge || getFastestWinBadge(usernameStyle.data?.rank))}${escapeHtml(username)}`;
   }
 
+  if (usernameStyle.id === "dcss-contributor") {
+    return `${escapeHtml(usernameStyle.data?.badge || "🛠️")}${escapeHtml(username)}`;
+  }
+
   return escapeHtml(username);
 }
 
