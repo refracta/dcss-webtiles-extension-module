@@ -9,6 +9,10 @@ export default class CNCPublicChat {
     botName = 'CNCPublicChat'
 
     onLoad() {
+        if (this.isTestServerPage()) {
+            return;
+        }
+
         const {SourceMapperRegistry: SMR} = DWEM;
 
         function chatInjector() {
@@ -322,5 +326,9 @@ export default class CNCPublicChat {
         CNCChat.handleRightClickItem = (url) => {
             this.socket.send(JSON.stringify({msg: 'chat_msg', text: url}));
         }
+    }
+
+    isTestServerPage() {
+        return window.location.hostname === 'test.nemelex.cards';
     }
 }
