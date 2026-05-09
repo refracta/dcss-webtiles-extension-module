@@ -110,6 +110,22 @@ test("logfile watcher keeps partial lines for the next delta", async () => {
   assert.equal(database.data.watcherState.logfile.partialLine, "");
 });
 
+test("logfile watcher refreshes ranking banner definitions without new bytes", async () => {
+  const database = await createDatabase();
+  const logfile = createLogLine("Alice", 1000) + "\n";
+  const watcher = new WatcherService({
+    database,
+    config: createConfig({ logfile: { limit: 100 } }),
+    fetchImpl: createLogfileFetch(() => logfile)
+  });
+
+  assert.equal(await watcher.syncLogfile(), true);
+  database.getProfile("Alice").banners.ranking.url = "https://archive.nemelex.cards/meta/crawl-git/logfile";
+
+  assert.equal(await watcher.syncLogfile(), true);
+  assert.equal(database.getProfile("Alice").banners.ranking.url, "https://archive.nemelex.cards/meta/crawl-git?file=logfile");
+});
+
 function createConfig(overrides = {}) {
   return {
     watchers: {

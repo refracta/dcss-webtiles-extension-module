@@ -110,7 +110,7 @@ export class WatcherService {
     }
 
     if (Number.isFinite(remoteLength) && state.offset === remoteLength) {
-      return false;
+      return this.#replaceRankingBannersFromLogfileState(state, limit);
     }
 
     const response = await this.fetch(url, {
@@ -141,14 +141,7 @@ export class WatcherService {
     stateChanged = processed.changed || stateChanged;
     state.lastSyncAt = new Date().toISOString();
 
-    this.#pruneLogfilePlayers(state, Math.max(limit * LOGFILE_KEEP_MULTIPLIER, limit));
-    const activeEntries = this.#getTopRankingEntries(state, limit);
-    const bannersChanged = this.#replaceManagedBanners({
-      source: WATCHER_SOURCES.logfile,
-      bannerId: "ranking",
-      activeEntries,
-      createBanner: (entry) => createRankingBanner(entry)
-    });
+    const bannersChanged = this.#replaceRankingBannersFromLogfileState(state, limit);
 
     return stateChanged || bannersChanged;
   }
@@ -311,6 +304,16 @@ export class WatcherService {
         score: Number(entry.score),
         rank: index + 1
       }));
+  }
+
+  #replaceRankingBannersFromLogfileState(state, limit) {
+    this.#pruneLogfilePlayers(state, Math.max(limit * LOGFILE_KEEP_MULTIPLIER, limit));
+    return this.#replaceManagedBanners({
+      source: WATCHER_SOURCES.logfile,
+      bannerId: "ranking",
+      activeEntries: this.#getTopRankingEntries(state, limit),
+      createBanner: (entry) => createRankingBanner(entry)
+    });
   }
 }
 
