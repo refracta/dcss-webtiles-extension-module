@@ -101,6 +101,40 @@ test("logfile watcher ranks best scores from range deltas", async () => {
   assert.equal(database.getProfile("Carol").banners.ranking.detail.value, "(Server Ranking #3)");
 });
 
+test("logfile watcher ranks fastest winning games by real time", async () => {
+  const database = await createDatabase();
+  const logfile = [
+    createLogLine("SlowWinner", 5000, { ktyp: "winning", dur: 8000 }),
+    createLogLine("FastWinner", 1000, { ktyp: "winning", dur: 3600 }),
+    createLogLine("FastWinner", 900, { ktyp: "winning", dur: 4000 }),
+    createLogLine("DeathPlayer", 9999, { dur: 1000 }),
+    createLogLine("MiddleWinner", 2000, { ktyp: "winning", dur: 7200 })
+  ].join("\n") + "\n";
+  const watcher = new WatcherService({
+    database,
+    config: createConfig({ logfile: { limit: 100, fastestLimit: 2 } }),
+    fetchImpl: createLogfileFetch(() => logfile)
+  });
+
+  assert.equal(await watcher.syncLogfile(), true);
+
+  const fastBanner = database.getProfile("FastWinner").banners["fastest-win"];
+  assert.equal(fastBanner.title, "Trunk Fastest Wins");
+  assert.equal(fastBanner.detail.value, "(Server Ranking #1)");
+  assert.equal(fastBanner.detail.subvalue, "Time: 1:00:00");
+  assert.equal(fastBanner.usernameStyle.id, "fastest-win");
+  assert.equal(fastBanner.usernameStyle.data.badge, "⚡");
+  assert.equal(fastBanner.usernameStyle.data.durationSeconds, 3600);
+
+  const middleBanner = database.getProfile("MiddleWinner").banners["fastest-win"];
+  assert.equal(middleBanner.detail.value, "(Server Ranking #2)");
+  assert.equal(middleBanner.detail.subvalue, "Time: 2:00:00");
+  assert.equal(middleBanner.usernameStyle.data.badge, "🚀");
+
+  assert.equal(database.getProfile("SlowWinner").banners["fastest-win"], undefined);
+  assert.equal(database.getProfile("DeathPlayer").banners["fastest-win"], undefined);
+});
+
 test("logfile watcher uses the best game rank for duplicate player entries", async () => {
   const database = await createDatabase();
   const logfile = [
@@ -152,7 +186,7 @@ test("logfile watcher resets old unique-player ranking state", async () => {
       order: 0
     }
   });
-  assert.equal(database.data.watcherState.logfile.rankingMode, "server-game-v1");
+  assert.equal(database.data.watcherState.logfile.rankingMode, "server-game-v2");
   assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Game Ranking #1");
 });
 
@@ -230,8 +264,15 @@ async function createDatabase() {
   return database;
 }
 
-function createLogLine(username, score) {
-  return `v=0.34-a0:name=${username}:sc=${score}:race=Human:cls=Fighter`;
+function createLogLine(username, score, fields = {}) {
+  return [
+    "v=0.34-a0",
+    `name=${username}`,
+    `sc=${score}`,
+    "race=Human",
+    "cls=Fighter",
+    ...Object.entries(fields).map(([key, value]) => `${key}=${value}`)
+  ].join(":");
 }
 
 function createLogfileFetch(getLogfile, requests = []) {

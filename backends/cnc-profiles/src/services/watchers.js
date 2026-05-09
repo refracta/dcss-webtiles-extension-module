@@ -1,5 +1,6 @@
 import {
   createDonatorBanner,
+  createFastestWinBanner,
   createRankingBanner,
   createTranslatorBanner
 } from "../domain/banners.js";
@@ -11,7 +12,7 @@ const WATCHER_SOURCES = {
   translation: "watcher:translation"
 };
 
-const LOGFILE_RANKING_MODE = "server-game-v1";
+const LOGFILE_RANKING_MODE = "server-game-v2";
 
 export class WatcherService {
   constructor({ database, config, fetchImpl = fetch }) {
@@ -100,7 +101,9 @@ export class WatcherService {
     const watcherConfig = this.config.watchers.logfile;
     const state = this.#getLogfileState();
     const limit = Math.max(1, Math.floor(Number(watcherConfig.limit) || 100));
+    const fastestLimit = Math.max(1, Math.floor(Number(watcherConfig.fastestLimit) || 10));
     const gameLimit = Math.max(limit, Math.floor(Number(watcherConfig.gameLimit) || 1000));
+    const fastestGameLimit = Math.max(fastestLimit, Math.floor(Number(watcherConfig.fastestGameLimit) || 1000));
     const url = watcherConfig.url;
     let stateChanged = false;
 
@@ -111,7 +114,7 @@ export class WatcherService {
     }
 
     if (Number.isFinite(remoteLength) && state.offset === remoteLength) {
-      return this.#replaceRankingBannersFromLogfileState(state, { limit, gameLimit });
+      return this.#replaceLogfileBannersFromState(state, { limit, gameLimit, fastestLimit, fastestGameLimit });
     }
 
     const response = await this.fetch(url, {
@@ -138,11 +141,11 @@ export class WatcherService {
       stateChanged = true;
     }
 
-    const processed = await this.#processLogfileResponse(response, state, startOffset, { limit, gameLimit });
+    const processed = await this.#processLogfileResponse(response, state, startOffset, { gameLimit, fastestGameLimit });
     stateChanged = processed.changed || stateChanged;
     state.lastSyncAt = new Date().toISOString();
 
-    const bannersChanged = this.#replaceRankingBannersFromLogfileState(state, { limit, gameLimit });
+    const bannersChanged = this.#replaceLogfileBannersFromState(state, { limit, gameLimit, fastestLimit, fastestGameLimit });
 
     return stateChanged || bannersChanged;
   }
@@ -236,6 +239,8 @@ export class WatcherService {
       state.partialLine = String(state.partialLine ?? "");
       state.games = Array.isArray(state.games) ? state.games : [];
       state.players = state.players && typeof state.players === "object" ? state.players : {};
+      state.fastestGames = Array.isArray(state.fastestGames) ? state.fastestGames : [];
+      state.fastestPlayers = state.fastestPlayers && typeof state.fastestPlayers === "object" ? state.fastestPlayers : {};
       state.nextGameOrder = Math.max(0, Math.floor(Number(state.nextGameOrder) || 0));
     }
     return state;
@@ -247,6 +252,8 @@ export class WatcherService {
     state.partialLine = "";
     state.games = [];
     state.players = {};
+    state.fastestGames = [];
+    state.fastestPlayers = {};
     state.nextGameOrder = 0;
   }
 
@@ -264,7 +271,7 @@ export class WatcherService {
       lineBuffer = lines.pop() ?? "";
 
       for (const line of lines) {
-        changed = this.#updateLogfileScore(state, line.replace(/\r$/, ""), rankingLimits) || changed;
+        changed = this.#updateLogfileGame(state, line.replace(/\r$/, ""), rankingLimits) || changed;
       }
     }
 
@@ -273,9 +280,9 @@ export class WatcherService {
     return { changed: changed || receivedBytes > 0 };
   }
 
-  #updateLogfileScore(state, line, { gameLimit }) {
+  #updateLogfileGame(state, line, { gameLimit, fastestGameLimit }) {
     const game = parseLogfileLine(line);
-    if (!game || game.score <= 0) {
+    if (!game) {
       return false;
     }
 
@@ -288,28 +295,64 @@ export class WatcherService {
     state.nextGameOrder += 1;
     state.games = Array.isArray(state.games) ? state.games : [];
     state.players = state.players && typeof state.players === "object" ? state.players : {};
+    state.fastestGames = Array.isArray(state.fastestGames) ? state.fastestGames : [];
+    state.fastestPlayers = state.fastestPlayers && typeof state.fastestPlayers === "object" ? state.fastestPlayers : {};
     let changed = false;
 
-    const previousPlayer = state.players[key];
-    if (!previousPlayer || Number(previousPlayer.score) < game.score) {
-      state.players[key] = {
-        key,
-        username: resolveExistingUsername(this.database, game.username) ?? game.username,
-        score: game.score,
-        order
-      };
-      changed = true;
+    const entry = {
+      key,
+      username: resolveExistingUsername(this.database, game.username) ?? game.username,
+      score: game.score,
+      durationSeconds: game.durationSeconds,
+      order
+    };
+
+    if (game.score > 0) {
+      const previousPlayer = state.players[key];
+      if (!previousPlayer || Number(previousPlayer.score) < game.score) {
+        state.players[key] = {
+          key,
+          username: entry.username,
+          score: game.score,
+          order
+        };
+        changed = true;
+      }
+
+      if (state.games.length < gameLimit || game.score > Number(state.games.at(-1)?.score)) {
+        state.games.push({
+          key,
+          username: entry.username,
+          score: game.score,
+          order
+        });
+        this.#pruneLogfileGames(state, gameLimit);
+        changed = true;
+      }
     }
 
-    if (state.games.length < gameLimit || game.score > Number(state.games.at(-1)?.score)) {
-      state.games.push({
+    if (game.isWin && game.durationSeconds > 0) {
+      const fastestEntry = {
         key,
-        username: resolveExistingUsername(this.database, game.username) ?? game.username,
+        username: entry.username,
         score: game.score,
+        durationSeconds: game.durationSeconds,
         order
-      });
-      this.#pruneLogfileGames(state, gameLimit);
-      changed = true;
+      };
+      const previousFastestPlayer = state.fastestPlayers[key];
+      if (!previousFastestPlayer || compareFastestWinGames(fastestEntry, previousFastestPlayer) < 0) {
+        state.fastestPlayers[key] = fastestEntry;
+        changed = true;
+      }
+
+      if (
+        state.fastestGames.length < fastestGameLimit ||
+        compareFastestWinGames(fastestEntry, state.fastestGames.at(-1)) < 0
+      ) {
+        state.fastestGames.push(fastestEntry);
+        this.#pruneFastestWinGames(state, fastestGameLimit);
+        changed = true;
+      }
     }
 
     return changed;
@@ -320,6 +363,13 @@ export class WatcherService {
       .filter((entry) => entry?.username && Number(entry.score) > 0)
       .sort(compareLogfileGames)
       .slice(0, gameLimit);
+  }
+
+  #pruneFastestWinGames(state, fastestGameLimit) {
+    state.fastestGames = (Array.isArray(state.fastestGames) ? state.fastestGames : [])
+      .filter((entry) => entry?.username && Number(entry.durationSeconds) > 0)
+      .sort(compareFastestWinGames)
+      .slice(0, fastestGameLimit);
   }
 
   #getTopRankingEntries(state, limit) {
@@ -339,14 +389,39 @@ export class WatcherService {
       }));
   }
 
-  #replaceRankingBannersFromLogfileState(state, { limit, gameLimit }) {
+  #getFastestWinEntries(state, fastestLimit) {
+    const games = (Array.isArray(state.fastestGames) ? state.fastestGames : [])
+      .filter((entry) => entry?.username && Number(entry.durationSeconds) > 0)
+      .sort(compareFastestWinGames);
+
+    return Object.values(state.fastestPlayers ?? {})
+      .filter((entry) => entry?.username && Number(entry.durationSeconds) > 0)
+      .sort(compareFastestWinGames)
+      .slice(0, fastestLimit)
+      .map((entry, index) => ({
+        username: entry.username,
+        durationSeconds: Number(entry.durationSeconds),
+        rank: getFastestWinGameRank(games, entry) ?? index + 1,
+        serverRank: index + 1
+      }));
+  }
+
+  #replaceLogfileBannersFromState(state, { limit, gameLimit, fastestLimit, fastestGameLimit }) {
     this.#pruneLogfileGames(state, gameLimit);
-    return this.#replaceManagedBanners({
+    this.#pruneFastestWinGames(state, fastestGameLimit);
+    const rankingChanged = this.#replaceManagedBanners({
       source: WATCHER_SOURCES.logfile,
       bannerId: "ranking",
       activeEntries: this.#getTopRankingEntries(state, limit),
       createBanner: (entry) => createRankingBanner(entry)
     });
+    const fastestChanged = this.#replaceManagedBanners({
+      source: WATCHER_SOURCES.logfile,
+      bannerId: "fastest-win",
+      activeEntries: this.#getFastestWinEntries(state, fastestLimit),
+      createBanner: (entry) => createFastestWinBanner(entry)
+    });
+    return rankingChanged || fastestChanged;
   }
 }
 
@@ -361,6 +436,12 @@ function compareLogfileGames(a, b) {
     String(a.username).localeCompare(String(b.username));
 }
 
+function compareFastestWinGames(a, b) {
+  return Number(a.durationSeconds) - Number(b.durationSeconds) ||
+    Number(a.order ?? 0) - Number(b.order ?? 0) ||
+    String(a.username).localeCompare(String(b.username));
+}
+
 function getGameRank(games, target) {
   const targetKey = target.key ?? normalizeUsernameKey(target.username);
   const targetScore = Number(target.score);
@@ -369,6 +450,19 @@ function getGameRank(games, target) {
     const key = entry.key ?? normalizeUsernameKey(entry.username);
     return key === targetKey &&
       Number(entry.score) === targetScore &&
+      Number(entry.order ?? 0) === targetOrder;
+  });
+  return index >= 0 ? index + 1 : null;
+}
+
+function getFastestWinGameRank(games, target) {
+  const targetKey = target.key ?? normalizeUsernameKey(target.username);
+  const targetDurationSeconds = Number(target.durationSeconds);
+  const targetOrder = Number(target.order ?? 0);
+  const index = games.findIndex((entry) => {
+    const key = entry.key ?? normalizeUsernameKey(entry.username);
+    return key === targetKey &&
+      Number(entry.durationSeconds) === targetDurationSeconds &&
       Number(entry.order ?? 0) === targetOrder;
   });
   return index >= 0 ? index + 1 : null;
@@ -428,6 +522,8 @@ function parseLogfileLine(line) {
 
   let username = "";
   let score = 0;
+  let durationSeconds = 0;
+  let isWin = false;
   for (const field of line.split(":")) {
     const separator = field.indexOf("=");
     if (separator < 0) continue;
@@ -438,10 +534,14 @@ function parseLogfileLine(line) {
       username = value.trim();
     } else if (key === "sc") {
       score = Number.parseInt(value, 10) || 0;
+    } else if (key === "dur") {
+      durationSeconds = Number.parseInt(value, 10) || 0;
+    } else if (key === "ktyp") {
+      isWin = value === "winning";
     }
   }
 
-  return username ? { username, score } : null;
+  return username ? { username, score, durationSeconds, isWin } : null;
 }
 
 function getHeader(headers, name) {

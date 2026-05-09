@@ -21,6 +21,12 @@ const RANKING_EXAMPLES = [
   { id: "rank-26-50", serverRankLabel: "#26-#50", rank: 26, serverRank: 26, score: 30000000 },
   { id: "rank-51-100", serverRankLabel: "#51-#100", rank: 51, serverRank: 51, score: 25000000 }
 ];
+const FASTEST_WIN_EXAMPLES = [
+  { id: "rank-1", serverRankLabel: "#1", rank: 1, serverRank: 1, durationSeconds: 5400 },
+  { id: "rank-2-3", serverRankLabel: "#2-#3", rank: 2, serverRank: 2, durationSeconds: 7200 },
+  { id: "rank-4-5", serverRankLabel: "#4-#5", rank: 4, serverRank: 4, durationSeconds: 9000 },
+  { id: "rank-6-10", serverRankLabel: "#6-#10", rank: 6, serverRank: 6, durationSeconds: 10800 }
+];
 
 export const BANNER_DEFINITIONS = [
   {
@@ -90,6 +96,12 @@ export const BANNER_DEFINITIONS = [
     url: BANNER_URLS.logfileViewer,
     usernameStyle: { id: "ranking", data: { rank: 100, badge: getRankingBadge(100) } }
   },
+  {
+    id: "fastest-win",
+    title: "Trunk Fastest Wins",
+    url: BANNER_URLS.logfileViewer,
+    usernameStyle: { id: "fastest-win", data: { rank: 10, badge: getFastestWinBadge(10) } }
+  },
   ...PSEUDO_CNC_RANKS.map((rank) => createPseudoCncBanner(rank)),
   ...PSEUDO_DONATOR_AMOUNTS.map((amount, index) => createPseudoDonatorBanner(index + 1, amount))
 ];
@@ -103,7 +115,8 @@ const BANNER_EXAMPLE_BANNER_IDS = [
 const BANNER_EXAMPLE_BANNERS = [
   ...BANNER_EXAMPLE_BANNER_IDS.map((id) => getBannerDefinition(id)),
   ...PSEUDO_TRANSLATOR_SCORES.map((score) => createPseudoTranslatorBanner(score)),
-  ...RANKING_EXAMPLES.map((example) => createRankingExampleBanner(example))
+  ...RANKING_EXAMPLES.map((example) => createRankingExampleBanner(example)),
+  ...FASTEST_WIN_EXAMPLES.map((example) => createFastestWinExampleBanner(example))
 ].filter(Boolean);
 
 export const INITIAL_PROFILES = [
@@ -246,12 +259,49 @@ export function createRankingBanner({ rank, serverRank, score }) {
   };
 }
 
+export function createFastestWinBanner({ rank, serverRank, durationSeconds }) {
+  const safeRank = Math.max(1, Math.floor(Number(rank) || 1));
+  const safeServerRank = Math.max(1, Math.floor(Number(serverRank) || safeRank));
+  const safeDurationSeconds = Math.max(0, Math.floor(Number(durationSeconds) || 0));
+  return {
+    id: "fastest-win",
+    title: "Trunk Fastest Wins",
+    url: BANNER_URLS.logfileViewer,
+    detail: {
+      value: `(Server Ranking #${safeServerRank})`,
+      subvalue: `Time: ${formatDurationSeconds(safeDurationSeconds)}`
+    },
+    usernameStyle: {
+      id: "fastest-win",
+      data: {
+        rank: safeRank,
+        serverRank: safeServerRank,
+        durationSeconds: safeDurationSeconds,
+        badge: getFastestWinBadge(safeServerRank)
+      }
+    }
+  };
+}
+
 function createRankingExampleBanner({ id, serverRankLabel, rank, serverRank, score }) {
   const banner = createRankingBanner({ rank, serverRank, score });
   return {
     ...banner,
     id: `example-ranking-${id}`,
     title: "Trunk Game Ranking Example",
+    detail: {
+      ...banner.detail,
+      value: `(Server Ranking ${serverRankLabel})`
+    }
+  };
+}
+
+function createFastestWinExampleBanner({ id, serverRankLabel, rank, serverRank, durationSeconds }) {
+  const banner = createFastestWinBanner({ rank, serverRank, durationSeconds });
+  return {
+    ...banner,
+    id: `example-fastest-win-${id}`,
+    title: "Trunk Fastest Wins Example",
     detail: {
       ...banner.detail,
       value: `(Server Ranking ${serverRankLabel})`
@@ -268,6 +318,24 @@ export function getRankingBadge(rank) {
   if (safeRank <= 50) return "🌟";
   if (safeRank <= 100) return "⭐";
   return "";
+}
+
+export function getFastestWinBadge(rank) {
+  const safeRank = Math.max(1, Math.floor(Number(rank) || 1));
+  if (safeRank === 1) return "⚡";
+  if (safeRank <= 3) return "🚀";
+  if (safeRank <= 5) return "🏎️";
+  if (safeRank <= 10) return "💨";
+  return "";
+}
+
+export function formatDurationSeconds(value) {
+  const totalSeconds = Math.max(0, Math.floor(Number(value) || 0));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${hours}:${pad(minutes)}:${pad(seconds)}`;
 }
 
 function createDonationDetail(donation) {

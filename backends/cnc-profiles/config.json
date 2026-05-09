@@ -35,6 +35,8 @@
       "url": "https://archive.nemelex.cards/meta/crawl-git/logfile",
       "pullPeriod": 300,
       "limit": 100,
+      "fastestLimit": 10,
+      "fastestGameLimit": 1000,
       "gameLimit": 1000
     }
   },

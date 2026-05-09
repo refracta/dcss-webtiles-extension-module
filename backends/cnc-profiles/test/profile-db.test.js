@@ -110,6 +110,43 @@ test("seeds initial profiles preserving username casing", async () => {
       "(Server Ranking #51-#100)"
     ]
   );
+  assert.deepEqual(
+    [
+      exampleProfile.banners["example-fastest-win-rank-1"].title,
+      exampleProfile.banners["example-fastest-win-rank-2-3"].title,
+      exampleProfile.banners["example-fastest-win-rank-4-5"].title,
+      exampleProfile.banners["example-fastest-win-rank-6-10"].title
+    ],
+    [
+      "Trunk Fastest Wins Example",
+      "Trunk Fastest Wins Example",
+      "Trunk Fastest Wins Example",
+      "Trunk Fastest Wins Example"
+    ]
+  );
+  assert.deepEqual(
+    [
+      exampleProfile.banners["example-fastest-win-rank-1"].detail.value,
+      exampleProfile.banners["example-fastest-win-rank-2-3"].detail.value,
+      exampleProfile.banners["example-fastest-win-rank-4-5"].detail.value,
+      exampleProfile.banners["example-fastest-win-rank-6-10"].detail.value
+    ],
+    [
+      "(Server Ranking #1)",
+      "(Server Ranking #2-#3)",
+      "(Server Ranking #4-#5)",
+      "(Server Ranking #6-#10)"
+    ]
+  );
+  assert.deepEqual(
+    [
+      exampleProfile.banners["example-fastest-win-rank-1"].usernameStyle.data.badge,
+      exampleProfile.banners["example-fastest-win-rank-2-3"].usernameStyle.data.badge,
+      exampleProfile.banners["example-fastest-win-rank-4-5"].usernameStyle.data.badge,
+      exampleProfile.banners["example-fastest-win-rank-6-10"].usernameStyle.data.badge
+    ],
+    ["⚡", "🚀", "🏎️", "💨"]
+  );
 });
 
 test("manual none selection blocks auto equip", async () => {

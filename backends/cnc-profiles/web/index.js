@@ -243,6 +243,10 @@ function renderStyledUsername(username, usernameStyle) {
     return `${escapeHtml(usernameStyle.data?.badge || getRankingBadge(usernameStyle.data?.rank))}${escapeHtml(username)}`;
   }
 
+  if (usernameStyle.id === "fastest-win") {
+    return `${escapeHtml(usernameStyle.data?.badge || getFastestWinBadge(usernameStyle.data?.rank))}${escapeHtml(username)}`;
+  }
+
   return escapeHtml(username);
 }
 
@@ -254,6 +258,15 @@ function getRankingBadge(rank) {
   if (safeRank <= 25) return "💎";
   if (safeRank <= 50) return "🌟";
   if (safeRank <= 100) return "⭐";
+  return "";
+}
+
+function getFastestWinBadge(rank) {
+  const safeRank = Math.max(1, Math.floor(Number(rank) || 1));
+  if (safeRank === 1) return "⚡";
+  if (safeRank <= 3) return "🚀";
+  if (safeRank <= 5) return "🏎️";
+  if (safeRank <= 10) return "💨";
   return "";
 }
 

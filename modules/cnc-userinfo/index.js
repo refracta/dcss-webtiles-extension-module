@@ -281,19 +281,23 @@ export default class CNCUserinfo {
             return `${this.escapeHtml(usernameStyle.data?.badge || this.getRankingBadge(usernameStyle.data?.rank))}${this.escapeHtml(username)}`;
         }
 
+        if (usernameStyle.id === 'fastest-win') {
+            return `${this.escapeHtml(usernameStyle.data?.badge || this.getFastestWinBadge(usernameStyle.data?.rank))}${this.escapeHtml(username)}`;
+        }
+
         return this.escapeHtml(username);
     }
 
     createBannerTitleDiv(banner) {
         const title = this.escapeHtml(banner.title);
         const url = this.escapeHtml(banner.url);
-        const isCompactRanking = banner.id === 'ranking';
-        const fontSize = isCompactRanking ? '0.82em' : '0.9em';
-        const lineHeight = isCompactRanking ? '1.15' : 'normal';
-        const titleStyle = isCompactRanking ? ' style="white-space: nowrap;"' : ' style="white-space: pre-line;"';
+        const isCompactStatBanner = banner.id === 'ranking' || banner.id === 'fastest-win';
+        const fontSize = isCompactStatBanner ? '0.82em' : '0.9em';
+        const lineHeight = isCompactStatBanner ? '1.15' : 'normal';
+        const titleStyle = isCompactStatBanner ? ' style="white-space: nowrap;"' : ' style="white-space: pre-line;"';
         const detail = this.getBannerDetailLines(banner.detail)
             .map((line, index) => {
-                const color = isCompactRanking && index === 0 ? 'inherit' : '#d6c895';
+                const color = isCompactStatBanner && index === 0 ? 'inherit' : '#d6c895';
                 return `<span style="display: block; color: ${color}; white-space: nowrap;">${this.escapeHtml(line)}</span>`;
             })
             .join('');
@@ -324,6 +328,15 @@ export default class CNCUserinfo {
         if (safeRank <= 25) return '💎';
         if (safeRank <= 50) return '🌟';
         if (safeRank <= 100) return '⭐';
+        return '';
+    }
+
+    getFastestWinBadge(rank) {
+        const safeRank = Math.max(1, Math.floor(Number(rank) || 1));
+        if (safeRank === 1) return '⚡';
+        if (safeRank <= 3) return '🚀';
+        if (safeRank <= 5) return '🏎️';
+        if (safeRank <= 10) return '💨';
         return '';
     }
 
