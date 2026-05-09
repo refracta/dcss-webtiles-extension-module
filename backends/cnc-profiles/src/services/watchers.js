@@ -11,7 +11,7 @@ const WATCHER_SOURCES = {
   translation: "watcher:translation"
 };
 
-const LOGFILE_RANKING_MODE = "game-server-v1";
+const LOGFILE_RANKING_MODE = "server-game-v1";
 
 export class WatcherService {
   constructor({ database, config, fetchImpl = fetch }) {
@@ -100,6 +100,7 @@ export class WatcherService {
     const watcherConfig = this.config.watchers.logfile;
     const state = this.#getLogfileState();
     const limit = Math.max(1, Math.floor(Number(watcherConfig.limit) || 100));
+    const gameLimit = Math.max(limit, Math.floor(Number(watcherConfig.gameLimit) || 1000));
     const url = watcherConfig.url;
     let stateChanged = false;
 
@@ -110,7 +111,7 @@ export class WatcherService {
     }
 
     if (Number.isFinite(remoteLength) && state.offset === remoteLength) {
-      return this.#replaceRankingBannersFromLogfileState(state, limit);
+      return this.#replaceRankingBannersFromLogfileState(state, { limit, gameLimit });
     }
 
     const response = await this.fetch(url, {
@@ -137,11 +138,11 @@ export class WatcherService {
       stateChanged = true;
     }
 
-    const processed = await this.#processLogfileResponse(response, state, startOffset, limit);
+    const processed = await this.#processLogfileResponse(response, state, startOffset, { limit, gameLimit });
     stateChanged = processed.changed || stateChanged;
     state.lastSyncAt = new Date().toISOString();
 
-    const bannersChanged = this.#replaceRankingBannersFromLogfileState(state, limit);
+    const bannersChanged = this.#replaceRankingBannersFromLogfileState(state, { limit, gameLimit });
 
     return stateChanged || bannersChanged;
   }
@@ -234,6 +235,7 @@ export class WatcherService {
       state.offset = Math.max(0, Math.floor(Number(state.offset) || 0));
       state.partialLine = String(state.partialLine ?? "");
       state.games = Array.isArray(state.games) ? state.games : [];
+      state.players = state.players && typeof state.players === "object" ? state.players : {};
       state.nextGameOrder = Math.max(0, Math.floor(Number(state.nextGameOrder) || 0));
     }
     return state;
@@ -244,11 +246,11 @@ export class WatcherService {
     state.offset = 0;
     state.partialLine = "";
     state.games = [];
+    state.players = {};
     state.nextGameOrder = 0;
-    delete state.players;
   }
 
-  async #processLogfileResponse(response, state, startOffset, limit) {
+  async #processLogfileResponse(response, state, startOffset, rankingLimits) {
     let receivedBytes = 0;
     let lineBuffer = startOffset === 0 ? "" : state.partialLine;
     let changed = false;
@@ -262,7 +264,7 @@ export class WatcherService {
       lineBuffer = lines.pop() ?? "";
 
       for (const line of lines) {
-        changed = this.#updateLogfileScore(state, line.replace(/\r$/, ""), limit) || changed;
+        changed = this.#updateLogfileScore(state, line.replace(/\r$/, ""), rankingLimits) || changed;
       }
     }
 
@@ -271,64 +273,74 @@ export class WatcherService {
     return { changed: changed || receivedBytes > 0 };
   }
 
-  #updateLogfileScore(state, line, limit) {
+  #updateLogfileScore(state, line, { gameLimit }) {
     const game = parseLogfileLine(line);
     if (!game || game.score <= 0) {
+      return false;
+    }
+
+    const key = normalizeUsernameKey(game.username);
+    if (!key) {
       return false;
     }
 
     const order = state.nextGameOrder;
     state.nextGameOrder += 1;
     state.games = Array.isArray(state.games) ? state.games : [];
+    state.players = state.players && typeof state.players === "object" ? state.players : {};
+    let changed = false;
 
-    if (state.games.length >= limit && game.score <= Number(state.games.at(-1)?.score)) {
-      return false;
+    const previousPlayer = state.players[key];
+    if (!previousPlayer || Number(previousPlayer.score) < game.score) {
+      state.players[key] = {
+        key,
+        username: resolveExistingUsername(this.database, game.username) ?? game.username,
+        score: game.score,
+        order
+      };
+      changed = true;
     }
 
-    state.games.push({
-      username: resolveExistingUsername(this.database, game.username) ?? game.username,
-      score: game.score,
-      order
-    });
-    this.#pruneLogfileGames(state, limit);
-    return true;
+    if (state.games.length < gameLimit || game.score > Number(state.games.at(-1)?.score)) {
+      state.games.push({
+        key,
+        username: resolveExistingUsername(this.database, game.username) ?? game.username,
+        score: game.score,
+        order
+      });
+      this.#pruneLogfileGames(state, gameLimit);
+      changed = true;
+    }
+
+    return changed;
   }
 
-  #pruneLogfileGames(state, limit) {
+  #pruneLogfileGames(state, gameLimit) {
     state.games = (Array.isArray(state.games) ? state.games : [])
       .filter((entry) => entry?.username && Number(entry.score) > 0)
       .sort(compareLogfileGames)
-      .slice(0, limit);
+      .slice(0, gameLimit);
   }
 
   #getTopRankingEntries(state, limit) {
-    const entries = [];
-    const seen = new Set();
-    let serverRank = 0;
     const games = (Array.isArray(state.games) ? state.games : [])
       .filter((entry) => entry?.username && Number(entry.score) > 0)
+      .sort(compareLogfileGames);
+
+    return Object.values(state.players ?? {})
+      .filter((entry) => entry?.username && Number(entry.score) > 0)
       .sort(compareLogfileGames)
-      .slice(0, limit);
-
-    for (const [index, entry] of games.entries()) {
-      const key = normalizeUsernameKey(entry.username);
-      if (!key || seen.has(key)) continue;
-
-      serverRank += 1;
-      seen.add(key);
-      entries.push({
+      .slice(0, limit)
+      .map((entry, index) => ({
         username: entry.username,
         score: Number(entry.score),
-        rank: index + 1,
-        serverRank
-      });
-    }
-
-    return entries;
+        rank: getGameRank(games, entry) ?? index + 1,
+        serverRank: index + 1
+      }));
   }
 
-  #replaceRankingBannersFromLogfileState(state, limit) {
-    this.#pruneLogfileGames(state, limit);
+  #replaceRankingBannersFromLogfileState(state, { limit, gameLimit }) {
+    this.#pruneLogfileGames(state, gameLimit);
     return this.#replaceManagedBanners({
       source: WATCHER_SOURCES.logfile,
       bannerId: "ranking",
@@ -347,6 +359,19 @@ function compareLogfileGames(a, b) {
   return Number(b.score) - Number(a.score) ||
     Number(a.order ?? 0) - Number(b.order ?? 0) ||
     String(a.username).localeCompare(String(b.username));
+}
+
+function getGameRank(games, target) {
+  const targetKey = target.key ?? normalizeUsernameKey(target.username);
+  const targetScore = Number(target.score);
+  const targetOrder = Number(target.order ?? 0);
+  const index = games.findIndex((entry) => {
+    const key = entry.key ?? normalizeUsernameKey(entry.username);
+    return key === targetKey &&
+      Number(entry.score) === targetScore &&
+      Number(entry.order ?? 0) === targetOrder;
+  });
+  return index >= 0 ? index + 1 : null;
 }
 
 async function* readResponseTextChunks(response) {

@@ -285,11 +285,26 @@ export default class CNCUserinfo {
     createBannerTitleDiv(banner) {
         const title = this.escapeHtml(banner.title);
         const url = this.escapeHtml(banner.url);
-        const detail = banner.detail?.value
-            ? `<span style="display: block; color: #d6c895; white-space: nowrap;">${banner.detail.label ? `${this.escapeHtml(banner.detail.label)}: ` : ''}${this.escapeHtml(banner.detail.value)}</span>`
-            : '';
+        const detail = this.getBannerDetailLines(banner.detail)
+            .map((line) => `<span style="display: block; color: #d6c895; white-space: nowrap;">${this.escapeHtml(line)}</span>`)
+            .join('');
 
         return `<div style="font-style: italic; font-size: 0.9em; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank">${title}</a>${detail}</div>`;
+    }
+
+    getBannerDetailLines(detail) {
+        if (!detail?.value) return [];
+
+        const lines = [
+            `${detail.label ? `${detail.label}: ` : ''}${detail.value}`
+        ];
+        if (detail.subvalue) {
+            lines.push(String(detail.subvalue));
+        }
+        if (Array.isArray(detail.lines)) {
+            lines.push(...detail.lines.map((line) => String(line)));
+        }
+        return lines;
     }
 
     getRankingBadge(rank) {

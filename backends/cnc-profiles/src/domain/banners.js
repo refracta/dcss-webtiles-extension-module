@@ -207,7 +207,8 @@ export function createRankingBanner({ rank, serverRank, score }) {
     title: `Trunk Game Ranking #${safeRank}`,
     url: BANNER_URLS.logfileViewer,
     detail: {
-      value: `(Server Ranking #${safeServerRank})`
+      value: `(Server Ranking #${safeServerRank})`,
+      subvalue: `Score: ${safeScore.toLocaleString("en-US")}`
     },
     usernameStyle: {
       id: "ranking",

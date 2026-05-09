@@ -195,14 +195,29 @@ function createBannerTitleRow(banner, { linkTitle = false } = {}) {
   }
   row.append(title);
 
-  if (banner.detail?.value) {
+  for (const line of getBannerDetailLines(banner.detail)) {
     const detail = document.createElement("span");
     detail.className = "banner-detail";
-    detail.textContent = `${banner.detail.label ? `${banner.detail.label}: ` : ""}${banner.detail.value}`;
+    detail.textContent = line;
     row.append(detail);
   }
 
   return row;
+}
+
+function getBannerDetailLines(detail) {
+  if (!detail?.value) return [];
+
+  const lines = [
+    `${detail.label ? `${detail.label}: ` : ""}${detail.value}`
+  ];
+  if (detail.subvalue) {
+    lines.push(String(detail.subvalue));
+  }
+  if (Array.isArray(detail.lines)) {
+    lines.push(...detail.lines.map((line) => String(line)));
+  }
+  return lines;
 }
 
 function renderStyledUsername(username, usernameStyle) {

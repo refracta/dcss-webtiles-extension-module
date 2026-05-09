@@ -39,7 +39,8 @@ const DEFAULT_CONFIG = {
       enabled: true,
       url: "https://archive.nemelex.cards/meta/crawl-git/logfile",
       pullPeriod: 300,
-      limit: 100
+      limit: 100,
+      gameLimit: 1000
     }
   },
   auth: {
