@@ -4,6 +4,7 @@ export const BANNER_URLS = {
   tournamentResults: "https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html",
   donation: "https://donation.abstr.net/list",
   logfile: "https://archive.nemelex.cards/meta/crawl-git/logfile",
+  logfileViewer: "https://archive.nemelex.cards/meta/crawl-git?file=logfile",
   translation: "https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing",
   profiles: "https://profiles.nemelex.cards"
 };
@@ -77,7 +78,7 @@ export const BANNER_DEFINITIONS = [
   {
     id: "ranking",
     title: "Trunk Game Ranking",
-    url: BANNER_URLS.logfile,
+    url: BANNER_URLS.logfileViewer,
     usernameStyle: { id: "ranking", data: { rank: 100, badge: getRankingBadge(100) } }
   },
   ...PSEUDO_CNC_RANKS.map((rank) => createPseudoCncBanner(rank)),
@@ -203,7 +204,7 @@ export function createRankingBanner({ rank, score }) {
   return {
     id: "ranking",
     title: `Trunk Game Ranking #${safeRank}`,
-    url: BANNER_URLS.logfile,
+    url: BANNER_URLS.logfileViewer,
     detail: {
       label: "Score",
       value: safeScore.toLocaleString("en-US")
