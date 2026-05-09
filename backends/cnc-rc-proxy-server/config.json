@@ -8,6 +8,8 @@
     "https://cbro.berotato.org/rcfiles",
     "https://crawl.xtahua.com/crawl/rcfiles",
     "https://crawl.project357.org/rc-files",
-    "http://lazy-life.ddo.jp/mirror/meta"
+    "http://lazy-life.ddo.jp/mirror/meta",
+    "https://crawl.roguelikes.gg/rcfiles",
+    "https://crawl-br.roguelikes.gg/rcfiles"
   ]
 }
