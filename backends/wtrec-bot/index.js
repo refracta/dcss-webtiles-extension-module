@@ -21,7 +21,20 @@ while (true) {
                         socket.pong();
                     } else if (data.msg === 'lobby_entry') {
                         if (!lobby[data.id]) {
-                            if (Math.random() > 0.8 && data.username !== 'CNCPublicChat') {
+// 기준 구간
+//const start = new Date(Date.UTC(2025, 6 - 1, 10, 15, 0, 0));  // 2025-05-02 20:00:00 UTC
+//const end   = new Date(Date.UTC(2025, 6 - 1, 25, 15, 0, 0)); // 2025-05-18 20:00:00 UTC
+const start = new Date(Date.UTC(2026, 2 - 1, 6, 20, 0, 0));  // 2026-02-06 20:00:00 UTC
+const end   = new Date(Date.UTC(2026, 2 - 1, 22, 20, 0, 0)); // 2026-02-22 20:00:00 UTC
+
+
+// 지금 시각
+const now = new Date();           // 로컬 시간. 필요하면 new Date().toUTCString() 등으로 UTC 변환
+
+// 현재가 구간 안에 있는지?
+const isBetween = now >= start && now <= end;
+const condition = isBetween || Math.random() > 0.8
+                            if (condition && data.username !== 'CNCPublicChat') {
                                 socket.launchQueue.push(data.username);
                             }
                         }
