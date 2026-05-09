@@ -698,6 +698,9 @@ export default class CNCUserinfo {
                 username_entry.attr("data-cnc-username", data.username);
                 username_entry.html(DWEM.Modules.CNCUserinfo.applyStyledUsername(data.username));
                 set("username", username_entry);
+                entry.find(".username")
+                    .data("sort", data.username)
+                    .attr("data-sort", data.username);
                 set("game_id", data.game_id);
                 set("xl", data.xl);
                 set("char", data.char);
