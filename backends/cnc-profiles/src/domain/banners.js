@@ -7,6 +7,7 @@ export const BANNER_URLS = {
   logfileViewer: "https://archive.nemelex.cards/meta/crawl-git?file=logfile",
   translation: "https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing",
   credits: "https://github.com/crawl/crawl/blob/master/crawl-ref/CREDITS.txt",
+  osp: "https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md",
   profiles: "https://profiles.nemelex.cards"
 };
 
@@ -94,7 +95,7 @@ export const BANNER_DEFINITIONS = [
   },
   {
     id: "ranking",
-    title: "Trunk Game Ranking",
+    title: "Trunk Score Ranking",
     url: BANNER_URLS.logfileViewer,
     usernameStyle: { id: "ranking", data: { rank: 100, badge: getRankingBadge(100) } }
   },
@@ -117,6 +118,12 @@ export const BANNER_DEFINITIONS = [
     url: BANNER_URLS.credits,
     usernameStyle: { id: "dcss-contributor", data: { badge: "🛠️" } }
   },
+  {
+    id: "osp-contributor",
+    title: "OSP Contributor",
+    url: BANNER_URLS.osp,
+    usernameStyle: { id: "osp-contributor", data: { count: 1 } }
+  },
   ...PSEUDO_CNC_RANKS.map((rank) => createPseudoCncBanner(rank)),
   ...PSEUDO_DONATOR_AMOUNTS.map((amount, index) => createPseudoDonatorBanner(index + 1, amount))
 ];
@@ -131,6 +138,7 @@ const BANNER_EXAMPLE_BANNER_IDS = [
 const BANNER_EXAMPLE_BANNERS = [
   ...BANNER_EXAMPLE_BANNER_IDS.map((id) => getBannerDefinition(id)),
   ...PSEUDO_TRANSLATOR_SCORES.map((score) => createPseudoTranslatorBanner(score)),
+  createOspContributorExampleBanner(10),
   ...RANKING_EXAMPLES.map((example) => createRankingExampleBanner(example)),
   ...FASTEST_WIN_EXAMPLES.map((example) => createFastestWinExampleBanner(example)),
   ...WIN_STREAK_EXAMPLES.map((streak) => createWinStreakExampleBanner(streak))
@@ -258,7 +266,7 @@ export function createRankingBanner({ rank, serverRank, score }) {
   const safeScore = Math.max(0, Math.floor(Number(score) || 0));
   return {
     id: "ranking",
-    title: `Trunk Game Ranking #${safeRank}`,
+    title: `Trunk Score Ranking #${safeRank}`,
     url: BANNER_URLS.logfileViewer,
     detail: {
       value: `(Server Ranking #${safeServerRank})`,
@@ -320,12 +328,27 @@ export function createDcssContributorBanner() {
   return getBannerDefinition("dcss-contributor");
 }
 
+export function createOspContributorBanner(count) {
+  const safeCount = Math.max(1, Math.floor(Number(count) || 1));
+  return {
+    id: "osp-contributor",
+    title: safeCount > 1 ? `OSP Contributor (${safeCount.toLocaleString("en-US")})` : "OSP Contributor",
+    url: BANNER_URLS.osp,
+    usernameStyle: {
+      id: "osp-contributor",
+      data: {
+        count: safeCount
+      }
+    }
+  };
+}
+
 function createRankingExampleBanner({ id, serverRankLabel, rank, serverRank, score }) {
   const banner = createRankingBanner({ rank, serverRank, score });
   return {
     ...banner,
     id: `example-ranking-${id}`,
-    title: "Trunk Game Ranking",
+    title: "Trunk Score Ranking",
     detail: {
       ...banner.detail,
       value: `(Server Ranking ${serverRankLabel})`
@@ -350,6 +373,13 @@ function createWinStreakExampleBanner(streak) {
   return {
     ...createWinStreakBanner({ streak }),
     id: `example-win-streak-${streak}`
+  };
+}
+
+function createOspContributorExampleBanner(count) {
+  return {
+    ...createOspContributorBanner(count),
+    id: `example-osp-contributor-${count}`
   };
 }
 

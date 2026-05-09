@@ -187,7 +187,8 @@ function createBannerTitleRow(banner, { linkTitle = false } = {}) {
 
   const title = linkTitle && banner.url ? document.createElement("a") : document.createElement("span");
   title.className = "banner-title";
-  title.textContent = banner.title;
+  const titleParts = getBannerTitleParts(banner);
+  title.textContent = titleParts.title;
   if (linkTitle && banner.url) {
     title.href = banner.url;
     title.target = "_blank";
@@ -195,7 +196,7 @@ function createBannerTitleRow(banner, { linkTitle = false } = {}) {
   }
   row.append(title);
 
-  for (const line of getBannerDetailLines(banner.detail)) {
+  for (const line of [...titleParts.detailLines, ...getBannerDetailLines(banner.detail)]) {
     const detail = document.createElement("span");
     detail.className = "banner-detail";
     detail.textContent = line;
@@ -203,6 +204,21 @@ function createBannerTitleRow(banner, { linkTitle = false } = {}) {
   }
 
   return row;
+}
+
+function getBannerTitleParts(banner) {
+  const titleLines = String(banner.title ?? "").split("\n");
+  if (banner.id === "dcss-contributor" && titleLines.length > 1) {
+    return {
+      title: titleLines[0],
+      detailLines: titleLines.slice(1).filter(Boolean)
+    };
+  }
+
+  return {
+    title: banner.title,
+    detailLines: []
+  };
 }
 
 function getBannerDetailLines(detail) {
@@ -251,6 +267,10 @@ function renderStyledUsername(username, usernameStyle) {
     return `${escapeHtml(usernameStyle.data?.badge || "🛠️")}${escapeHtml(username)}`;
   }
 
+  if (usernameStyle.id === "osp-contributor") {
+    return createOspContributorSpan(username);
+  }
+
   if (usernameStyle.id === "win-streak") {
     return `${escapeHtml(getWinStreakBadge(usernameStyle.data?.streak))}${escapeHtml(username)}`;
   }
@@ -296,6 +316,21 @@ function getWinStreakBadge(streak) {
     .split("")
     .map((digit) => keycaps[digit] || digit)
     .join("");
+}
+
+function createOspContributorSpan(username) {
+  const chars = Array.from(String(username || ""));
+  if (chars.length === 0) return "";
+
+  const lastIndex = chars.length - 1;
+  return chars.map((char, index) => {
+    const isLast = index === lastIndex;
+    const color = isLast ? "#ff3b30" : "#a8ff3e";
+    const shadow = isLast
+      ? "0 0 4px rgba(255, 59, 48, 0.55)"
+      : "0 0 3px rgba(168, 255, 62, 0.45)";
+    return `<span style="color: ${color}; font-weight: 800; text-shadow: ${shadow};">${escapeHtml(char)}</span>`;
+  }).join("");
 }
 
 function createNemelexSpan(text, data = {}) {

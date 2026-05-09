@@ -289,6 +289,10 @@ export default class CNCUserinfo {
             return `${this.escapeHtml(usernameStyle.data?.badge || '🛠️')}${this.escapeHtml(username)}`;
         }
 
+        if (usernameStyle.id === 'osp-contributor') {
+            return this.createOspContributorSpan(username);
+        }
+
         if (usernameStyle.id === 'win-streak') {
             return `${this.escapeHtml(this.getWinStreakBadge(usernameStyle.data?.streak))}${this.escapeHtml(username)}`;
         }
@@ -366,6 +370,21 @@ export default class CNCUserinfo {
             .split('')
             .map((digit) => keycaps[digit] || digit)
             .join('');
+    }
+
+    createOspContributorSpan(username) {
+        const chars = Array.from(String(username || ''));
+        if (chars.length === 0) return '';
+
+        const lastIndex = chars.length - 1;
+        return chars.map((char, index) => {
+            const isLast = index === lastIndex;
+            const color = isLast ? '#ff3b30' : '#a8ff3e';
+            const shadow = isLast
+                ? '0 0 4px rgba(255, 59, 48, 0.55)'
+                : '0 0 3px rgba(168, 255, 62, 0.45)';
+            return `<span style="color: ${color}; font-weight: 800; text-shadow: ${shadow};">${this.escapeHtml(char)}</span>`;
+        }).join('');
     }
 
     getNemelexColors(colors) {

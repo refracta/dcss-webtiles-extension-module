@@ -2,6 +2,7 @@ import {
   createDcssContributorBanner,
   createDonatorBanner,
   createFastestWinBanner,
+  createOspContributorBanner,
   createRankingBanner,
   createTranslatorBanner,
   createWinStreakBanner
@@ -12,6 +13,7 @@ const WATCHER_SOURCES = {
   credits: "watcher:credits",
   donation: "watcher:donation",
   logfile: "watcher:logfile",
+  osp: "watcher:osp",
   translation: "watcher:translation"
 };
 
@@ -59,6 +61,10 @@ export class WatcherService {
 
       if (this.config.watchers?.credits?.enabled && this.#shouldRun("credits", this.config.watchers.credits.pullPeriod)) {
         changed = (await this.syncCredits()) || changed;
+      }
+
+      if (this.config.watchers?.osp?.enabled && this.#shouldRun("osp", this.config.watchers.osp.pullPeriod)) {
+        changed = (await this.syncOsp()) || changed;
       }
 
       if (this.config.watchers?.logfile?.enabled && this.#shouldRun("logfile", this.config.watchers.logfile.pullPeriod)) {
@@ -117,6 +123,28 @@ export class WatcherService {
       bannerId: "dcss-contributor",
       activeEntries: names.map((username) => ({ username })),
       createBanner: () => createDcssContributorBanner()
+    });
+  }
+
+  async syncOsp() {
+    const watcherConfig = this.config.watchers.osp;
+    const response = await this.fetch(watcherConfig.url, { headers: { Accept: "application/json" } });
+    if (!response.ok) {
+      throw new Error(`OSP watcher failed: ${response.status}`);
+    }
+
+    const entries = parseOspContributorEntries(await response.json(), {
+      uploadPrefix: watcherConfig.uploadPrefix
+    }).map((entry) => ({
+      ...entry,
+      username: resolveExistingUsername(this.database, entry.username) ?? entry.username
+    }));
+
+    return this.#replaceManagedBanners({
+      source: WATCHER_SOURCES.osp,
+      bannerId: "osp-contributor",
+      activeEntries: entries,
+      createBanner: (entry) => createOspContributorBanner(entry.count)
     });
   }
 
@@ -683,6 +711,42 @@ function splitCreditNameList(value) {
   }
 
   return [name];
+}
+
+export function parseOspContributorEntries(payload, { uploadPrefix = "https://osp.nemelex.cards/uploads" } = {}) {
+  const counts = new Map();
+  const rows = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : []);
+
+  for (const row of rows) {
+    if (!isValidOspSoundRow(row, uploadPrefix)) continue;
+
+    const username = String(row.REGISTER ?? "").trim();
+    const key = normalizeUsernameKey(username);
+    if (!key) continue;
+
+    const current = counts.get(key) ?? {
+      username,
+      count: 0
+    };
+    current.count += 1;
+    counts.set(key, current);
+  }
+
+  return [...counts.values()]
+    .filter((entry) => entry.count > 0)
+    .sort((a, b) => Number(b.count) - Number(a.count) || a.username.localeCompare(b.username, "en-US"));
+}
+
+function isValidOspSoundRow(row, uploadPrefix) {
+  if (!row || typeof row !== "object") return false;
+
+  const regex = String(row.REGEX ?? "").trim();
+  const pathValue = String(row.PATH ?? "").trim();
+  const sound = String(row.SOUND ?? "").trim();
+  const rcfile = String(row.RCFILE ?? "").trim();
+  const register = String(row.REGISTER ?? "").trim();
+
+  return Boolean(regex && pathValue && sound && rcfile && register && sound.startsWith(uploadPrefix));
 }
 
 function getHeader(headers, name) {

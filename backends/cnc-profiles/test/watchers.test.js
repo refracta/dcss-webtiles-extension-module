@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { ProfileDatabase } from "../src/db/profile-db.js";
-import { WatcherService, parseCreditsContributorNames } from "../src/services/watchers.js";
+import { WatcherService, parseCreditsContributorNames, parseOspContributorEntries } from "../src/services/watchers.js";
 
 test("donation watcher creates and removes conditional donor banners", async () => {
   const database = await createDatabase();
@@ -110,6 +110,45 @@ test("credits watcher grants DCSS contributor banners from credits text", async 
   assert.equal(database.getProfile("ASCIIPhilia").banners["dcss-contributor"], undefined);
 });
 
+test("osp watcher grants contributor banners from REGISTER counts", async () => {
+  const database = await createDatabase();
+  const payload = {
+    data: [
+      createOspRow("ASCIIPhilia", "sound/hit.mp3", "https://osp.nemelex.cards/uploads/hit.mp3"),
+      createOspRow("ASCIIPhilia", "sound/zap.mp3", "https://osp.nemelex.cards/uploads/zap.mp3"),
+      createOspRow("SingleContributor", "sound/open.mp3", "https://osp.nemelex.cards/uploads/open.mp3"),
+      createOspRow("IgnoredUser", "sound/invalid.mp3", "https://example.test/invalid.mp3"),
+      createOspRow("", "sound/empty.mp3", "https://osp.nemelex.cards/uploads/empty.mp3")
+    ]
+  };
+  const watcher = new WatcherService({
+    database,
+    config: createConfig(),
+    fetchImpl: async () => okJson(payload)
+  });
+
+  assert.deepEqual(parseOspContributorEntries(payload), [
+    { username: "ASCIIPhilia", count: 2 },
+    { username: "SingleContributor", count: 1 }
+  ]);
+
+  assert.equal(await watcher.syncOsp(), true);
+  const banner = database.getProfile("ASCIIPhilia").banners["osp-contributor"];
+  assert.equal(banner.title, "OSP Contributor (2)");
+  assert.equal(banner.url, "https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md");
+  assert.deepEqual(banner.usernameStyle, { id: "osp-contributor", data: { count: 2 } });
+  assert.equal(database.getProfile("SingleContributor").banners["osp-contributor"].title, "OSP Contributor");
+  assert.equal(database.getProfile("IgnoredUser"), null);
+
+  const emptyWatcher = new WatcherService({
+    database,
+    config: createConfig(),
+    fetchImpl: async () => okJson({ data: [] })
+  });
+  assert.equal(await emptyWatcher.syncOsp(), true);
+  assert.equal(database.getProfile("ASCIIPhilia").banners["osp-contributor"], undefined);
+});
+
 test("logfile watcher ranks best scores from range deltas", async () => {
   const database = await createDatabase();
   let logfile = [
@@ -126,15 +165,15 @@ test("logfile watcher ranks best scores from range deltas", async () => {
   });
 
   assert.equal(await watcher.syncLogfile(), true);
-  assert.equal(database.getProfile("Bob").banners.ranking.title, "Trunk Game Ranking #1");
+  assert.equal(database.getProfile("Bob").banners.ranking.title, "Trunk Score Ranking #1");
   assert.equal(database.getProfile("Bob").banners.ranking.usernameStyle.data.badge, "👑");
   assert.equal(database.getProfile("Bob").banners.ranking.detail.value, "(Server Ranking #1)");
   assert.equal(database.getProfile("Bob").banners.ranking.detail.subvalue, "Score: 3,000");
-  assert.equal(database.getProfile("Carol").banners.ranking.title, "Trunk Game Ranking #3");
+  assert.equal(database.getProfile("Carol").banners.ranking.title, "Trunk Score Ranking #3");
   assert.equal(database.getProfile("Carol").banners.ranking.detail.value, "(Server Ranking #2)");
   assert.equal(database.getProfile("Carol").banners.ranking.detail.subvalue, "Score: 2,000");
   assert.equal(database.getProfile("Carol").banners.ranking.usernameStyle.data.badge, "🏆");
-  assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Game Ranking #4");
+  assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Score Ranking #4");
   assert.equal(database.getProfile("Alice").banners.ranking.detail.value, "(Server Ranking #3)");
 
   const offset = database.data.watcherState.logfile.offset;
@@ -142,13 +181,13 @@ test("logfile watcher ranks best scores from range deltas", async () => {
 
   assert.equal(await watcher.syncLogfile(), true);
   assert.equal(requests.at(-1).range, `bytes=${offset}-`);
-  assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Game Ranking #1");
+  assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Score Ranking #1");
   assert.equal(database.getProfile("Alice").banners.ranking.usernameStyle.data.badge, "👑");
   assert.equal(database.getProfile("Alice").banners.ranking.detail.subvalue, "Score: 4,000");
-  assert.equal(database.getProfile("Bob").banners.ranking.title, "Trunk Game Ranking #2");
+  assert.equal(database.getProfile("Bob").banners.ranking.title, "Trunk Score Ranking #2");
   assert.equal(database.getProfile("Bob").banners.ranking.detail.value, "(Server Ranking #2)");
   assert.equal(database.getProfile("Bob").banners.ranking.usernameStyle.data.badge, "🏆");
-  assert.equal(database.getProfile("Carol").banners.ranking.title, "Trunk Game Ranking #4");
+  assert.equal(database.getProfile("Carol").banners.ranking.title, "Trunk Score Ranking #4");
   assert.equal(database.getProfile("Carol").banners.ranking.detail.value, "(Server Ranking #3)");
 });
 
@@ -240,12 +279,12 @@ test("logfile watcher uses the best game rank for duplicate player entries", asy
   });
 
   assert.equal(await watcher.syncLogfile(), true);
-  assert.equal(database.getProfile("TopPlayer").banners.ranking.title, "Trunk Game Ranking #1");
-  assert.equal(database.getProfile("TargetPlayer").banners.ranking.title, "Trunk Game Ranking #3");
+  assert.equal(database.getProfile("TopPlayer").banners.ranking.title, "Trunk Score Ranking #1");
+  assert.equal(database.getProfile("TargetPlayer").banners.ranking.title, "Trunk Score Ranking #3");
   assert.equal(database.getProfile("TargetPlayer").banners.ranking.detail.value, "(Server Ranking #2)");
   assert.equal(database.getProfile("TargetPlayer").banners.ranking.detail.subvalue, "Score: 4,000");
   assert.equal(database.getProfile("TargetPlayer").banners.ranking.usernameStyle.data.badge, "🏆");
-  assert.equal(database.getProfile("OtherPlayer").banners.ranking.title, "Trunk Game Ranking #4");
+  assert.equal(database.getProfile("OtherPlayer").banners.ranking.title, "Trunk Score Ranking #4");
   assert.equal(database.getProfile("OtherPlayer").banners.ranking.detail.value, "(Server Ranking #3)");
 });
 
@@ -277,7 +316,7 @@ test("logfile watcher resets old unique-player ranking state", async () => {
     }
   });
   assert.equal(database.data.watcherState.logfile.rankingMode, "server-game-v3");
-  assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Game Ranking #1");
+  assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Score Ranking #1");
 });
 
 test("logfile watcher keeps partial lines for the next delta", async () => {
@@ -296,7 +335,7 @@ test("logfile watcher keeps partial lines for the next delta", async () => {
   logfile += "\n";
 
   assert.equal(await watcher.syncLogfile(), true);
-  assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Game Ranking #1");
+  assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Score Ranking #1");
   assert.equal(database.data.watcherState.logfile.partialLine, "");
 });
 
@@ -327,6 +366,11 @@ function createConfig(overrides = {}) {
       },
       credits: {
         url: "https://example.test/credits",
+        pullPeriod: 300
+      },
+      osp: {
+        url: "https://example.test/osp",
+        uploadPrefix: "https://osp.nemelex.cards/uploads",
         pullPeriod: 300
       },
       logfile: {
@@ -376,6 +420,16 @@ function createLogLine(username, score, fields = {}) {
     "cls=Fighter",
     ...Object.entries(fields).map(([key, value]) => `${key}=${value}`)
   ].join(":");
+}
+
+function createOspRow(register, pathValue, sound) {
+  return {
+    REGISTER: register,
+    REGEX: "hit",
+    PATH: pathValue,
+    SOUND: sound,
+    RCFILE: "init.txt"
+  };
 }
 
 function createLogfileFetch(getLogfile, requests = []) {

@@ -35,6 +35,12 @@
       "url": "https://raw.githubusercontent.com/crawl/crawl/refs/heads/master/crawl-ref/CREDITS.txt",
       "pullPeriod": 300
     },
+    "osp": {
+      "enabled": true,
+      "url": "https://script.google.com/macros/s/AKfycbwRlkmG1lrsM0u466175yulAobpUufbF830QtlWlxiMFS5sVqBo2TBr02_6rvHJwHtFHg/exec",
+      "uploadPrefix": "https://osp.nemelex.cards/uploads",
+      "pullPeriod": 300
+    },
     "logfile": {
       "enabled": true,
       "url": "https://archive.nemelex.cards/meta/crawl-git/logfile",

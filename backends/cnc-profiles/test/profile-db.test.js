@@ -39,6 +39,12 @@ test("seeds initial profiles preserving username casing", async () => {
   assert.equal(exampleProfile.banners["dcss-contributor"].url, "https://github.com/crawl/crawl/blob/master/crawl-ref/CREDITS.txt");
   assert.equal(exampleProfile.banners["dcss-contributor"].usernameStyle.id, "dcss-contributor");
   assert.equal(exampleProfile.banners["dcss-contributor"].usernameStyle.data.badge, "🛠️");
+  assert.equal(exampleProfile.banners["example-osp-contributor-10"].title, "OSP Contributor (10)");
+  assert.equal(exampleProfile.banners["example-osp-contributor-10"].url, "https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md");
+  assert.deepEqual(exampleProfile.banners["example-osp-contributor-10"].usernameStyle, {
+    id: "osp-contributor",
+    data: { count: 10 }
+  });
   for (const rank of PSEUDO_CNC_RANKS) {
     const banner = exampleProfile.banners[`pseudo-cnc-${rank}`];
     assert.equal(banner.title, getPseudoCncTitle(rank));
@@ -88,12 +94,12 @@ test("seeds initial profiles preserving username casing", async () => {
       exampleProfile.banners["example-ranking-rank-51-100"].title
     ],
     [
-      "Trunk Game Ranking",
-      "Trunk Game Ranking",
-      "Trunk Game Ranking",
-      "Trunk Game Ranking",
-      "Trunk Game Ranking",
-      "Trunk Game Ranking"
+      "Trunk Score Ranking",
+      "Trunk Score Ranking",
+      "Trunk Score Ranking",
+      "Trunk Score Ranking",
+      "Trunk Score Ranking",
+      "Trunk Score Ranking"
     ]
   );
   assert.deepEqual(
@@ -245,7 +251,7 @@ test("removes obsolete seed-managed banners after moving examples", async () => 
           bot: botBanner,
           ranking: {
             id: "ranking",
-            title: "Trunk Game Ranking #31",
+            title: "Trunk Score Ranking #31",
             url: "https://archive.nemelex.cards/meta/crawl-git?file=logfile",
             usernameStyle: { id: "ranking", data: { rank: 31, serverRank: 13, badge: "💎" } }
           }
