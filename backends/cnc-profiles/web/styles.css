@@ -175,8 +175,15 @@ input:focus {
 }
 
 .banner-preview {
-  color: var(--muted);
+  align-self: end;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: #161817;
+  color: #fff;
   font-size: 18px;
+  min-height: 40px;
+  padding: 8px 10px;
+  text-align: center;
 }
 
 .status {
