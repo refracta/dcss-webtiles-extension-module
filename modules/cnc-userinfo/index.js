@@ -47,6 +47,8 @@ class UserDropdown extends HTMLDivElement {
                 color: #A2A2A2;
                 border: 1px solid #626262;
                 min-width: 200px;
+                max-height: calc(100vh - 16px);
+                overflow-y: auto;
                 text-align: center;
             }
             .dropdown-content > div {
@@ -83,6 +85,7 @@ class UserDropdown extends HTMLDivElement {
     }
 
     open(username, x, y) {
+        this.style.visibility = 'hidden';
         this.dropdownContent.style.display = 'block';
         const isAdmin = username.includes(' (admin)');
         const realUsername = username.replaceAll(' (admin)', '');
@@ -109,8 +112,30 @@ class UserDropdown extends HTMLDivElement {
             <div><a href="https://archive.nemelex.cards/rcfiles/?user=${realUsername}" target="_blank"">CNC - rcfiles</a></div>
         `;
         const rect = this.dropdownContent.getBoundingClientRect();
-        this.style.left = `${x - window.scrollX}px`;
-        this.style.top = `${y - rect.height - window.scrollY}px`;
+        this.position(x, y, rect);
+        this.style.visibility = '';
+    }
+
+    position(x, y, rect = this.dropdownContent.getBoundingClientRect()) {
+        const margin = 8;
+        const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+        const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+        const width = rect.width || 200;
+        const height = rect.height || 0;
+        const maxLeft = Math.max(margin, viewportWidth - width - margin);
+        const maxTop = Math.max(margin, viewportHeight - height - margin);
+        let left = Number.isFinite(x) ? x : margin;
+        let top = Number.isFinite(y) ? y - height : margin;
+
+        if (left + width + margin > viewportWidth) {
+            left -= width;
+        }
+        if (top < margin) {
+            top = Number.isFinite(y) ? y : margin;
+        }
+
+        this.style.left = `${Math.round(Math.max(margin, Math.min(left, maxLeft)))}px`;
+        this.style.top = `${Math.round(Math.max(margin, Math.min(top, maxTop)))}px`;
     }
 }
 
@@ -157,9 +182,11 @@ export default class CNCUserinfo {
     };
 
     open(username, event) {
-        this.userDropdown.open(username, event.pageX, event.pageY);
-        event.preventDefault();
-        event.stopPropagation();
+        const x = Number.isFinite(event?.clientX) ? event.clientX : (Number.isFinite(event?.pageX) ? event.pageX - window.scrollX : 0);
+        const y = Number.isFinite(event?.clientY) ? event.clientY : (Number.isFinite(event?.pageY) ? event.pageY - window.scrollY : 0);
+        this.userDropdown.open(username, x, y);
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
     }
 
     /**
