@@ -11,28 +11,172 @@ fs.mkdirSync('data/wtrec', {recursive: true});
 const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 const activeRecordings = new Set();
 const queuedRecordings = new Set();
+const donorRecordingUsernames = new Set();
 
-function shouldRecordLobbyEntry(data) {
-    const start = new Date(Date.UTC(2026, 2 - 1, 6, 20, 0, 0));  // 2026-02-06 20:00:00 UTC
-    const end = new Date(Date.UTC(2026, 2 - 1, 22, 20, 0, 0)); // 2026-02-22 20:00:00 UTC
-    const now = new Date();
-    const isBetween = now >= start && now <= end;
-    return data.username !== 'CNCPublicChat' && (isBetween || Math.random() > 0.8);
+const RANDOM_RECORDING_RATE = clamp(Number(config.randomRecordingRate ?? 0.05), 0, 1);
+const DONATION_API_URL = config.donationApiUrl || 'https://donation.abstr.net/api/donation';
+const DONATION_REFRESH_INTERVAL_MS = Math.max(1000, Number(
+    config.donationRefreshIntervalMs ?? (config.donationRefreshIntervalSeconds ?? 300) * 1000
+) || 5 * 60 * 1000);
+const DONATION_LOOKBACK_DAYS = Math.max(1, Number(config.donationLookbackDays ?? 45) || 45);
+const DONATION_THRESHOLD_KRW = Math.max(1, Number(config.donationThresholdKrw ?? 10000) || 10000);
+const DONATION_FETCH_TIMEOUT_MS = Math.max(1000, Number(config.donationFetchTimeoutMs ?? 15000) || 15000);
+const CONFIGURED_FORCED_DONOR_RECORDING_USERNAMES = Array.isArray(config.forcedDonorRecordingUsernames)
+    ? config.forcedDonorRecordingUsernames
+    : [];
+const FORCED_DONOR_RECORDING_USERNAMES = ['ASCIIPhilia', ...CONFIGURED_FORCED_DONOR_RECORDING_USERNAMES];
+const SPECIAL_RECORDING_PERIODS = Array.isArray(config.specialRecordingPeriods)
+    ? config.specialRecordingPeriods
+    : [{
+        start: '2026-02-06T20:00:00.000Z',
+        end: '2026-02-22T20:00:00.000Z'
+    }];
+const DONOR_RECORDING_MESSAGE = 'Thank you for your server support. Server-side WTREC recording has been enabled.';
+
+for (const username of FORCED_DONOR_RECORDING_USERNAMES) {
+    donorRecordingUsernames.add(getUsernameKey(username));
 }
 
-function enqueueWTREC(socket, username) {
-    if (!username || activeRecordings.has(username) || queuedRecordings.has(username)) {
+function getRecordingReason(data) {
+    if (!data.username || data.username === 'CNCPublicChat') {
+        return null;
+    }
+
+    if (isDonorRecordingUsername(data.username)) {
+        return 'donor';
+    }
+
+    if (isSpecialRecordingPeriod()) {
+        return 'period';
+    }
+
+    return Math.random() < RANDOM_RECORDING_RATE ? 'random' : null;
+}
+
+function enqueueWTREC(socket, username, reason = 'unknown') {
+    const key = getUsernameKey(username);
+    if (!key || activeRecordings.has(key) || queuedRecordings.has(key)) {
         return;
     }
-    queuedRecordings.add(username);
-    socket.launchQueue.push(username);
+    queuedRecordings.add(key);
+    socket.launchQueue.push({username, reason});
 }
 
 function clearQueuedRecordings(queue = []) {
-    for (const username of queue) {
-        queuedRecordings.delete(username);
+    for (const recording of queue) {
+        queuedRecordings.delete(getUsernameKey(recording?.username || recording));
     }
 }
+
+async function refreshDonorRecordingUsernames() {
+    const nextDonorUsernames = new Set(FORCED_DONOR_RECORDING_USERNAMES.map(getUsernameKey));
+
+    try {
+        const data = await fetchJson(DONATION_API_URL, DONATION_FETCH_TIMEOUT_MS);
+        const cutoffMs = Date.now() - DONATION_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+        const amountByUser = new Map();
+
+        for (const donation of collectDonationRows(data)) {
+            if (!isCncDonation(donation) || getDonationTimeMs(donation) < cutoffMs) {
+                continue;
+            }
+
+            const key = getUsernameKey(donation.username);
+            const amount = Number(donation.amount) || 0;
+            if (!key || amount <= 0) {
+                continue;
+            }
+
+            amountByUser.set(key, (amountByUser.get(key) || 0) + amount);
+        }
+
+        for (const [key, amount] of amountByUser) {
+            if (amount >= DONATION_THRESHOLD_KRW) {
+                nextDonorUsernames.add(key);
+            }
+        }
+
+        donorRecordingUsernames.clear();
+        for (const username of nextDonorUsernames) {
+            if (username) donorRecordingUsernames.add(username);
+        }
+
+        console.log(new Date(), `donor WTREC targets refreshed: ${donorRecordingUsernames.size}`);
+    } catch (e) {
+        console.error(new Date(), 'donor WTREC target refresh failed', e.message || e);
+    }
+}
+
+function collectDonationRows(data) {
+    const rows = [];
+    const seen = new Set();
+    for (const donation of [
+        ...(data?.overall?.donations || []),
+        ...(data?.currentMonth?.donations || []),
+        ...(data?.donations || [])
+    ]) {
+        const key = donation.transactionId || JSON.stringify(donation);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        rows.push(donation);
+    }
+    return rows;
+}
+
+function isCncDonation(donation) {
+    return String(donation?.type || '').toUpperCase() === 'CNC' ||
+        String(donation?.code || '').toUpperCase().startsWith('CNC');
+}
+
+function getDonationTimeMs(donation) {
+    const value = donation?.datetimeISO || donation?.date || donation?.matchedAt;
+    const time = Date.parse(value);
+    return Number.isFinite(time) ? time : 0;
+}
+
+async function fetchJson(url, timeoutMs) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, {
+            signal: controller.signal,
+            headers: {Accept: 'application/json'}
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+function isDonorRecordingUsername(username) {
+    return donorRecordingUsernames.has(getUsernameKey(username));
+}
+
+function isSpecialRecordingPeriod(now = new Date()) {
+    return SPECIAL_RECORDING_PERIODS.some(({start, end}) => {
+        const startTime = Date.parse(start);
+        const endTime = Date.parse(end);
+        return Number.isFinite(startTime) && Number.isFinite(endTime) &&
+            now.getTime() >= startTime && now.getTime() <= endTime;
+    });
+}
+
+function getUsernameKey(username) {
+    return String(username || '').trim().toLowerCase();
+}
+
+function clamp(value, min, max) {
+    if (!Number.isFinite(value)) {
+        return min;
+    }
+    return Math.max(min, Math.min(max, value));
+}
+
+await refreshDonorRecordingUsernames();
+setInterval(refreshDonorRecordingUsernames, DONATION_REFRESH_INTERVAL_MS);
 
 while (true) {
     let lobby, socket, interval;
@@ -45,8 +189,9 @@ while (true) {
                         socket.pong();
                     } else if (data.msg === 'lobby_entry') {
                         if (!lobby[data.id]) {
-                            if (shouldRecordLobbyEntry(data)) {
-                                enqueueWTREC(socket, data.username);
+                            const reason = getRecordingReason(data);
+                            if (reason) {
+                                enqueueWTREC(socket, data.username, reason);
                             }
                         }
                         lobby[data.id] = data;
@@ -63,9 +208,9 @@ while (true) {
             }
             interval = setInterval(_ => {
                 if (socket.launchQueue.length > 0) {
-                    const username = socket.launchQueue.shift();
-                    queuedRecordings.delete(username);
-                    launchWTREC(username);
+                    const recording = socket.launchQueue.shift();
+                    queuedRecordings.delete(getUsernameKey(recording.username));
+                    launchWTREC(recording.username, recording.reason);
                 }
             }, 1000);
         })
@@ -132,14 +277,15 @@ function generateWTRecName() {
     return `${year}-${month}-${day}.${hours}:${minutes}:${seconds}.wtrec`;
 }
 
-function launchWTREC(username) {
-    if (activeRecordings.has(username)) {
+function launchWTREC(username, reason = 'unknown') {
+    const key = getUsernameKey(username);
+    if (activeRecordings.has(key)) {
         return;
     }
-    activeRecordings.add(username);
+    activeRecordings.add(key);
 
     let socket;
-    const cleanup = () => activeRecordings.delete(username);
+    const cleanup = () => activeRecordings.delete(key);
 
     try {
         socket = extend(WebsocketFactory.create(config.websocket, {
@@ -153,6 +299,11 @@ function launchWTREC(username) {
 
                 socket.watch(username);
             } else if (data.msg === 'game_client') {
+                if (reason === 'donor' && !socket.donorMessageSent) {
+                    socket.donorMessageSent = true;
+                    socket.chat_msg(DONOR_RECORDING_MESSAGE);
+                }
+
                 socket.readyPromise = new Promise(async resolve => {
                     const currentTime = new Date().getTime();
                     const timing = currentTime - socket.startTime;
