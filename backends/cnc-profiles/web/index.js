@@ -310,17 +310,22 @@ function getDonatorStyle(amount) {
 
 function getTranslatorStyle(intensity) {
   const t = Math.max(0, Math.min(1, Number(intensity) || 0));
-  const redStop = 8 + t * 16;
-  const whiteStop = 50 - t * 20;
-  const blueStop = 72 - t * 14;
+  const chroma = Math.pow(t, 1.6);
+  const red = mixColor("#607088", "#d61f3c", chroma);
+  const paper = mixColor("#dce5ee", "#f8fbff", t);
+  const blue = mixColor("#4d6681", "#1457b8", Math.pow(t, 1.1));
+  const navy = mixColor("#3b526d", "#0b2f73", t);
+  const redStop = 2 + t * 22;
+  const whiteStop = 56 - t * 28;
+  const blueStop = 76 - t * 18;
   return {
-    color: "#0f4aa0",
+    color: "#4d6681",
     "font-weight": "800",
-    "background-image": `linear-gradient(${110 + t * 20}deg, #c91f37 0%, #c91f37 ${redStop}%, #f5f7fb ${whiteStop}%, #174ea6 ${blueStop}%, #0b2f73 100%)`,
+    "background-image": `linear-gradient(${108 + t * 24}deg, ${red} 0%, ${red} ${redStop}%, ${paper} ${whiteStop}%, ${blue} ${blueStop}%, ${navy} 100%)`,
     "-webkit-background-clip": "text",
     "background-clip": "text",
     "-webkit-text-fill-color": "transparent",
-    "text-shadow": `0 0 ${3 + t * 9}px rgba(201, 31, 55, ${0.08 + t * 0.2}), 0 0 ${4 + t * 12}px rgba(23, 78, 166, ${0.12 + t * 0.28})`
+    "text-shadow": `0 0 ${2 + t * 10}px rgba(214, 31, 60, ${t * 0.32}), 0 0 ${3 + t * 12}px rgba(20, 87, 184, ${0.08 + t * 0.34})`
   };
 }
 
