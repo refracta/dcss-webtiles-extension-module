@@ -42,6 +42,7 @@
       "limit": 100,
       "fastestLimit": 10,
       "fastestGameLimit": 1000,
+      "streakMin": 2,
       "gameLimit": 1000
     }
   },

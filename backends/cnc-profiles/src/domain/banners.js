@@ -28,6 +28,7 @@ const FASTEST_WIN_EXAMPLES = [
   { id: "rank-4-5", serverRankLabel: "#4-#5", rank: 4, serverRank: 4, durationSeconds: 9000 },
   { id: "rank-6-10", serverRankLabel: "#6-#10", rank: 6, serverRank: 6, durationSeconds: 10800 }
 ];
+const WIN_STREAK_EXAMPLES = [1, 5, 10, 100];
 
 export const BANNER_DEFINITIONS = [
   {
@@ -104,6 +105,13 @@ export const BANNER_DEFINITIONS = [
     usernameStyle: { id: "fastest-win", data: { rank: 10, badge: getFastestWinBadge(10) } }
   },
   {
+    id: "win-streak",
+    title: "Trunk Win Streak",
+    url: BANNER_URLS.logfileViewer,
+    detail: createWinStreakDetail(1),
+    usernameStyle: { id: "win-streak", data: { streak: 1 } }
+  },
+  {
     id: "dcss-contributor",
     title: "DCSS Contributor\nfrom CREDITS.txt",
     url: BANNER_URLS.credits,
@@ -124,7 +132,8 @@ const BANNER_EXAMPLE_BANNERS = [
   ...BANNER_EXAMPLE_BANNER_IDS.map((id) => getBannerDefinition(id)),
   ...PSEUDO_TRANSLATOR_SCORES.map((score) => createPseudoTranslatorBanner(score)),
   ...RANKING_EXAMPLES.map((example) => createRankingExampleBanner(example)),
-  ...FASTEST_WIN_EXAMPLES.map((example) => createFastestWinExampleBanner(example))
+  ...FASTEST_WIN_EXAMPLES.map((example) => createFastestWinExampleBanner(example)),
+  ...WIN_STREAK_EXAMPLES.map((streak) => createWinStreakExampleBanner(streak))
 ].filter(Boolean);
 
 export const INITIAL_PROFILES = [
@@ -291,6 +300,22 @@ export function createFastestWinBanner({ rank, serverRank, durationSeconds }) {
   };
 }
 
+export function createWinStreakBanner({ streak }) {
+  const safeStreak = Math.max(1, Math.floor(Number(streak) || 1));
+  return {
+    id: "win-streak",
+    title: "Trunk Win Streak",
+    url: BANNER_URLS.logfileViewer,
+    detail: createWinStreakDetail(safeStreak),
+    usernameStyle: {
+      id: "win-streak",
+      data: {
+        streak: safeStreak
+      }
+    }
+  };
+}
+
 export function createDcssContributorBanner() {
   return getBannerDefinition("dcss-contributor");
 }
@@ -318,6 +343,13 @@ function createFastestWinExampleBanner({ id, serverRankLabel, rank, serverRank, 
       ...banner.detail,
       value: `(Server Ranking ${serverRankLabel})`
     }
+  };
+}
+
+function createWinStreakExampleBanner(streak) {
+  return {
+    ...createWinStreakBanner({ streak }),
+    id: `example-win-streak-${streak}`
   };
 }
 
@@ -354,6 +386,12 @@ function createDonationDetail(donation) {
   return {
     label: "This month",
     value: `${donation.toLocaleString("en-US")} KRW`
+  };
+}
+
+function createWinStreakDetail(streak) {
+  return {
+    value: `Best Streak: ${streak.toLocaleString("en-US")} ${streak === 1 ? "win" : "wins"}`
   };
 }
 

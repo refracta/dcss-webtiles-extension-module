@@ -289,6 +289,10 @@ export default class CNCUserinfo {
             return `${this.escapeHtml(usernameStyle.data?.badge || '🛠️')}${this.escapeHtml(username)}`;
         }
 
+        if (usernameStyle.id === 'win-streak') {
+            return `${this.escapeHtml(this.getWinStreakBadge(usernameStyle.data?.streak))}${this.escapeHtml(username)}`;
+        }
+
         return this.escapeHtml(username);
     }
 
@@ -342,6 +346,26 @@ export default class CNCUserinfo {
         if (safeRank <= 5) return '🏎️';
         if (safeRank <= 10) return '💨';
         return '';
+    }
+
+    getWinStreakBadge(streak) {
+        const safeStreak = Math.max(1, Math.floor(Number(streak) || 1));
+        const keycaps = {
+            0: '0️⃣',
+            1: '1️⃣',
+            2: '2️⃣',
+            3: '3️⃣',
+            4: '4️⃣',
+            5: '5️⃣',
+            6: '6️⃣',
+            7: '7️⃣',
+            8: '8️⃣',
+            9: '9️⃣'
+        };
+        return String(safeStreak)
+            .split('')
+            .map((digit) => keycaps[digit] || digit)
+            .join('');
     }
 
     getNemelexColors(colors) {

@@ -251,6 +251,10 @@ function renderStyledUsername(username, usernameStyle) {
     return `${escapeHtml(usernameStyle.data?.badge || "🛠️")}${escapeHtml(username)}`;
   }
 
+  if (usernameStyle.id === "win-streak") {
+    return `${escapeHtml(getWinStreakBadge(usernameStyle.data?.streak))}${escapeHtml(username)}`;
+  }
+
   return escapeHtml(username);
 }
 
@@ -272,6 +276,26 @@ function getFastestWinBadge(rank) {
   if (safeRank <= 5) return "🏎️";
   if (safeRank <= 10) return "💨";
   return "";
+}
+
+function getWinStreakBadge(streak) {
+  const safeStreak = Math.max(1, Math.floor(Number(streak) || 1));
+  const keycaps = {
+    0: "0️⃣",
+    1: "1️⃣",
+    2: "2️⃣",
+    3: "3️⃣",
+    4: "4️⃣",
+    5: "5️⃣",
+    6: "6️⃣",
+    7: "7️⃣",
+    8: "8️⃣",
+    9: "9️⃣"
+  };
+  return String(safeStreak)
+    .split("")
+    .map((digit) => keycaps[digit] || digit)
+    .join("");
 }
 
 function createNemelexSpan(text, data = {}) {

@@ -151,6 +151,34 @@ test("seeds initial profiles preserving username casing", async () => {
     ],
     ["⚡", "🚀", "🏎️", "💨"]
   );
+  assert.deepEqual(
+    [
+      exampleProfile.banners["example-win-streak-1"].detail.value,
+      exampleProfile.banners["example-win-streak-5"].detail.value,
+      exampleProfile.banners["example-win-streak-10"].detail.value,
+      exampleProfile.banners["example-win-streak-100"].detail.value
+    ],
+    [
+      "Best Streak: 1 win",
+      "Best Streak: 5 wins",
+      "Best Streak: 10 wins",
+      "Best Streak: 100 wins"
+    ]
+  );
+  assert.deepEqual(
+    [
+      exampleProfile.banners["example-win-streak-1"].usernameStyle,
+      exampleProfile.banners["example-win-streak-5"].usernameStyle,
+      exampleProfile.banners["example-win-streak-10"].usernameStyle,
+      exampleProfile.banners["example-win-streak-100"].usernameStyle
+    ],
+    [
+      { id: "win-streak", data: { streak: 1 } },
+      { id: "win-streak", data: { streak: 5 } },
+      { id: "win-streak", data: { streak: 10 } },
+      { id: "win-streak", data: { streak: 100 } }
+    ]
+  );
 });
 
 test("manual none selection blocks auto equip", async () => {
