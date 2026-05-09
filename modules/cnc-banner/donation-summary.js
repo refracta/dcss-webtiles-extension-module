@@ -110,6 +110,7 @@ export default class DonationSummary {
                 });
             const ledger = await this.ledgerRequest;
             const locale = container.dataset.donationLocale || getLocale();
+            await this.preloadVisibleDonatorProfiles(ledger, locale);
             const html = this.renderSummary(ledger, locale);
             this.setHTML(locale, html);
         } catch (error) {
@@ -317,6 +318,36 @@ export default class DonationSummary {
 
     getUserinfoModule() {
         return globalThis.DWEM?.Modules?.CNCUserinfo;
+    }
+
+    async preloadVisibleDonatorProfiles(ledger, locale = getLocale()) {
+        const userinfo = this.getUserinfoModule();
+        if (!userinfo?.preloadProfiles) {
+            return;
+        }
+
+        const usernames = this.getVisibleDonatorUsernames(ledger, locale);
+        if (!usernames.length) {
+            return;
+        }
+
+        await userinfo.preloadProfiles(usernames);
+    }
+
+    getVisibleDonatorUsernames(ledger, locale = getLocale()) {
+        const currentMonthDonations = this.filterCncDonations(ledger?.currentMonth?.donations);
+        const overallDonations = this.filterCncDonations(ledger?.overall?.donations);
+        const latestDonation = this.getLatestDonation(overallDonations, locale);
+        const usernames = [
+            ...this.getTopDonators(currentMonthDonations, locale).map(donator => donator.username),
+            ...this.getTopDonators(overallDonations, locale).map(donator => donator.username),
+            latestDonation?.username
+        ];
+
+        return [...new Set(usernames
+            .map(username => String(username || '').trim())
+            .filter(Boolean)
+        )];
     }
 
     formatMessagePreview(message) {

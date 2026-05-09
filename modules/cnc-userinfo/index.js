@@ -386,16 +386,66 @@ export default class CNCUserinfo {
     }
 
     async fetchTrackedProfiles() {
-        if (this.profileFetchInFlight || !this.trackedProfileUsernames.size) {
+        if (this.profileFetchPromise || !this.trackedProfileUsernames.size) {
             return;
         }
 
-        this.profileFetchInFlight = true;
         const profiles = Array.from(this.trackedProfileUsernames.entries()).map(([key, username]) => ({
             username,
             lastUpdatedAt: this.profileCache.get(key)?.profile?.lastUpdatedAt
         }));
 
+        await this.fetchProfileBatch(profiles);
+    }
+
+    async preloadProfiles(usernames) {
+        const profiles = [];
+        const seen = new Set();
+
+        for (const username of usernames || []) {
+            const cleanUsername = String(username || '').replaceAll(' (admin)', '').trim();
+            const key = this.getProfileKey(cleanUsername);
+            if (!key || seen.has(key)) continue;
+
+            seen.add(key);
+            this.trackProfileUsername(cleanUsername);
+            profiles.push({
+                username: cleanUsername,
+                lastUpdatedAt: this.profileCache.get(key)?.profile?.lastUpdatedAt
+            });
+        }
+
+        if (!profiles.length) {
+            return;
+        }
+
+        if (this.profileFetchPromise) {
+            await this.profileFetchPromise;
+        }
+
+        await this.fetchProfileBatch(profiles);
+    }
+
+    async fetchProfileBatch(profiles) {
+        if (!profiles.length) {
+            return;
+        }
+
+        const fetchPromise = this.requestProfileBatch(profiles);
+        this.profileFetchPromise = fetchPromise;
+        this.profileFetchInFlight = true;
+
+        try {
+            await fetchPromise;
+        } finally {
+            if (this.profileFetchPromise === fetchPromise) {
+                this.profileFetchPromise = null;
+                this.profileFetchInFlight = false;
+            }
+        }
+    }
+
+    async requestProfileBatch(profiles) {
         try {
             const response = await fetch(`${this.getProfilesApiBase()}/api/profiles/batch`, {
                 method: 'POST',
@@ -425,8 +475,6 @@ export default class CNCUserinfo {
             if (localStorage.DWEM_DEBUG) {
                 console.warn('Failed to fetch CNC profiles', e);
             }
-        } finally {
-            this.profileFetchInFlight = false;
         }
     }
 
@@ -447,6 +495,7 @@ export default class CNCUserinfo {
         this.profileCache = new Map();
         this.trackedProfileUsernames = new Map();
         this.profileFetchInFlight = false;
+        this.profileFetchPromise = null;
         this.profileFetchTimer = setInterval(() => {
             this.fetchTrackedProfiles();
         }, 1000);
@@ -537,6 +586,7 @@ export default class CNCUserinfo {
         // Make instance methods available as static methods for other modules
         CNCUserinfo.createNemelexSpan = this.createNemelexSpan.bind(this);
         CNCUserinfo.applyStyledUsername = this.applyStyledUsername.bind(this);
+        CNCUserinfo.preloadProfiles = this.preloadProfiles.bind(this);
         CNCUserinfo.getProfile = this.getProfile.bind(this);
         CNCUserinfo.escapeHtml = this.escapeHtml.bind(this);
     }
