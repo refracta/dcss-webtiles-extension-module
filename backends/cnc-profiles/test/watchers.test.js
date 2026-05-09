@@ -74,9 +74,9 @@ test("logfile watcher ranks best scores from range deltas", async () => {
   });
 
   assert.equal(await watcher.syncLogfile(), true);
-  assert.equal(database.getProfile("Bob").banners.ranking.title, "CNC Trunk Game Score #1");
+  assert.equal(database.getProfile("Bob").banners.ranking.title, "Trunk Game Ranking #1");
   assert.equal(database.getProfile("Bob").banners.ranking.usernameStyle.data.badge, "👑");
-  assert.equal(database.getProfile("Carol").banners.ranking.title, "CNC Trunk Game Score #2");
+  assert.equal(database.getProfile("Carol").banners.ranking.title, "Trunk Game Ranking #2");
   assert.equal(database.getProfile("Alice"), null);
 
   const offset = database.data.watcherState.logfile.offset;
@@ -84,9 +84,9 @@ test("logfile watcher ranks best scores from range deltas", async () => {
 
   assert.equal(await watcher.syncLogfile(), true);
   assert.equal(requests.at(-1).range, `bytes=${offset}-`);
-  assert.equal(database.getProfile("Alice").banners.ranking.title, "CNC Trunk Game Score #1");
+  assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Game Ranking #1");
   assert.equal(database.getProfile("Alice").banners.ranking.usernameStyle.data.badge, "👑");
-  assert.equal(database.getProfile("Bob").banners.ranking.title, "CNC Trunk Game Score #2");
+  assert.equal(database.getProfile("Bob").banners.ranking.title, "Trunk Game Ranking #2");
   assert.equal(database.getProfile("Carol").banners.ranking, undefined);
 });
 
@@ -106,7 +106,7 @@ test("logfile watcher keeps partial lines for the next delta", async () => {
   logfile += "\n";
 
   assert.equal(await watcher.syncLogfile(), true);
-  assert.equal(database.getProfile("Alice").banners.ranking.title, "CNC Trunk Game Score #1");
+  assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Game Ranking #1");
   assert.equal(database.data.watcherState.logfile.partialLine, "");
 });
 

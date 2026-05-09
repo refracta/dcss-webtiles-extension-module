@@ -76,7 +76,7 @@ export const BANNER_DEFINITIONS = [
   },
   {
     id: "ranking",
-    title: "CNC Trunk Game Score",
+    title: "Trunk Game Ranking",
     url: BANNER_URLS.logfile,
     usernameStyle: { id: "ranking", data: { rank: 100, badge: getRankingBadge(100) } }
   },
@@ -202,7 +202,7 @@ export function createRankingBanner({ rank, score }) {
   const safeScore = Math.max(0, Math.floor(Number(score) || 0));
   return {
     id: "ranking",
-    title: `CNC Trunk Game Score #${safeRank}`,
+    title: `Trunk Game Ranking #${safeRank}`,
     url: BANNER_URLS.logfile,
     detail: {
       label: "Score",
