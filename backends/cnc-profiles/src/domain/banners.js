@@ -115,6 +115,7 @@ export const BANNER_DEFINITIONS = [
 
 const BANNER_EXAMPLE_BANNER_IDS = [
   "bot",
+  "dcss-contributor",
   ...PSEUDO_CNC_RANKS.map((rank) => `pseudo-cnc-${rank}`),
   ...PSEUDO_DONATOR_AMOUNTS.map((_, index) => `pseudo-donator-${index + 1}`)
 ];
