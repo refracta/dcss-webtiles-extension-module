@@ -46,7 +46,7 @@ export default class SoundSupport {
 
     #getSoundConfig(rcfile) {
         const {RCManager} = DWEM.Modules;
-        const soundOn = RCManager.getRCOption(rcfile, 'sound_on', 'boolean');
+        const soundOn = RCManager.getRCOption(rcfile, 'sound_on', 'boolean') || RCManager.getRCOption(rcfile, 'sounds_on', 'boolean');
         const soundFadeTime = RCManager.getRCOption(rcfile, 'sound_fade_time', 'float', 0.5);
         const soundVolume = RCManager.getRCOption(rcfile, 'sound_volume', 'float', 1);
         const bgmVolume = RCManager.getRCOption(rcfile, 'bgm_volume', 'float', soundVolume);

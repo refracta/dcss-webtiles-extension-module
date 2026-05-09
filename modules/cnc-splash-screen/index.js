@@ -1,3 +1,11 @@
+function isQueryFlagTrue(name) {
+    return new URLSearchParams(window.location.search).get(name) === 'true';
+}
+
+function shouldUseXMasImages() {
+    return isQueryFlagTrue('xmas') || new Date().getMonth() === 11;
+}
+
 export default class CNCSplashScreen {
     static name = 'CNCSplashScreen';
     static version = '0.1';
@@ -43,7 +51,7 @@ export default class CNCSplashScreen {
             'title_xom.jpg',
             'title_yiuf.png'
         ];
-        if (new Date().getMonth() === 11) {
+        if (shouldUseXMasImages()) {
             Array.from(document.querySelectorAll('#loader_center img')).forEach(e => e.remove());
             images = images.map(e => `xmas/${e}`);
         }

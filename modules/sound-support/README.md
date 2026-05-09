@@ -11,7 +11,7 @@ to register and use a sound pack.
 # RC example
 ```bash
 # Recommended settings
-sound_on = true
+sounds_on = true
 sound_pack += https://sound-packs.nemelex.cards/DCSS-UST/v1.0.1.zip
 sound_pack += https://osp.nemelex.cards/build/latest.zip:["init.txt"]
 one_SDL_sound_channel = true
@@ -21,7 +21,7 @@ bgm_volume = 0.5
 
 ```bash
 # OSP + BindTheEarth example settings
-sound_on = true
+sounds_on = true
 # CNC Open Sound Pack
 sound_pack += https://osp.nemelex.cards/build/latest.zip:["init.txt"]
 # BindTheEarth Sound Pack
@@ -35,11 +35,11 @@ The following settings can be read from the RC file:
 To use the SoundSupport module effectively, specific settings in the RC file must be configured. Below are the main
 sound-related settings that can be used in the RC configuration:
 
-- **sound_on**
+- **sounds_on**
     - **Description:** Determines whether the sound feature is enabled.
     - **Value:** true or false
     - **Default:** false
-    - **Example:** `sound_on = true`
+    - **Example:** `sounds_on = true`
 
 - **sound_volume**
     - **Description:** Sets the volume of the sound.
@@ -129,7 +129,7 @@ version / server.
 
 ```plaintext
 # Enable sound feature
-sound_on = true
+sounds_on = true
 
 # Set sound volume (between 0 and 1)
 sound_volume = 0.8
