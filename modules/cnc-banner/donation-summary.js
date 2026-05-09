@@ -273,7 +273,7 @@ export default class DonationSummary {
         return `
             <div class="cnc-donation-last">
                 <span class="cnc-donation-last-label">${texts.latestLabel}:</span>
-                <span class="cnc-donation-name">${escapeHtml(donation.username)}</span>
+                <span class="cnc-donation-name">${this.renderDonatorUsername(donation.username, locale)}</span>
                 (${this.formatKrw(donation.amount, locale)})${message}
             </div>
         `;
@@ -288,9 +288,24 @@ export default class DonationSummary {
         return donators
             .map(donator => {
                 const message = this.formatMessagePreview(donator.lastDonationMessage);
-                return `<span class="cnc-donation-name">${escapeHtml(donator.username)}${message}</span> - ${this.formatKrw(donator.amount, locale)}`;
+                return `<span class="cnc-donation-name">${this.renderDonatorUsername(donator.username, locale)}${message}</span> - ${this.formatKrw(donator.amount, locale)}`;
             })
             .join(', ');
+    }
+
+    renderDonatorUsername(username, locale = getLocale()) {
+        const texts = this.getTexts(locale);
+        const normalized = String(username || texts.anonymous).trim() || texts.anonymous;
+        if (normalized === texts.anonymous) {
+            return escapeHtml(normalized);
+        }
+
+        const userinfo = globalThis.DWEM?.Modules?.CNCUserinfo;
+        if (userinfo?.applyStyledUsername) {
+            return userinfo.applyStyledUsername(normalized);
+        }
+
+        return escapeHtml(normalized);
     }
 
     formatMessagePreview(message) {
