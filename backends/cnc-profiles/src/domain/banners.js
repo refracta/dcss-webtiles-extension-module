@@ -164,10 +164,10 @@ function createPseudoCncBanner(rank) {
 }
 
 function getPseudoCncTitle(rank) {
-  if (rank === 1) return "Pseudo CNC Champion";
-  if (rank === 2) return "Pseudo CNC Runner-up";
-  if (rank === 3) return "Pseudo CNC Third Place";
-  return `Pseudo CNC Rank ${rank}`;
+  if (rank === 1) return "Pseudo CNC (1st) Champion";
+  if (rank === 2) return "Pseudo CNC (1st) Runner-up";
+  if (rank === 3) return "Pseudo CNC (1st) Third Place";
+  return `Pseudo CNC (1st) Rank ${rank}`;
 }
 
 function createPseudoDonatorBanner(index, amount) {
