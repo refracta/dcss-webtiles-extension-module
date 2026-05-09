@@ -1,8 +1,15 @@
 const state = {
-  profile: null
+  profile: null,
+  publicProfile: null,
+  entityPages: {
+    private: createEntityPageState(),
+    public: createEntityPageState()
+  }
 };
 
 const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
+const CHAT_API_BASE = "https://chat.nemelex.cards";
+const ENTITY_PAGE_SIZE = 12;
 
 const elements = {
   loginPanel: document.querySelector("#login-panel"),
@@ -21,7 +28,9 @@ const elements = {
   publicProfileUsername: document.querySelector("#public-profile-username"),
   publicProfileUpdated: document.querySelector("#public-profile-updated"),
   publicProfilePreview: document.querySelector("#public-profile-preview"),
-  publicBannerList: document.querySelector("#public-banner-list")
+  publicBannerList: document.querySelector("#public-banner-list"),
+  tabButtons: document.querySelectorAll("[data-tab-scope][data-tab-name]"),
+  tabPanels: document.querySelectorAll("[data-tab-panel-scope][data-tab-panel-name]")
 };
 
 elements.loginForm.addEventListener("submit", async (event) => {
@@ -51,6 +60,41 @@ elements.logoutButton.addEventListener("click", async () => {
   setProfile(null);
 });
 
+for (const button of elements.tabButtons) {
+  button.addEventListener("click", () => {
+    showTab(button.dataset.tabScope, button.dataset.tabName);
+  });
+}
+
+for (const button of document.querySelectorAll("[data-entity-prev]")) {
+  button.addEventListener("click", () => {
+    const { scope, type } = parseEntityKey(button.dataset.entityPrev);
+    const page = state.entityPages[scope][type];
+    loadEntityPage(scope, type, Math.max(0, page.offset - ENTITY_PAGE_SIZE));
+  });
+}
+
+for (const button of document.querySelectorAll("[data-entity-next]")) {
+  button.addEventListener("click", () => {
+    const { scope, type } = parseEntityKey(button.dataset.entityNext);
+    const page = state.entityPages[scope][type];
+    loadEntityPage(scope, type, page.offset + ENTITY_PAGE_SIZE);
+  });
+}
+
+for (const input of document.querySelectorAll("[data-entity-search]")) {
+  let searchTimer = null;
+  input.addEventListener("input", () => {
+    window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => {
+      const { scope, type } = parseEntityKey(input.dataset.entitySearch);
+      const page = state.entityPages[scope][type];
+      page.q = input.value.trim();
+      loadEntityPage(scope, type, 0);
+    }, 250);
+  });
+}
+
 const publicProfileUsername = getPublicProfileUsername();
 if (publicProfileUsername) {
   loadPublicProfile(publicProfileUsername);
@@ -60,6 +104,8 @@ if (publicProfileUsername) {
 
 async function loadPublicProfile(username) {
   state.profile = null;
+  state.publicProfile = null;
+  resetEntityScope("public");
   elements.loginPanel.hidden = true;
   elements.profilePanel.hidden = true;
   elements.publicProfilePanel.hidden = false;
@@ -106,6 +152,7 @@ async function selectBanner(bannerId) {
 
 function setProfile(profile) {
   state.profile = profile;
+  resetEntityScope("private");
   const authenticated = Boolean(profile);
   elements.loginPanel.hidden = authenticated;
   elements.profilePanel.hidden = !authenticated;
@@ -135,9 +182,11 @@ function renderProfile(profile) {
   elements.bannerList.replaceChildren(
     ...banners.map((banner) => createBannerButton(profile, banner))
   );
+  showTab("private", "banners");
 }
 
 function renderPublicProfile(profile) {
+  state.publicProfile = profile;
   const banners = Array.isArray(profile.banners) ? profile.banners : [];
   document.title = `${profile.username} - CNC Profiles`;
   elements.publicProfileUsername.textContent = profile.username;
@@ -147,6 +196,165 @@ function renderPublicProfile(profile) {
   elements.publicBannerList.replaceChildren(
     ...banners.map((banner) => createPublicBannerCard(profile, banner))
   );
+  showTab("public", "banners");
+}
+
+function showTab(scope, tabName) {
+  for (const button of elements.tabButtons) {
+    if (button.dataset.tabScope !== scope) continue;
+    button.setAttribute("aria-selected", String(button.dataset.tabName === tabName));
+  }
+
+  for (const panel of elements.tabPanels) {
+    if (panel.dataset.tabPanelScope !== scope) continue;
+    panel.hidden = panel.dataset.tabPanelName !== tabName;
+  }
+
+  if (tabName === "game" || tabName === "item") {
+    const page = state.entityPages[scope][tabName];
+    if (!page.loaded) {
+      loadEntityPage(scope, tabName, 0);
+    }
+  }
+}
+
+async function loadEntityPage(scope, type, offset) {
+  const profile = scope === "private" ? state.profile : state.publicProfile;
+  if (!profile?.username) return;
+
+  const page = state.entityPages[scope][type];
+  page.offset = Math.max(0, offset);
+  const list = getEntityListElement(scope, type);
+  const status = getEntityStatusElement(scope, type);
+  status.textContent = "Loading...";
+
+  try {
+    const params = new URLSearchParams({
+      type,
+      limit: String(ENTITY_PAGE_SIZE),
+      offset: String(page.offset),
+      order: "desc"
+    });
+    if (type === "item" && page.q) {
+      params.set("q", page.q);
+    }
+
+    const data = await requestPublicJson(`${CHAT_API_BASE}/users/${encodeURIComponent(profile.username)}/entities?${params}`);
+    page.loaded = true;
+    page.total = data.total || 0;
+    page.offset = data.offset || 0;
+    renderEntityPage(scope, type, data.entities || []);
+    status.textContent = "";
+  } catch (error) {
+    list.replaceChildren();
+    renderPager(scope, type);
+    status.textContent = error.message;
+  }
+}
+
+function renderEntityPage(scope, type, entities) {
+  const list = getEntityListElement(scope, type);
+  if (!entities.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = type === "game" ? "No game images." : "No items.";
+    list.replaceChildren(empty);
+  } else {
+    list.replaceChildren(...entities.map((entity) => createEntityCard(entity, type)));
+  }
+  renderPager(scope, type);
+}
+
+function createEntityCard(entity, type) {
+  const card = document.createElement("article");
+  card.className = "entity-card";
+
+  const media = document.createElement("a");
+  media.className = "entity-media";
+  media.href = entity.url || entity.file;
+  media.target = "_blank";
+  media.rel = "noopener noreferrer";
+
+  const image = document.createElement("img");
+  image.src = entity.file;
+  image.alt = type === "item" ? (entity.item || "Item image") : "Game image";
+  image.loading = "lazy";
+  media.append(image);
+
+  const body = document.createElement("div");
+  body.className = "entity-body";
+
+  const title = document.createElement("div");
+  title.className = type === "item" ? "entity-title item-title" : "entity-title";
+  if (type === "item") {
+    const swatch = document.createElement("span");
+    swatch.className = "item-swatch";
+    swatch.style.backgroundColor = isSafeCssColor(entity.color) ? entity.color : "#687066";
+
+    const text = document.createElement("span");
+    text.textContent = entity.item || `Item #${entity.number}`;
+    title.append(swatch, text);
+  } else {
+    title.textContent = `Game #${entity.number}`;
+  }
+
+  const meta = document.createElement("div");
+  meta.className = "entity-meta";
+  meta.textContent = formatDate(entity.timestamp);
+
+  body.append(title, meta);
+  card.append(media, body);
+  return card;
+}
+
+function renderPager(scope, type) {
+  const page = state.entityPages[scope][type];
+  const pageText = getEntityPageElement(scope, type);
+  const prev = document.querySelector(`[data-entity-prev="${scope}:${type}"]`);
+  const next = document.querySelector(`[data-entity-next="${scope}:${type}"]`);
+  const start = page.total === 0 ? 0 : page.offset + 1;
+  const end = Math.min(page.offset + ENTITY_PAGE_SIZE, page.total);
+
+  pageText.textContent = `${start}-${end} / ${page.total}`;
+  prev.disabled = page.offset <= 0;
+  next.disabled = page.offset + ENTITY_PAGE_SIZE >= page.total;
+}
+
+function resetEntityScope(scope) {
+  state.entityPages[scope] = createEntityPageState();
+  for (const type of ["game", "item"]) {
+    getEntityListElement(scope, type).replaceChildren();
+    getEntityStatusElement(scope, type).textContent = "";
+    renderPager(scope, type);
+    const search = document.querySelector(`[data-entity-search="${scope}:${type}"]`);
+    if (search) {
+      search.value = "";
+    }
+  }
+}
+
+function createEntityPageState() {
+  return {
+    game: { offset: 0, total: 0, loaded: false, q: "" },
+    item: { offset: 0, total: 0, loaded: false, q: "" }
+  };
+}
+
+function parseEntityKey(value) {
+  const [scope, type] = String(value || "").split(":");
+  return { scope, type };
+}
+
+function getEntityListElement(scope, type) {
+  return document.querySelector(`[data-entity-list="${scope}:${type}"]`);
+}
+
+function getEntityStatusElement(scope, type) {
+  return document.querySelector(`[data-entity-status="${scope}:${type}"]`);
+}
+
+function getEntityPageElement(scope, type) {
+  return document.querySelector(`[data-entity-page="${scope}:${type}"]`);
 }
 
 function createBannerButton(profile, banner) {
@@ -457,6 +665,10 @@ function styleToText(style) {
   return Object.entries(style).map(([key, value]) => `${key}: ${value}`).join("; ");
 }
 
+function isSafeCssColor(value) {
+  return /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(String(value || "").trim());
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -490,6 +702,15 @@ async function requestJson(url, options = {}) {
     },
     ...options
   });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || `HTTP ${response.status}`);
+  }
+  return data;
+}
+
+async function requestPublicJson(url) {
+  const response = await fetch(url);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data.error || `HTTP ${response.status}`);
