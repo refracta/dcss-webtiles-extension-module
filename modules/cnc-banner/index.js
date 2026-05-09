@@ -29,6 +29,8 @@ https://webzook.net/soup/rcfiles/trunk/%n.rc
 [CXC]
 https://crawl.xtahua.com/crawl/rcfiles/crawl-git/%n.rc
 `;
+const PROFILES_URL = 'https://profiles.nemelex.cards';
+const PROFILES_TOKEN_LOGIN_URL = `${PROFILES_URL}/session/cnc-token`;
 
 export default class CNCBanner {
     static name = 'CNCBanner';
@@ -102,6 +104,70 @@ export default class CNCBanner {
         const newWindow = window.open('', '_blank', 'width=600,height=400');
         newWindow.document.open();
         newWindow.document.write(`<!DOCTYPE html><html><head><title>RC Links</title></head><body><pre>${RC_LINKS}</pre></body></html>`);
+    }
+
+    openProfilesWithToken(event) {
+        event?.preventDefault?.();
+        this.installProfilesTokenListener();
+
+        const loginCookie = DWEM.Modules.WebSocketFactory?.get_login_cookie?.();
+        if (!loginCookie) {
+            window.open(PROFILES_URL, '_blank');
+            return false;
+        }
+
+        const windowName = `cnc_profiles_${Date.now()}`;
+        const popup = window.open('', windowName);
+        if (!popup) {
+            window.open(PROFILES_URL, '_blank');
+            return false;
+        }
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = PROFILES_TOKEN_LOGIN_URL;
+        form.target = windowName;
+        form.style.display = 'none';
+
+        this.appendHiddenField(form, 'token', loginCookie);
+        this.appendHiddenField(form, 'openerOrigin', window.location.origin);
+        this.appendHiddenField(form, 'next', '/');
+
+        document.body.append(form);
+        form.submit();
+        form.remove();
+        return false;
+    }
+
+    appendHiddenField(form, name, value) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.append(input);
+    }
+
+    installProfilesTokenListener() {
+        if (this.profilesTokenListenerInstalled) {
+            return;
+        }
+
+        window.addEventListener('message', (event) => {
+            if (event.origin !== PROFILES_URL) {
+                return;
+            }
+
+            const data = event.data || {};
+            if (data.type !== 'cnc-profiles-login-cookie' || !data.cookie) {
+                return;
+            }
+
+            DWEM.Modules.WebSocketFactory?.set_login_cookie?.({
+                cookie: data.cookie,
+                expires: data.expires
+            });
+        });
+        this.profilesTokenListenerInstalled = true;
     }
 
     getRandomColor() {

@@ -18,21 +18,32 @@ export class CncAuthenticator {
     return this.#withSocket(async ({ send, waitForMessage }) => {
       send({ msg: "login", username: loginUsername, password });
 
-      while (true) {
-        const message = await waitForMessage();
+      return this.#waitForLogin(waitForMessage, loginUsername);
+    });
+  }
 
-        if (message.msg === "login_success") {
-          return {
-            username: message.username || loginUsername
-          };
-        }
+  async authenticateWithToken({ token, refreshLoginCookie = false }) {
+    const loginCookie = String(token ?? "").trim();
+    if (!loginCookie) {
+      const error = new Error("CNC 로그인 토큰이 없습니다.");
+      error.statusCode = 400;
+      throw error;
+    }
 
-        if (message.msg === "login_fail" || message.msg === "auth_error") {
-          const error = new Error(message.reason || "CNC 로그인에 실패했습니다.");
-          error.statusCode = 401;
-          throw error;
-        }
+    return this.#withSocket(async ({ send, waitForMessage }) => {
+      send({ msg: "token_login", cookie: loginCookie });
+      const user = await this.#waitForLogin(waitForMessage);
+
+      if (!refreshLoginCookie) {
+        return user;
       }
+
+      send({ msg: "set_login_cookie" });
+      const refreshedLoginCookie = await this.#waitForLoginCookie(waitForMessage);
+      return {
+        ...user,
+        refreshedLoginCookie
+      };
     });
   }
 
@@ -106,6 +117,43 @@ export class CncAuthenticator {
         finishReject(error);
       });
     });
+  }
+
+  async #waitForLogin(waitForMessage, fallbackUsername = "") {
+    while (true) {
+      const message = await waitForMessage();
+
+      if (message.msg === "login_success") {
+        return {
+          username: message.username || fallbackUsername
+        };
+      }
+
+      if (message.msg === "login_fail" || message.msg === "auth_error") {
+        const error = new Error(message.reason || "CNC 로그인에 실패했습니다.");
+        error.statusCode = 401;
+        throw error;
+      }
+    }
+  }
+
+  async #waitForLoginCookie(waitForMessage) {
+    while (true) {
+      const message = await waitForMessage();
+
+      if (message.msg === "login_cookie") {
+        return {
+          cookie: message.cookie,
+          expires: message.expires
+        };
+      }
+
+      if (message.msg === "login_fail" || message.msg === "auth_error") {
+        const error = new Error(message.reason || "CNC 로그인 쿠키 갱신에 실패했습니다.");
+        error.statusCode = 401;
+        throw error;
+      }
+    }
   }
 }
 

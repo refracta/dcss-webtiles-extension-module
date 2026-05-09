@@ -1,8 +1,9 @@
 import {getAprilFoolsOverlayHTML} from './seasonal-theme.js';
-import {getLocale, getModuleBaseUrl, shouldUseAprilFools} from './utils.js';
+import {escapeHtml, getLocale, getModuleBaseUrl, shouldUseAprilFools} from './utils.js';
 
 const SOUND_SUPPORT_ARCE_URL = 'https://crawl.nemelex.cards/?arce_append=%23%20Recommended%20settings%0Asounds_on%20%3D%20true%0Asound_pack%20%2B%3D%20https%3A%2F%2Fsound-packs.nemelex.cards%2FDCSS-UST%2Fv1.0.1.zip%0Asound_pack%20%2B%3D%20https%3A%2F%2Fosp.nemelex.cards%2Fbuild%2Flatest.zip%3A%5B%22init.txt%22%5D%0Aone_SDL_sound_channel%20%3D%20true%0Asound_fade_time%20%3D%200.5%0Abgm_volume%20%3D%200.5';
 const TRANSLATION_ARCE_URL = 'https://crawl.nemelex.cards/?arce_append=always_show_zot%20%3D%20true%0Atranslation_language%20=%20ko';
+const PROFILES_URL = 'https://profiles.nemelex.cards';
 
 export default class BannerTemplate {
     constructor(donations) {
@@ -238,10 +239,12 @@ export default class BannerTemplate {
     }
 
     getUserLinks(locale, currentUser) {
-        const links = `<a href="https://archive.nemelex.cards/morgue/${currentUser}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${currentUser}/">ttyrecs</a> <a href="https://archive.nemelex.cards/rcfiles/?user=${currentUser}">rcfiles</a>`;
+        const encodedUser = encodeURIComponent(currentUser);
+        const profileLink = `<a href="${PROFILES_URL}/" onclick="return DWEM.Modules.CNCBanner.openProfilesWithToken(event)" title="CNC Profiles">${escapeHtml(currentUser)}</a>`;
+        const links = `<a href="https://archive.nemelex.cards/morgue/${encodedUser}/">morgues</a> <a href="https://archive.nemelex.cards/ttyrec/${encodedUser}/">ttyrecs</a> <a href="https://archive.nemelex.cards/rcfiles/?user=${encodedUser}">rcfiles</a>`;
         const message = locale === 'ko'
-            ? `안녕하세요, ${currentUser}! <br>여기서 기록을 확인할 수 있습니다: ${links}`
-            : `Hello, ${currentUser}! View your ${links}.`;
+            ? `안녕하세요, ${profileLink}! <br>여기서 기록을 확인할 수 있습니다: ${links}`
+            : `Hello, ${profileLink}! View your ${links}.`;
         return `
         <p>
             ${message}

@@ -1,8 +1,14 @@
 const MAX_JSON_BODY_BYTES = 64 * 1024;
+const TOKEN_LOGIN_PATH = "/session/cnc-token";
 
 export function createApiHandler({ profileService, authenticator, sessionManager, config }) {
   return async function handleApi(request, response) {
     const url = new URL(request.url ?? "/", "http://localhost");
+
+    if (url.pathname === TOKEN_LOGIN_PATH) {
+      await handleTokenLogin({ request, response, profileService, authenticator, sessionManager, config });
+      return true;
+    }
 
     if (!url.pathname.startsWith("/api/")) {
       return false;
@@ -103,6 +109,43 @@ export function createApiHandler({ profileService, authenticator, sessionManager
   };
 }
 
+async function handleTokenLogin({ request, response, profileService, authenticator, sessionManager, config }) {
+  if (request.method !== "POST") {
+    sendRedirect(response, "/", {
+      "Cache-Control": "no-store"
+    });
+    return;
+  }
+
+  try {
+    const form = await readFormBody(request);
+    const user = await authenticator.authenticateWithToken({
+      token: form.get("token"),
+      refreshLoginCookie: true
+    });
+    const profile = profileService.getMe(user.username);
+    const targetOrigin = getAllowedOpenerOrigin(form.get("openerOrigin"), config);
+    const redirectPath = getSafeRedirectPath(form.get("next"));
+    const payload = user.refreshedLoginCookie?.cookie
+      ? {
+          type: "cnc-profiles-login-cookie",
+          cookie: user.refreshedLoginCookie.cookie,
+          expires: user.refreshedLoginCookie.expires
+        }
+      : null;
+
+    sendHtml(response, 200, createTokenLoginSuccessHtml({ payload, targetOrigin, redirectPath }), {
+      "Set-Cookie": sessionManager.createCookie({ username: profile.username })
+    });
+  } catch (error) {
+    const statusCode = error.statusCode ?? 500;
+    if (statusCode >= 500) {
+      console.error(error);
+    }
+    sendHtml(response, statusCode, createTokenLoginErrorHtml(error.message));
+  }
+}
+
 export function sendJson(response, statusCode, value, headers = {}) {
   response.writeHead(statusCode, {
     "Cache-Control": "no-store",
@@ -113,28 +156,37 @@ export function sendJson(response, statusCode, value, headers = {}) {
 }
 
 export async function readJsonBody(request) {
+  const body = await readTextBody(request);
+  if (!body) return {};
+
+  try {
+    return JSON.parse(body);
+  } catch {
+    const error = new Error("Invalid JSON body");
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
+async function readFormBody(request) {
+  return new URLSearchParams(await readTextBody(request));
+}
+
+async function readTextBody(request) {
   const chunks = [];
   let size = 0;
 
   for await (const chunk of request) {
     size += chunk.length;
     if (size > MAX_JSON_BODY_BYTES) {
-      const error = new Error("JSON body is too large");
+      const error = new Error("Request body is too large");
       error.statusCode = 413;
       throw error;
     }
     chunks.push(chunk);
   }
 
-  if (chunks.length === 0) return {};
-
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
-  } catch {
-    const error = new Error("Invalid JSON body");
-    error.statusCode = 400;
-    throw error;
-  }
+  return chunks.length ? Buffer.concat(chunks).toString("utf8") : "";
 }
 
 function requireSession(request, sessionManager) {
@@ -165,4 +217,84 @@ function getCorsHeaders(request, config) {
   }
 
   return headers;
+}
+
+function sendRedirect(response, location, headers = {}) {
+  response.writeHead(303, {
+    Location: location,
+    ...headers
+  });
+  response.end();
+}
+
+function sendHtml(response, statusCode, html, headers = {}) {
+  response.writeHead(statusCode, {
+    "Cache-Control": "no-store",
+    "Content-Type": "text/html; charset=utf-8",
+    ...headers
+  });
+  response.end(html);
+}
+
+function getAllowedOpenerOrigin(value, config) {
+  const origin = String(value ?? "");
+  const allowedOrigins = new Set(config.cors?.allowedOrigins ?? []);
+  allowedOrigins.add(config.siteUrl);
+  return allowedOrigins.has(origin) ? origin : "";
+}
+
+function getSafeRedirectPath(value) {
+  const path = String(value || "/");
+  if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) {
+    return "/";
+  }
+  return path;
+}
+
+function createTokenLoginSuccessHtml({ payload, targetOrigin, redirectPath }) {
+  return `<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>CNC Profiles</title>
+</head>
+<body>
+  <p>CNC Profiles로 이동 중입니다.</p>
+  <script>
+    const payload = ${toScriptJson(payload)};
+    const targetOrigin = ${toScriptJson(targetOrigin)};
+    if (payload && targetOrigin && window.opener) {
+      window.opener.postMessage(payload, targetOrigin);
+    }
+    window.location.replace(${toScriptJson(redirectPath)});
+  </script>
+</body>
+</html>`;
+}
+
+function createTokenLoginErrorHtml(message) {
+  return `<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>CNC Profiles Login Failed</title>
+</head>
+<body>
+  <p>프로필 자동 로그인에 실패했습니다: ${escapeHtml(message)}</p>
+  <p><a href="/">CNC Profiles에서 직접 로그인하기</a></p>
+</body>
+</html>`;
+}
+
+function toScriptJson(value) {
+  return JSON.stringify(value).replaceAll("<", "\\u003c");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
