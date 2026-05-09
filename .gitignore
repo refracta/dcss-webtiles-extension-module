@@ -1,1 +1,4 @@
 files/
+backends/cnc-profiles/data/
+backends/cnc-profiles/node_modules/
+backends/cnc-profiles/.env

@@ -90,14 +90,14 @@ class UserDropdown extends HTMLDivElement {
         const isAdmin = username.includes(' (admin)');
         const realUsername = username.replaceAll(' (admin)', '');
         const lowerUsername = realUsername.toLowerCase();
-        // PROJECT_B: Get user title info
-        const titleInfo = DWEM.Modules.CNCUserinfo.getUserTitleInfo(realUsername);
-        const titleDiv = titleInfo
-            ? `<div style="font-style: italic; font-size: 0.9em; margin-top: -4px; margin-bottom: 4px;"><a href="${titleInfo.url}" target="_blank">${titleInfo.title}</a></div>`
+        const profile = DWEM.Modules.CNCUserinfo.getProfile(realUsername);
+        const currentBanner = profile?.currentBanner;
+        const titleDiv = currentBanner
+            ? `<div style="font-style: italic; font-size: 0.9em; margin-top: -4px; margin-bottom: 4px;"><a href="${DWEM.Modules.CNCUserinfo.escapeHtml(currentBanner.url)}" target="_blank">${DWEM.Modules.CNCUserinfo.escapeHtml(currentBanner.title)}</a></div>`
             : '';
 
         this.dropdownContent.innerHTML = `
-            <div style="font-weight: bold"><a href="#watch-${realUsername}" target="_blank">${DWEM.Modules.CNCUserinfo.applyColorfulUsername(realUsername)}${isAdmin ? ' (ADMIN)' : ''}</a></div>
+            <div style="font-weight: bold"><a href="#watch-${DWEM.Modules.CNCUserinfo.escapeHtml(realUsername)}" target="_blank">${DWEM.Modules.CNCUserinfo.applyStyledUsername(realUsername)}${isAdmin ? ' (ADMIN)' : ''}</a></div>
             ${titleDiv}
             <div><a href="https://crawl.akrasiac.org/scoring/players/${lowerUsername}.html" target="_blank">CAO Scoreboard</a></div>
             <div><a href="https://crawl.akrasiac.org/scoring03/players/${realUsername}.html" target="_blank"">CAO Scoreboard (Old)</a></div>
@@ -114,6 +114,16 @@ class UserDropdown extends HTMLDivElement {
         const rect = this.dropdownContent.getBoundingClientRect();
         this.position(x, y, rect);
         this.style.visibility = '';
+        this.username = realUsername;
+        this.x = x;
+        this.y = y;
+    }
+
+    refresh(username) {
+        if (this.dropdownContent.style.display !== 'block' || !this.username || this.username.toLowerCase() !== username.toLowerCase()) {
+            return;
+        }
+        this.open(this.username, this.x, this.y);
     }
 
     position(x, y, rect = this.dropdownContent.getBoundingClientRect()) {
@@ -148,38 +158,7 @@ export default class CNCUserinfo {
 
     // PROJECT_A: Nemelex colors from CNCBanner, sorted
     static NEMELEX_COLORS = ['#008cc0', '#009800', '#8000ff', '#cad700', '#ff4000'];
-
-    // User title configuration
-    static USER_TITLES = {
-        'wizardmodephilia': {
-            title: 'Wizard Account',
-            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
-        },
-        'sasameki': {
-            title: 'CNC 1st Anniversary Tournament Champion (Skill Category)',
-            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
-        },
-        'opking': {
-            title: 'CNC 1st Anniversary Tournament 2nd Place (Skill Category)',
-            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
-        },
-        'sekai': {
-            title: 'CNC 1st Anniversary Tournament 3rd Place (Skill Category)',
-            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
-        },
-        'unreal': {
-            title: 'CNC 1st Anniversary Tournament Champion (Ent Category)',
-            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
-        },
-        'mumonspawn': {
-            title: 'CNC 1st Anniversary Tournament 2nd Place (Ent Category)',
-            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
-        },
-        'dogchiho': {
-            title: 'CNC 1st Anniversary Tournament 3rd Place (Ent Category)',
-            url: 'https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html'
-        }
-    };
+    static PROFILE_API_BASE = 'https://profiles.nemelex.cards';
 
     open(username, event) {
         const x = Number.isFinite(event?.clientX) ? event.clientX : (Number.isFinite(event?.pageX) ? event.pageX - window.scrollX : 0);
@@ -187,16 +166,6 @@ export default class CNCUserinfo {
         this.userDropdown.open(username, x, y);
         event?.preventDefault?.();
         event?.stopPropagation?.();
-    }
-
-    /**
-     * Get user title information
-     * @param {string} username - The username to get title for
-     * @returns {Object|null} Title object with {title, url} or null if no title
-     */
-    getUserTitleInfo(username) {
-        if (!username) return null;
-        return CNCUserinfo.USER_TITLES[username.toLowerCase()] || null;
     }
 
     async openTournamentPage(username) {
@@ -218,8 +187,7 @@ export default class CNCUserinfo {
                 anchor.setAttribute('onclick', `DWEM.Modules.CNCUserinfo.open('${username}', event);`);
                 anchor.textContent = username;
                 anchor.removeAttribute('target');
-                // PROJECT_A: Apply colorful username to spectator list
-                anchor.innerHTML = this.applyColorfulUsername(username);
+                anchor.innerHTML = this.applyStyledUsername(username);
             }
             data.names = container.innerHTML;
         }
@@ -261,47 +229,228 @@ export default class CNCUserinfo {
         // Apply colors to parts
         const coloredParts = parts.map((part, index) => {
             const color = rotatedColors[index % rotatedColors.length];
-            return `<span style="color: ${color}">${part}</span>`;
+            return `<span style="color: ${color}">${this.escapeHtml(part)}</span>`;
         });
 
         return coloredParts.join('');
     }
 
-    /**
-     * Applies colorful username styling
-     * @param {string} username - The username text
-     * @returns {string} HTML string with colored spans or original username
-     */
-    applyColorfulUsername(username) {
-        if (!username) return username;
+    applyStyledUsername(username) {
+        if (!username) return '';
 
-        const lowerUsername = username.toLowerCase();
-        const colorConfig = {
-            'wizardmodephilia': { split: 1, time: 60 },
-            'sasameki': { split: 1, time: 60 },
-            'opking': { split: 2, time: 60 },
-            'sekai': { split: 3, time: 60 },
-            'unreal': { split: 1, time: 60 },
-            'mumonspawn': { split: 2, time: 60 },
-            'dogchiho': { split: 3, time: 60 }
-        };
+        const cleanUsername = username.replaceAll(' (admin)', '');
+        const profile = this.getProfile(cleanUsername);
+        const key = this.getProfileKey(cleanUsername);
+        this.trackProfileUsername(cleanUsername);
 
-        // Apply Nemelex coloring to configured users
-        if (colorConfig[lowerUsername]) {
-            const config = colorConfig[lowerUsername];
+        const styledUsername = this.renderUsernameStyle(cleanUsername, profile?.currentBanner?.usernameStyle);
+        return `<span data-cnc-profile-username="${this.escapeHtml(cleanUsername)}" data-cnc-profile-key="${this.escapeHtml(key)}">${styledUsername}</span>`;
+    }
+
+    renderUsernameStyle(username, usernameStyle) {
+        if (!usernameStyle) {
+            return this.escapeHtml(username);
+        }
+
+        if (usernameStyle.id === 'nemelex') {
+            const data = usernameStyle.data || {};
             return this.createNemelexSpan(
                 username,
                 CNCUserinfo.NEMELEX_COLORS,
-                config.split,
-                config.time
+                data.split || 1,
+                data.time || 60
             );
         }
 
-        // Return unchanged for other users
-        return username;
+        if (usernameStyle.id === 'donator') {
+            return `<span style="${this.styleObjectToString(this.getDonatorStyle(usernameStyle.data?.donation))}">${this.escapeHtml(username)}</span>`;
+        }
+
+        if (usernameStyle.id === 'translator') {
+            return `<span style="${this.styleObjectToString(this.getTranslatorStyle(usernameStyle.data?.intensity))}">${this.escapeHtml(username)}</span>`;
+        }
+
+        return this.escapeHtml(username);
+    }
+
+    getDonatorStyle(amount) {
+        const maxAmount = 500000;
+        const clamped = Math.max(0, Math.min(maxAmount, Number(amount) || 0));
+        const progress = clamped / maxAmount;
+        const color = this.mixGoldColor(Math.pow(progress, 0.72));
+        const glowSize = 5 + progress * 18;
+        const style = {
+            color,
+            'font-weight': '800',
+            'text-shadow': `0 0 ${glowSize}px rgba(255, 216, 94, ${0.18 + progress * 0.5}), 0 1px 0 rgba(70, 42, 0, ${progress * 0.25})`,
+            filter: `drop-shadow(0 0 ${glowSize}px rgba(255, 211, 72, ${0.08 + progress * 0.25}))`
+        };
+
+        if (progress >= 0.18) {
+            style['background-image'] = `linear-gradient(115deg, ${color} 0%, #fff8d8 ${28 + progress * 18}%, ${color} ${60 + progress * 12}%, #8f6400 100%)`;
+            style['-webkit-background-clip'] = 'text';
+            style['background-clip'] = 'text';
+            style['-webkit-text-fill-color'] = 'transparent';
+        }
+
+        return style;
+    }
+
+    getTranslatorStyle(intensity) {
+        const t = Math.max(0, Math.min(1, Number(intensity) || 0));
+        return {
+            color: '#174ea6',
+            'font-weight': '800',
+            'background-image': `linear-gradient(${115 + t * 60}deg, #c91f37 0%, #f5f7fb ${35 - t * 10}%, #174ea6 ${68 + t * 8}%, #0b2f73 100%)`,
+            '-webkit-background-clip': 'text',
+            'background-clip': 'text',
+            '-webkit-text-fill-color': 'transparent',
+            'text-shadow': `0 0 ${4 + t * 12}px rgba(23, 78, 166, ${0.12 + t * 0.28})`
+        };
+    }
+
+    mixGoldColor(t) {
+        const stops = [
+            { at: 0, color: '#ffffff' },
+            { at: 0.08, color: '#fff9e8' },
+            { at: 0.18, color: '#ffefbd' },
+            { at: 0.38, color: '#ffd95f' },
+            { at: 0.68, color: '#efb72e' },
+            { at: 1, color: '#b8860b' }
+        ];
+        let left = stops[0];
+        let right = stops[stops.length - 1];
+
+        for (let i = 0; i < stops.length - 1; i++) {
+            if (t >= stops[i].at && t <= stops[i + 1].at) {
+                left = stops[i];
+                right = stops[i + 1];
+                break;
+            }
+        }
+
+        const localT = right.at === left.at ? 0 : (t - left.at) / (right.at - left.at);
+        return this.mixColor(left.color, right.color, localT);
+    }
+
+    mixColor(from, to, t) {
+        const a = this.hexToRgb(from);
+        const b = this.hexToRgb(to);
+        return this.rgbToHex({
+            r: a.r + (b.r - a.r) * t,
+            g: a.g + (b.g - a.g) * t,
+            b: a.b + (b.b - a.b) * t
+        });
+    }
+
+    hexToRgb(hex) {
+        const value = Number.parseInt(hex.replace('#', ''), 16);
+        return {
+            r: (value >> 16) & 255,
+            g: (value >> 8) & 255,
+            b: value & 255
+        };
+    }
+
+    rgbToHex({r, g, b}) {
+        const toHex = (value) => Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, '0');
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+
+    styleObjectToString(style) {
+        return Object.entries(style).map(([key, value]) => `${key}: ${value}`).join('; ');
+    }
+
+    escapeHtml(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    getProfileKey(username) {
+        return String(username || '').trim().toLowerCase();
+    }
+
+    getProfile(username) {
+        const entry = this.profileCache?.get(this.getProfileKey(username));
+        return entry?.profile || null;
+    }
+
+    trackProfileUsername(username) {
+        const key = this.getProfileKey(username);
+        if (!key) return;
+        this.trackedProfileUsernames.set(key, username);
+    }
+
+    async fetchTrackedProfiles() {
+        if (this.profileFetchInFlight || !this.trackedProfileUsernames.size) {
+            return;
+        }
+
+        this.profileFetchInFlight = true;
+        const profiles = Array.from(this.trackedProfileUsernames.entries()).map(([key, username]) => ({
+            username,
+            lastUpdatedAt: this.profileCache.get(key)?.profile?.lastUpdatedAt
+        }));
+
+        try {
+            const response = await fetch(`${this.getProfilesApiBase()}/api/profiles/batch`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({profiles})
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            for (const profile of data.profiles || []) {
+                const key = this.getProfileKey(profile.username);
+                this.profileCache.set(key, {profile});
+                this.refreshStyledUsername(profile.username);
+                this.userDropdown.refresh(profile.username);
+            }
+
+            for (const username of data.missing || []) {
+                const key = this.getProfileKey(username);
+                if (!this.profileCache.has(key)) {
+                    this.profileCache.set(key, {profile: null});
+                }
+            }
+        } catch (e) {
+            if (localStorage.DWEM_DEBUG) {
+                console.warn('Failed to fetch CNC profiles', e);
+            }
+        } finally {
+            this.profileFetchInFlight = false;
+        }
+    }
+
+    refreshStyledUsername(username) {
+        const key = this.getProfileKey(username);
+        for (const element of document.querySelectorAll('[data-cnc-profile-key]')) {
+            if (element.dataset.cncProfileKey !== key) continue;
+            const elementUsername = element.dataset.cncProfileUsername || username;
+            element.innerHTML = this.renderUsernameStyle(elementUsername, this.getProfile(elementUsername)?.currentBanner?.usernameStyle);
+        }
+    }
+
+    getProfilesApiBase() {
+        return localStorage.CNC_PROFILES_API || CNCUserinfo.PROFILE_API_BASE;
     }
 
     onLoad() {
+        this.profileCache = new Map();
+        this.trackedProfileUsernames = new Map();
+        this.profileFetchInFlight = false;
+        this.profileFetchTimer = setInterval(() => {
+            this.fetchTrackedProfiles();
+        }, 1000);
+
         this.userDropdown = new UserDropdown();
         document.body.appendChild(this.userDropdown);
         const {SourceMapperRegistry: SMR} = DWEM;
@@ -334,8 +483,7 @@ export default class CNCUserinfo {
 
                 var username_entry = $(make_watch_link(data));
                 username_entry.text(data.username);
-                // PROJECT_A: Apply colorful username in lobby
-                username_entry.html(DWEM.Modules.CNCUserinfo.applyColorfulUsername(data.username));
+                username_entry.html(DWEM.Modules.CNCUserinfo.applyStyledUsername(data.username));
                 set("username", username_entry);
                 set("game_id", data.game_id);
                 set("xl", data.xl);
@@ -388,7 +536,8 @@ export default class CNCUserinfo {
 
         // Make instance methods available as static methods for other modules
         CNCUserinfo.createNemelexSpan = this.createNemelexSpan.bind(this);
-        CNCUserinfo.applyColorfulUsername = this.applyColorfulUsername.bind(this);
-        CNCUserinfo.getUserTitleInfo = this.getUserTitleInfo.bind(this);
+        CNCUserinfo.applyStyledUsername = this.applyStyledUsername.bind(this);
+        CNCUserinfo.getProfile = this.getProfile.bind(this);
+        CNCUserinfo.escapeHtml = this.escapeHtml.bind(this);
     }
 }

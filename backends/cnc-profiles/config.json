@@ -1,0 +1,40 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 3000
+  },
+  "siteUrl": "https://profiles.nemelex.cards",
+  "database": {
+    "file": "data/profiles.json"
+  },
+  "session": {
+    "secret": "change-me-before-production",
+    "maxAgeSeconds": 604800,
+    "secureCookie": true
+  },
+  "cors": {
+    "allowedOrigins": [
+      "https://crawl.nemelex.cards",
+      "https://profiles.nemelex.cards"
+    ]
+  },
+  "watchers": {
+    "pullPeriod": 30,
+    "donation": {
+      "enabled": true,
+      "url": "https://donation.abstr.net/api/donation"
+    },
+    "translation": {
+      "enabled": true,
+      "url": "https://translation.nemelex.cards/statistics",
+      "threshold": 500,
+      "maxScore": 5000
+    }
+  },
+  "auth": {
+    "cnc": {
+      "origin": "https://crawl.nemelex.cards",
+      "timeoutMs": 12000
+    }
+  }
+}

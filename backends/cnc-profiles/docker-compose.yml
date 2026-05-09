@@ -1,0 +1,12 @@
+services:
+  node:
+    image: node:24-bookworm-slim
+    ports:
+      - "43039:3000"
+    volumes:
+      - .:/usr/src
+    environment:
+      - CNC_PROFILES_SESSION_SECRET=${CNC_PROFILES_SESSION_SECRET:-change-me-before-production}
+    working_dir: /usr/src
+    command: sh -c "if [ ! -e node_modules ]; then npm install; fi && npm start"
+    restart: unless-stopped

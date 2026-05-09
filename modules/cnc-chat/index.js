@@ -482,7 +482,7 @@ export default class CNCChat {
                     var msg = $("<div>").append(data.content);
                     var sender = msg.find('.chat_sender');
                     if (sender.text() !== '') {
-                        sender.html(DWEM.Modules.CNCUserinfo.applyColorfulUsername(sender.text()))
+                        sender.html(DWEM.Modules.CNCUserinfo.applyStyledUsername(sender.text()))
                     }
                     msg.find(".chat_msg").html(linkify(msg.find(".chat_msg").text()));
                     $("#chat_history").append(msg.html() + "<br>");
@@ -702,9 +702,9 @@ export default class CNCChat {
                             const container = document.createElement('div');
                             const senderSpan = document.createElement('span');
                             senderSpan.classList.add('chat_sender');
-                            // PROJECT_A: Apply colorful username
+                            // PROJECT_A: Apply styled username
                             if (DWEM.Modules.CNCUserinfo) {
-                                senderSpan.innerHTML = `${DWEM.Modules.CNCUserinfo.applyColorfulUsername(sender)}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
+                                senderSpan.innerHTML = `${DWEM.Modules.CNCUserinfo.applyStyledUsername(sender)}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
                             } else {
                                 senderSpan.textContent = `${sender}'s ${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`;
                             }
@@ -720,9 +720,9 @@ export default class CNCChat {
                             const container = document.createElement('div');
                             const senderSpan = document.createElement('span');
                             senderSpan.classList.add('chat_sender');
-                            // PROJECT_A: Apply colorful username
+                            // PROJECT_A: Apply styled username
                             if (DWEM.Modules.CNCUserinfo) {
-                                senderSpan.innerHTML = `${DWEM.Modules.CNCUserinfo.applyColorfulUsername(sender)}'s Item`;
+                                senderSpan.innerHTML = `${DWEM.Modules.CNCUserinfo.applyStyledUsername(sender)}'s Item`;
                             } else {
                                 senderSpan.textContent = `${sender}'s Item`;
                             }

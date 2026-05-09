@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CNC Profiles</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="site-name" href="/">CNC Profiles</a>
+    <div class="session-actions">
+      <span id="session-user"></span>
+      <button id="logout-button" class="button ghost" type="button" hidden>로그아웃</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel" id="login-panel">
+      <h1>프로필 설정</h1>
+      <form id="login-form" class="stack">
+        <label>
+          <span>CNC ID</span>
+          <input id="login-username" name="username" autocomplete="username" required>
+        </label>
+        <label>
+          <span>비밀번호</span>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="button primary" type="submit">로그인</button>
+      </form>
+      <p class="status" id="login-status" aria-live="polite"></p>
+    </section>
+
+    <section class="panel" id="profile-panel" hidden>
+      <div class="profile-header">
+        <div>
+          <h1 id="profile-username">프로필</h1>
+          <p id="profile-updated" class="muted"></p>
+        </div>
+        <div id="profile-preview" class="preview"></div>
+      </div>
+
+      <div class="banner-grid" id="banner-list"></div>
+      <p class="status" id="profile-status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="/index.js" type="module"></script>
+</body>
+</html>
