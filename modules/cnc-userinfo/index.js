@@ -595,6 +595,7 @@ export default class CNCUserinfo {
 
                 var username_entry = $(make_watch_link(data));
                 username_entry.text(data.username);
+                username_entry.attr("data-cnc-username", data.username);
                 username_entry.html(DWEM.Modules.CNCUserinfo.applyStyledUsername(data.username));
                 set("username", username_entry);
                 set("game_id", data.game_id);
@@ -631,12 +632,10 @@ export default class CNCUserinfo {
             comm.register_handlers({lobby_entry: lobby_entry});
             $(document).on('contextmenu', '#player_list .username a', function (e) {
                 e.preventDefault();
-                let username;
-                if (e.target.tagName === 'A') {
-                    username = e.target.textContent;
-                } else {
-                    username = e.target.parentElement.textContent;
-                }
+                const profileElement = this.querySelector('[data-cnc-profile-username]');
+                const username = this.getAttribute('data-cnc-username') ||
+                    (profileElement ? profileElement.getAttribute('data-cnc-profile-username') : '') ||
+                    this.textContent;
                 DWEM.Modules.CNCUserinfo.open(username, e);
             });
         }
