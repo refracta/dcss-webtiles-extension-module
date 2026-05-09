@@ -3,7 +3,7 @@ export const PROFILE_SCHEMA_VERSION = 1;
 export const BANNER_URLS = {
   tournamentResults: "https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html",
   donation: "https://donation.abstr.net/list",
-  translation: "https://translation.nemelex.cards/statistics"
+  translation: "https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing"
 };
 
 export const BANNER_DEFINITIONS = [
