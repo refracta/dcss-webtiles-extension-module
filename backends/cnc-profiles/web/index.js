@@ -7,15 +7,21 @@ const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
 const elements = {
   loginPanel: document.querySelector("#login-panel"),
   profilePanel: document.querySelector("#profile-panel"),
+  publicProfilePanel: document.querySelector("#public-profile-panel"),
   loginForm: document.querySelector("#login-form"),
   loginStatus: document.querySelector("#login-status"),
   profileStatus: document.querySelector("#profile-status"),
+  publicProfileStatus: document.querySelector("#public-profile-status"),
   sessionUser: document.querySelector("#session-user"),
   logoutButton: document.querySelector("#logout-button"),
   profileUsername: document.querySelector("#profile-username"),
   profileUpdated: document.querySelector("#profile-updated"),
   profilePreview: document.querySelector("#profile-preview"),
-  bannerList: document.querySelector("#banner-list")
+  bannerList: document.querySelector("#banner-list"),
+  publicProfileUsername: document.querySelector("#public-profile-username"),
+  publicProfileUpdated: document.querySelector("#public-profile-updated"),
+  publicProfilePreview: document.querySelector("#public-profile-preview"),
+  publicBannerList: document.querySelector("#public-banner-list")
 };
 
 elements.loginForm.addEventListener("submit", async (event) => {
@@ -45,7 +51,39 @@ elements.logoutButton.addEventListener("click", async () => {
   setProfile(null);
 });
 
-loadMe();
+const publicProfileUsername = getPublicProfileUsername();
+if (publicProfileUsername) {
+  loadPublicProfile(publicProfileUsername);
+} else {
+  loadMe();
+}
+
+async function loadPublicProfile(username) {
+  state.profile = null;
+  elements.loginPanel.hidden = true;
+  elements.profilePanel.hidden = true;
+  elements.publicProfilePanel.hidden = false;
+  elements.logoutButton.hidden = true;
+  elements.sessionUser.textContent = "";
+  elements.publicProfileUsername.textContent = username;
+  elements.publicProfileUpdated.textContent = "";
+  elements.publicProfilePreview.textContent = "";
+  elements.publicBannerList.replaceChildren();
+  elements.publicProfileStatus.textContent = "Loading profile...";
+
+  try {
+    const data = await requestJson(`/api/profile/${encodeURIComponent(username)}`);
+    if (!data.profile) {
+      document.title = `${username} - CNC Profiles`;
+      elements.publicProfileStatus.textContent = "Profile not found.";
+      return;
+    }
+
+    renderPublicProfile(data.profile);
+  } catch (error) {
+    elements.publicProfileStatus.textContent = error.message;
+  }
+}
 
 async function loadMe() {
   const data = await requestJson("/api/me");
@@ -71,6 +109,7 @@ function setProfile(profile) {
   const authenticated = Boolean(profile);
   elements.loginPanel.hidden = authenticated;
   elements.profilePanel.hidden = !authenticated;
+  elements.publicProfilePanel.hidden = true;
   elements.logoutButton.hidden = !authenticated;
   elements.sessionUser.textContent = authenticated ? profile.username : "";
 
@@ -98,6 +137,18 @@ function renderProfile(profile) {
   );
 }
 
+function renderPublicProfile(profile) {
+  const banners = Array.isArray(profile.banners) ? profile.banners : [];
+  document.title = `${profile.username} - CNC Profiles`;
+  elements.publicProfileUsername.textContent = profile.username;
+  elements.publicProfileUpdated.textContent = `Last updated: ${formatDate(profile.lastUpdatedAt)}`;
+  elements.publicProfilePreview.innerHTML = renderStyledUsername(profile.username, profile.currentBanner?.usernameStyle);
+  elements.publicProfileStatus.textContent = banners.length > 0 ? "" : "No banners.";
+  elements.publicBannerList.replaceChildren(
+    ...banners.map((banner) => createPublicBannerCard(profile, banner))
+  );
+}
+
 function createBannerButton(profile, banner) {
   const button = document.createElement("button");
   button.className = "banner-button";
@@ -115,6 +166,28 @@ function createBannerButton(profile, banner) {
 
   button.append(title, preview);
   return button;
+}
+
+function createPublicBannerCard(profile, banner) {
+  const card = document.createElement("article");
+  card.className = "banner-card";
+  card.dataset.active = String(profile.currentBannerId === banner.id);
+
+  const title = banner.url ? document.createElement("a") : document.createElement("span");
+  title.className = "banner-title";
+  title.textContent = banner.title;
+  if (banner.url) {
+    title.href = banner.url;
+    title.target = "_blank";
+    title.rel = "noopener noreferrer";
+  }
+
+  const preview = document.createElement("span");
+  preview.className = "banner-preview";
+  preview.innerHTML = renderStyledUsername(profile.username, banner.usernameStyle);
+
+  card.append(title, preview);
+  return card;
 }
 
 function renderStyledUsername(username, usernameStyle) {
@@ -266,6 +339,17 @@ function escapeHtml(value) {
 
 function formatDate(value) {
   return new Date(value).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function getPublicProfileUsername() {
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (parts.length !== 1 || parts[0].includes(".")) return "";
+
+  try {
+    return decodeURIComponent(parts[0]).trim();
+  } catch {
+    return "";
+  }
 }
 
 async function requestJson(url, options = {}) {

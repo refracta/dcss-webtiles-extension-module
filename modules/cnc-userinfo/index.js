@@ -90,6 +90,7 @@ class UserDropdown extends HTMLDivElement {
         const isAdmin = username.includes(' (admin)');
         const realUsername = username.replaceAll(' (admin)', '');
         const lowerUsername = realUsername.toLowerCase();
+        const profileUrl = `https://profiles.nemelex.cards/${encodeURIComponent(realUsername)}`;
         const profile = DWEM.Modules.CNCUserinfo.getProfile(realUsername);
         const currentBanner = profile?.currentBanner;
         const titleDiv = currentBanner
@@ -97,7 +98,7 @@ class UserDropdown extends HTMLDivElement {
             : '';
 
         this.dropdownContent.innerHTML = `
-            <div style="font-weight: bold"><a href="#watch-${DWEM.Modules.CNCUserinfo.escapeHtml(realUsername)}" target="_blank">${DWEM.Modules.CNCUserinfo.applyStyledUsername(realUsername)}${isAdmin ? ' (ADMIN)' : ''}</a></div>
+            <div style="font-weight: bold"><a href="${DWEM.Modules.CNCUserinfo.escapeHtml(profileUrl)}" target="_blank" rel="noopener noreferrer">${DWEM.Modules.CNCUserinfo.applyStyledUsername(realUsername)}${isAdmin ? ' (ADMIN)' : ''}</a></div>
             ${titleDiv}
             <div><a href="https://crawl.akrasiac.org/scoring/players/${lowerUsername}.html" target="_blank">CAO Scoreboard</a></div>
             <div><a href="https://crawl.akrasiac.org/scoring03/players/${realUsername}.html" target="_blank"">CAO Scoreboard (Old)</a></div>

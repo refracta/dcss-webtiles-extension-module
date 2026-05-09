@@ -56,6 +56,12 @@ async function serveStatic(request, response) {
     send(response, 200, body, { "Content-Type": contentType });
   } catch (error) {
     if (error.code === "ENOENT" || error.code === "EISDIR") {
+      if (shouldServeAppRoute(url.pathname)) {
+        const body = await readFile(path.join(webDir, "index.html"));
+        send(response, 200, body, { "Content-Type": "text/html; charset=utf-8" });
+        return;
+      }
+
       send(response, 404, "Not Found", { "Content-Type": "text/plain; charset=utf-8" });
       return;
     }
@@ -63,6 +69,21 @@ async function serveStatic(request, response) {
     console.error(error);
     send(response, 500, "Internal Server Error", { "Content-Type": "text/plain; charset=utf-8" });
   }
+}
+
+function shouldServeAppRoute(urlPath) {
+  let pathname;
+  try {
+    pathname = decodeURIComponent(urlPath).replace(/\/+$/, "");
+  } catch {
+    return false;
+  }
+
+  if (!pathname || pathname === "/" || pathname.includes("\\") || path.extname(pathname)) {
+    return false;
+  }
+
+  return pathname.split("/").filter(Boolean).length === 1;
 }
 
 const config = await loadConfig();
