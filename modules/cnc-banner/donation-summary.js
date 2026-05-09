@@ -28,6 +28,9 @@ const DONATION_SUMMARY_STYLE = `
         color: #ffffff !important;
         text-shadow: 0 0 4px rgba(244, 215, 0, 0.5);
     }
+    #banner .cnc-donation-profile-link {
+        cursor: pointer;
+    }
     #banner .cnc-donation-line,
     #banner .cnc-donation-rank,
     #banner .cnc-donation-last {
@@ -300,12 +303,20 @@ export default class DonationSummary {
             return escapeHtml(normalized);
         }
 
-        const userinfo = globalThis.DWEM?.Modules?.CNCUserinfo;
-        if (userinfo?.applyStyledUsername) {
-            return userinfo.applyStyledUsername(normalized);
+        const userinfo = this.getUserinfoModule();
+        const renderedUsername = userinfo?.applyStyledUsername
+            ? userinfo.applyStyledUsername(normalized)
+            : escapeHtml(normalized);
+
+        if (userinfo?.open) {
+            return `<a class="cnc-donation-profile-link" href="javascript:void(0);" onclick="DWEM.Modules.CNCUserinfo.open(${escapeHtml(JSON.stringify(normalized))}, event); return false;">${renderedUsername}</a>`;
         }
 
-        return escapeHtml(normalized);
+        return renderedUsername;
+    }
+
+    getUserinfoModule() {
+        return globalThis.DWEM?.Modules?.CNCUserinfo;
     }
 
     formatMessagePreview(message) {
