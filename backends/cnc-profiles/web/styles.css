@@ -176,10 +176,8 @@ input:focus {
 }
 
 .banner-title-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -198,7 +196,6 @@ input:focus {
   color: var(--muted);
   font-size: 13px;
   font-weight: 700;
-  white-space: nowrap;
 }
 
 .banner-preview {

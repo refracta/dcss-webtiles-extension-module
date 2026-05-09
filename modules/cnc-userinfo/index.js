@@ -282,10 +282,10 @@ export default class CNCUserinfo {
         const title = this.escapeHtml(banner.title);
         const url = this.escapeHtml(banner.url);
         const detail = banner.detail?.value
-            ? `<span style="margin-left: 12px; color: #d6c895; white-space: nowrap;">${banner.detail.label ? `${this.escapeHtml(banner.detail.label)}: ` : ''}${this.escapeHtml(banner.detail.value)}</span>`
+            ? `<span style="display: block; color: #d6c895; white-space: nowrap;">${banner.detail.label ? `${this.escapeHtml(banner.detail.label)}: ` : ''}${this.escapeHtml(banner.detail.value)}</span>`
             : '';
 
-        return `<div style="display: flex; justify-content: space-between; gap: 12px; align-items: baseline; font-style: italic; font-size: 0.9em; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank">${title}</a>${detail}</div>`;
+        return `<div style="font-style: italic; font-size: 0.9em; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank">${title}</a>${detail}</div>`;
     }
 
     getNemelexColors(colors) {
