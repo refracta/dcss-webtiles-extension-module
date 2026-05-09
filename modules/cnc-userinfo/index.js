@@ -290,7 +290,10 @@ export default class CNCUserinfo {
         const lineHeight = isCompactRanking ? '1.15' : 'normal';
         const titleStyle = isCompactRanking ? ' style="white-space: nowrap;"' : '';
         const detail = this.getBannerDetailLines(banner.detail)
-            .map((line) => `<span style="display: block; color: #d6c895; white-space: nowrap;">${this.escapeHtml(line)}</span>`)
+            .map((line, index) => {
+                const color = isCompactRanking && index === 0 ? 'inherit' : '#d6c895';
+                return `<span style="display: block; color: ${color}; white-space: nowrap;">${this.escapeHtml(line)}</span>`;
+            })
             .join('');
 
         return `<div style="font-style: italic; font-size: ${fontSize}; line-height: ${lineHeight}; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank"${titleStyle}>${title}</a>${detail}</div>`;
