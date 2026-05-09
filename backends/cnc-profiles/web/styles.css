@@ -363,16 +363,33 @@ input:focus {
 }
 
 .item-chat-time {
-  color: #aab1aa;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 170px;
+  min-height: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 999px;
+  background: #252a29;
+  color: #c3cbc3;
   font-size: 12px;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.item-chat-separator {
+  color: #8f978f;
+  font-weight: 900;
+  margin: 0 6px;
 }
 
 .chat-message {
+  flex: 1 1 260px;
   display: inline-flex;
   align-items: center;
   min-width: 0;
-  margin-left: 4px;
 }
 
 .item-chat-media {

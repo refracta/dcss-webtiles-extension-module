@@ -309,7 +309,9 @@ function createItemEntityCard(entity) {
   time.className = "item-chat-time";
   time.textContent = formatDate(entity.timestamp);
 
-  const separator = document.createTextNode(": ");
+  const separator = document.createElement("span");
+  separator.className = "item-chat-separator";
+  separator.textContent = ":";
   const message = document.createElement("span");
   message.className = "chat-message";
 
