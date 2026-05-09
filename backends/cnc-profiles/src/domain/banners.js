@@ -12,6 +12,14 @@ export const BANNER_URLS = {
 export const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
 export const PSEUDO_CNC_RANKS = [1, 2, 3];
 export const PSEUDO_DONATOR_AMOUNTS = [20000, 40000, 60000, 80000, 100000];
+const RANKING_EXAMPLES = [
+  { id: "rank-1", title: "Trunk Game Ranking #1", rank: 1, serverRank: 1, score: 50000000 },
+  { id: "rank-2-3", title: "Trunk Game Ranking #2-3", rank: 2, serverRank: 2, score: 45000000 },
+  { id: "rank-4-10", title: "Trunk Game Ranking #4-10", rank: 4, serverRank: 4, score: 40000000 },
+  { id: "rank-11-25", title: "Trunk Game Ranking #11-25", rank: 11, serverRank: 11, score: 35000000 },
+  { id: "rank-26-50", title: "Trunk Game Ranking #26-50", rank: 26, serverRank: 26, score: 30000000 },
+  { id: "rank-51-100", title: "Trunk Game Ranking #51-100", rank: 51, serverRank: 51, score: 25000000 }
+];
 
 export const BANNER_DEFINITIONS = [
   {
@@ -85,11 +93,17 @@ export const BANNER_DEFINITIONS = [
   ...PSEUDO_DONATOR_AMOUNTS.map((amount, index) => createPseudoDonatorBanner(index + 1, amount))
 ];
 
-const ASCII_PHILIA_ADMIN_BANNER_IDS = [
+const BANNER_EXAMPLE_BANNER_IDS = [
   "bot",
   ...PSEUDO_CNC_RANKS.map((rank) => `pseudo-cnc-${rank}`),
   ...PSEUDO_DONATOR_AMOUNTS.map((_, index) => `pseudo-donator-${index + 1}`)
 ];
+
+const BANNER_EXAMPLE_BANNERS = [
+  ...BANNER_EXAMPLE_BANNER_IDS.map((id) => getBannerDefinition(id)),
+  createTranslatorBanner(5000),
+  ...RANKING_EXAMPLES.map((example) => createRankingExampleBanner(example))
+].filter(Boolean);
 
 export const INITIAL_PROFILES = [
   {
@@ -132,9 +146,9 @@ export const INITIAL_PROFILES = [
     username: "wtrec",
     banner: getBannerDefinition("bot")
   },
-  ...ASCII_PHILIA_ADMIN_BANNER_IDS.map((id) => ({
-    username: "ASCIIPhilia",
-    banner: getBannerDefinition(id)
+  ...BANNER_EXAMPLE_BANNERS.map((banner) => ({
+    username: "BannerExamples",
+    banner
   }))
 ];
 
@@ -219,6 +233,14 @@ export function createRankingBanner({ rank, serverRank, score }) {
         badge: getRankingBadge(safeServerRank)
       }
     }
+  };
+}
+
+function createRankingExampleBanner({ id, title, rank, serverRank, score }) {
+  return {
+    ...createRankingBanner({ rank, serverRank, score }),
+    id: `example-ranking-${id}`,
+    title
   };
 }
 

@@ -201,6 +201,13 @@ export class ProfileDatabase {
 
   #seedInitialProfiles() {
     const now = new Date();
+    const seedKeys = new Set(
+      INITIAL_PROFILES
+        .filter((seed) => seed.banner)
+        .map((seed) => getSeedKey(seed.username, seed.banner.id))
+    );
+
+    this.#pruneObsoleteSeedBanners(seedKeys, now);
 
     for (const seed of INITIAL_PROFILES) {
       if (!seed.banner) continue;
@@ -234,6 +241,29 @@ export class ProfileDatabase {
       }
     }
   }
+
+  #pruneObsoleteSeedBanners(seedKeys, now) {
+    for (const profile of Object.values(this.data.profiles)) {
+      let changed = false;
+
+      for (const [bannerId, source] of Object.entries(profile.sources ?? {})) {
+        if (source?.source !== "seed" || seedKeys.has(getSeedKey(profile.username, bannerId))) {
+          continue;
+        }
+
+        delete profile.banners[bannerId];
+        delete profile.sources[bannerId];
+        if (profile.currentBannerId === bannerId) {
+          profile.currentBannerId = null;
+        }
+        changed = true;
+      }
+
+      if (changed) {
+        this.touchProfile(profile, now);
+      }
+    }
+  }
 }
 
 export function normalizeUsername(value) {
@@ -242,6 +272,10 @@ export function normalizeUsername(value) {
 
 export function normalizeUsernameKey(value) {
   return normalizeUsername(value).toLocaleLowerCase("en-US");
+}
+
+function getSeedKey(username, bannerId) {
+  return `${normalizeUsernameKey(username)}\0${bannerId}`;
 }
 
 function normalizeBanners(value) {

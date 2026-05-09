@@ -28,19 +28,21 @@ test("seeds initial profiles preserving username casing", async () => {
   assert.equal(botProfile.banners.bot.usernameStyle.id, "bot");
   assert.equal(botProfile.banners.bot.usernameStyle.data.prefix, "🤖");
 
-  const adminProfile = database.getProfile("asciiphilia");
-  assert.equal(adminProfile.username, "ASCIIPhilia");
-  assert.equal(adminProfile.currentBannerId, "bot");
-  assert.equal(adminProfile.banners.bot.usernameStyle.id, "bot");
+  assert.equal(database.getProfile("asciiphilia"), null);
+
+  const exampleProfile = database.getProfile("bannerexamples");
+  assert.equal(exampleProfile.username, "BannerExamples");
+  assert.equal(exampleProfile.currentBannerId, "bot");
+  assert.equal(exampleProfile.banners.bot.usernameStyle.id, "bot");
   for (const rank of PSEUDO_CNC_RANKS) {
-    const banner = adminProfile.banners[`pseudo-cnc-${rank}`];
+    const banner = exampleProfile.banners[`pseudo-cnc-${rank}`];
     assert.equal(banner.title, getPseudoCncTitle(rank));
     assert.equal(banner.usernameStyle.id, "nemelex");
     assert.equal(banner.usernameStyle.data.split, rank);
     assert.deepEqual(banner.usernameStyle.data.colors, NEMELEX_COLORS);
   }
   for (const [index, amount] of PSEUDO_DONATOR_AMOUNTS.entries()) {
-    const banner = adminProfile.banners[`pseudo-donator-${index + 1}`];
+    const banner = exampleProfile.banners[`pseudo-donator-${index + 1}`];
     assert.equal(banner.title, `Pseudo Donator ${index + 1}`);
     assert.deepEqual(banner.detail, {
       label: "This month",
@@ -49,6 +51,20 @@ test("seeds initial profiles preserving username casing", async () => {
     assert.equal(banner.usernameStyle.id, "donator");
     assert.equal(banner.usernameStyle.data.donation, amount);
   }
+  assert.equal(exampleProfile.banners.translator.title, "Translation Contributor (5,000)");
+  assert.equal(exampleProfile.banners.translator.usernameStyle.id, "translator");
+  assert.equal(exampleProfile.banners.translator.usernameStyle.data.intensity, 1);
+  assert.deepEqual(
+    [
+      exampleProfile.banners["example-ranking-rank-1"].usernameStyle.data.badge,
+      exampleProfile.banners["example-ranking-rank-2-3"].usernameStyle.data.badge,
+      exampleProfile.banners["example-ranking-rank-4-10"].usernameStyle.data.badge,
+      exampleProfile.banners["example-ranking-rank-11-25"].usernameStyle.data.badge,
+      exampleProfile.banners["example-ranking-rank-26-50"].usernameStyle.data.badge,
+      exampleProfile.banners["example-ranking-rank-51-100"].usernameStyle.data.badge
+    ],
+    ["👑", "🏆", "🥇", "💎", "🌟", "⭐"]
+  );
 });
 
 test("manual none selection blocks auto equip", async () => {
@@ -99,6 +115,53 @@ test("updates seed-managed banners when definitions change", async () => {
 
   const profile = database.getProfile("WizardModePhilia");
   assert.deepEqual(profile.banners["wizard-account"].usernameStyle.data.colors, NEMELEX_COLORS);
+});
+
+test("removes obsolete seed-managed banners after moving examples", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "cnc-profiles-"));
+  const filePath = path.join(dir, "profiles.json");
+  const botBanner = getBannerDefinition("bot");
+
+  await writeFile(filePath, JSON.stringify({
+    schemaVersion: 1,
+    profiles: {
+      ASCIIPhilia: {
+        username: "ASCIIPhilia",
+        banners: {
+          bot: botBanner,
+          ranking: {
+            id: "ranking",
+            title: "Trunk Game Ranking #31",
+            url: "https://archive.nemelex.cards/meta/crawl-git?file=logfile",
+            usernameStyle: { id: "ranking", data: { rank: 31, serverRank: 13, badge: "💎" } }
+          }
+        },
+        currentBannerId: "bot",
+        selectionMode: "auto",
+        sources: {
+          bot: {
+            source: "seed",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          },
+          ranking: {
+            source: "watcher:logfile",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        },
+        createdAt: "2026-01-01T00:00:00.000Z",
+        lastUpdatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    }
+  }));
+
+  const database = new ProfileDatabase(filePath);
+  await database.init();
+
+  const profile = database.getProfile("ASCIIPhilia");
+  assert.equal(profile.banners.bot, undefined);
+  assert.equal(profile.sources.bot, undefined);
+  assert.ok(profile.banners.ranking);
+  assert.equal(profile.currentBannerId, null);
 });
 
 async function createDatabase() {
