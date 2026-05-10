@@ -1189,53 +1189,57 @@ function getBannerDetailLines(detail) {
 }
 
 function renderStyledUsername(username, usernameStyle) {
-  if (!usernameStyle) return escapeHtml(username);
+  if (!usernameStyle) return wrapStyledUsername(escapeHtml(username));
 
   if (usernameStyle.id === "nemelex") {
-    return createNemelexSpan(username, usernameStyle.data);
+    return wrapStyledUsername(createNemelexSpan(username, usernameStyle.data));
   }
 
   if (usernameStyle.id === "donor") {
-    return `<span style="${styleToText(getDonorStyle(usernameStyle.data?.donation))}">${escapeHtml(username)}</span>`;
+    return wrapStyledUsername(`<span style="${styleToText(getDonorStyle(usernameStyle.data?.donation))}">${escapeHtml(username)}</span>`);
   }
 
   if (usernameStyle.id === "translator") {
-    return `<span style="${styleToText(getTranslatorStyle(usernameStyle.data?.intensity))}">${escapeHtml(username)}</span>`;
+    return wrapStyledUsername(`<span style="${styleToText(getTranslatorStyle(usernameStyle.data?.intensity))}">${escapeHtml(username)}</span>`);
   }
 
   if (usernameStyle.id === "bot") {
-    return `${escapeHtml(usernameStyle.data?.prefix || "🤖")}${escapeHtml(username)}`;
+    return wrapStyledUsername(`${escapeHtml(usernameStyle.data?.prefix || "🤖")}${escapeHtml(username)}`);
   }
 
   if (usernameStyle.id === "ranking") {
-    return `${escapeHtml(usernameStyle.data?.badge || getRankingBadge(usernameStyle.data?.rank))}${escapeHtml(username)}`;
+    return wrapStyledUsername(`${escapeHtml(usernameStyle.data?.badge || getRankingBadge(usernameStyle.data?.rank))}${escapeHtml(username)}`);
   }
 
   if (usernameStyle.id === "fastest-win") {
-    return `${escapeHtml(usernameStyle.data?.badge || getFastestWinBadge(usernameStyle.data?.rank))}${escapeHtml(username)}`;
+    return wrapStyledUsername(`${escapeHtml(usernameStyle.data?.badge || getFastestWinBadge(usernameStyle.data?.rank))}${escapeHtml(username)}`);
   }
 
   if (usernameStyle.id === "dcss-contributor") {
-    return `${escapeHtml(usernameStyle.data?.badge || "🛠️")}${escapeHtml(username)}`;
+    return wrapStyledUsername(`${escapeHtml(usernameStyle.data?.badge || "🛠️")}${escapeHtml(username)}`);
   }
 
   if (usernameStyle.id === "osp-contributor") {
-    return createOspContributorSpan(username);
+    return wrapStyledUsername(createOspContributorSpan(username));
   }
 
   if (usernameStyle.id === "win-streak") {
-    return `${createWinStreakBadgeSpan(usernameStyle.data?.streak)}${escapeHtml(username)}`;
+    return wrapStyledUsername(`${createWinStreakBadgeSpan(usernameStyle.data?.streak)}${escapeHtml(username)}`);
   }
 
   if (usernameStyle.id === "current-win-streak") {
-    return `${createCurrentWinStreakBadgeSpan(usernameStyle.data?.streak)}${escapeHtml(username)}`;
+    return wrapStyledUsername(`${createCurrentWinStreakBadgeSpan(usernameStyle.data?.streak)}${escapeHtml(username)}`);
   }
 
   if (usernameStyle.id === "latest-tournament") {
-    return `${escapeHtml(usernameStyle.data?.badge || "🏁")}${escapeHtml(username)}`;
+    return wrapStyledUsername(`${escapeHtml(usernameStyle.data?.badge || "🏁")}${escapeHtml(username)}`);
   }
 
-  return escapeHtml(username);
+  return wrapStyledUsername(escapeHtml(username));
+}
+
+function wrapStyledUsername(content) {
+  return `<span style="display: inline-block; white-space: nowrap;">${content}</span>`;
 }
 
 function getRankingBadge(rank) {

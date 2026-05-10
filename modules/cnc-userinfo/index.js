@@ -297,7 +297,7 @@ export default class CNCUserinfo {
         this.trackProfileUsername(cleanUsername);
 
         const styledUsername = this.renderUsernameStyle(cleanUsername, profile?.currentBanner?.usernameStyle);
-        return `<span data-cnc-profile-username="${this.escapeHtml(cleanUsername)}" data-cnc-profile-key="${this.escapeHtml(key)}">${styledUsername}</span>`;
+        return `<span data-cnc-profile-username="${this.escapeHtml(cleanUsername)}" data-cnc-profile-key="${this.escapeHtml(key)}" style="display: inline-block; white-space: nowrap;">${styledUsername}</span>`;
     }
 
     renderUsernameStyle(username, usernameStyle) {
