@@ -414,15 +414,15 @@ export default class CNCUserinfo {
     getWinStreakBadgeStyle(streak) {
         const t = Math.max(0, Math.min(1, ((Number(streak) || 2) - 2) / 48));
         const heat = Math.pow(t, 0.72);
-        const glow = 2 + heat * 16;
-        const rim = this.mixColor('#a94418', '#fff1a8', heat);
-        const top = this.mixColor('#b84a18', '#fff27a', heat);
-        const middle = this.mixColor('#8f2111', '#ff3214', heat);
-        const bottom = this.mixColor('#2d0804', '#5c0300', heat);
-        const text = this.mixColor('#f2b463', '#ffffff', heat);
-        const highlightStop = 10 + heat * 18;
-        const fadeStop = 30 - heat * 8;
-        const middleStop = 60 - heat * 20;
+        const glow = 4 + heat * 14;
+        const rim = this.mixColor('#ffbf63', '#fff1a8', heat);
+        const top = this.mixColor('#ff9830', '#fff27a', heat);
+        const middle = this.mixColor('#e84a1a', '#ff3214', heat);
+        const bottom = this.mixColor('#93200d', '#5c0300', heat);
+        const text = this.mixColor('#fff0c2', '#ffffff', heat);
+        const highlightStop = 16 + heat * 12;
+        const fadeStop = 38 - heat * 12;
+        const middleStop = 58 - heat * 18;
         return {
             display: 'inline-flex',
             'align-items': 'center',
@@ -440,8 +440,8 @@ export default class CNCUserinfo {
             'vertical-align': '0.08em',
             border: `1px solid ${rim}`,
             'background-image': `radial-gradient(circle at 50% 8%, ${top} 0%, #ffd35b ${highlightStop}%, transparent ${fadeStop}%), linear-gradient(180deg, ${top} 0%, ${middle} ${middleStop}%, ${bottom} 100%)`,
-            'box-shadow': `0 -1px ${2 + heat * 7}px rgba(255, 235, 106, ${0.12 + heat * 0.78}), 0 0 ${glow}px rgba(255, 57, 18, ${0.18 + heat * 0.7}), inset 0 1px 0 rgba(255, 255, 255, ${0.12 + heat * 0.4})`,
-            filter: `saturate(${0.82 + heat * 0.9}) brightness(${0.82 + heat * 0.28})`,
+            'box-shadow': `0 -1px ${3 + heat * 6}px rgba(255, 235, 106, ${0.34 + heat * 0.56}), 0 0 ${glow}px rgba(255, 57, 18, ${0.28 + heat * 0.6}), inset 0 1px 0 rgba(255, 255, 255, ${0.24 + heat * 0.28})`,
+            filter: `saturate(${1 + heat * 0.65}) brightness(${1 + heat * 0.12})`,
             'text-shadow': '0 1px 1px rgba(68, 12, 0, 0.85)'
         };
     }
