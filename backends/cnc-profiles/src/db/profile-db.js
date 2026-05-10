@@ -213,12 +213,13 @@ export class ProfileDatabase {
       profile.createdAt ??= new Date().toISOString();
       profile.lastUpdatedAt ??= profile.createdAt;
       const donorMigrated = migrateLegacyDonorBanner(profile);
+      const tournamentMigrated = migrateLatestTournamentBannerDetails(profile);
 
       if (profile.currentBannerId && !profile.banners[profile.currentBannerId]) {
         profile.currentBannerId = null;
       }
 
-      if (donorMigrated) {
+      if (donorMigrated || tournamentMigrated) {
         this.touchProfile(profile, now);
       }
     }
@@ -395,4 +396,83 @@ function migrateLegacyDonorBannerFields(banner) {
   }
 
   return next;
+}
+
+function migrateLatestTournamentBannerDetails(profile) {
+  let changed = false;
+
+  for (const banner of Object.values(profile.banners ?? {})) {
+    if (banner?.id !== "latest-tournament" && banner?.usernameStyle?.id !== "latest-tournament") {
+      continue;
+    }
+
+    const detail = banner.detail ?? {};
+    const styleData = banner.usernameStyle?.data ?? {};
+    const rank = getPositiveInteger(styleData.rank, parseTournamentRank(detail.value), 1);
+    const score = getNonNegativeInteger(styleData.score, parseTournamentScore(detail.value), 0);
+    const clan = normalizeTournamentClan(styleData.clan || detail.subvalue);
+    const nextDetail = {
+      value: `#${rank.toLocaleString("en-US")}, Score: ${score.toLocaleString("en-US")}`,
+      subvalue: clan || "-"
+    };
+
+    if (JSON.stringify(detail) !== JSON.stringify(nextDetail)) {
+      banner.detail = nextDetail;
+      changed = true;
+    }
+
+    if (banner.usernameStyle?.id === "latest-tournament") {
+      banner.usernameStyle.data ??= {};
+      if (typeof banner.usernameStyle.data.clan === "string") {
+        const normalizedClan = normalizeTournamentClan(banner.usernameStyle.data.clan);
+        if (banner.usernameStyle.data.clan !== normalizedClan) {
+          banner.usernameStyle.data.clan = normalizedClan;
+          changed = true;
+        }
+      }
+    }
+  }
+
+  return changed;
+}
+
+function parseTournamentRank(value) {
+  return parseFormattedNumber(String(value ?? "").match(/#([\d,]+)/)?.[1]);
+}
+
+function parseTournamentScore(value) {
+  return parseFormattedNumber(String(value ?? "").match(/Score:\s*([\d,]+)/i)?.[1]);
+}
+
+function parseFormattedNumber(value) {
+  if (value === undefined) return null;
+  const number = Number(String(value).replaceAll(",", ""));
+  return Number.isFinite(number) ? number : null;
+}
+
+function getPositiveInteger(value, fallback, defaultValue) {
+  const number = Number(value);
+  if (Number.isFinite(number) && number > 0) {
+    return Math.floor(number);
+  }
+  if (Number.isFinite(fallback) && fallback > 0) {
+    return Math.floor(fallback);
+  }
+  return defaultValue;
+}
+
+function getNonNegativeInteger(value, fallback, defaultValue) {
+  const number = Number(value);
+  if (Number.isFinite(number) && number >= 0) {
+    return Math.floor(number);
+  }
+  if (Number.isFinite(fallback) && fallback >= 0) {
+    return Math.floor(fallback);
+  }
+  return defaultValue;
+}
+
+function normalizeTournamentClan(value) {
+  const clan = String(value ?? "").trim().replace(/^Clan:\s*/i, "").trim();
+  return clan === "-" ? "" : clan;
 }

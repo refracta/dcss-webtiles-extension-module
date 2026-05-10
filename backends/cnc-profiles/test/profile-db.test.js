@@ -49,8 +49,8 @@ test("seeds initial profiles preserving username casing", async () => {
   assert.equal(exampleProfile.banners["example-latest-tournament-rank-7"].title, "Latest Tournament (v0.34)");
   assert.equal(exampleProfile.banners["example-latest-tournament-rank-7"].url, "https://crawl.develz.org/tournament/0.34/players/bannerexamples.html");
   assert.deepEqual(exampleProfile.banners["example-latest-tournament-rank-7"].detail, {
-    value: "#7 Score: 7,654,321",
-    subvalue: "Clan: Nemelex Xobeh"
+    value: "#7, Score: 7,654,321",
+    subvalue: "Nemelex Xobeh"
   });
   assert.deepEqual(exampleProfile.banners["example-latest-tournament-rank-7"].usernameStyle, {
     id: "latest-tournament",
@@ -357,6 +357,62 @@ test("migrates legacy donator banners to donor preserving manual selection", asy
   assert.equal(profile.banners.donor.usernameStyle.id, "donor");
   assert.equal(profile.banners.donor.usernameStyle.data.donation, 30000);
   assert.equal(profile.sources.donor.source, "watcher:donation");
+});
+
+test("migrates legacy latest tournament banner detail text", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "cnc-profiles-"));
+  const filePath = path.join(dir, "profiles.json");
+
+  await writeFile(filePath, JSON.stringify({
+    schemaVersion: 1,
+    profiles: {
+      TournamentUser: {
+        username: "TournamentUser",
+        banners: {
+          "latest-tournament": {
+            id: "latest-tournament",
+            title: "Latest Tournament (v0.34)",
+            url: "https://crawl.develz.org/tournament/0.34/players/tournamentuser.html",
+            detail: {
+              value: "#7 Score: 7,654,321",
+              subvalue: "Clan: Nemelex Xobeh"
+            },
+            usernameStyle: {
+              id: "latest-tournament",
+              data: {
+                badge: "🏁",
+                version: "0.34",
+                rank: 7,
+                score: 7654321,
+                clan: "Nemelex Xobeh"
+              }
+            }
+          }
+        },
+        currentBannerId: "latest-tournament",
+        selectionMode: "manual",
+        sources: {
+          "latest-tournament": {
+            source: "watcher:tournament",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        },
+        createdAt: "2026-01-01T00:00:00.000Z",
+        lastUpdatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    }
+  }));
+
+  const database = new ProfileDatabase(filePath);
+  await database.init();
+
+  const profile = database.getProfile("TournamentUser");
+  assert.equal(profile.currentBannerId, "latest-tournament");
+  assert.deepEqual(profile.banners["latest-tournament"].detail, {
+    value: "#7, Score: 7,654,321",
+    subvalue: "Nemelex Xobeh"
+  });
+  assert.equal(profile.banners["latest-tournament"].usernameStyle.data.clan, "Nemelex Xobeh");
 });
 
 async function createDatabase() {

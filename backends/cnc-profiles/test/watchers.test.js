@@ -260,8 +260,8 @@ test("tournament watcher grants one latest tournament banner without removing ol
   assert.equal(await watcher.syncTournament(), true);
   const aliceBanner = database.getProfile("Alice").banners["latest-tournament"];
   assert.equal(aliceBanner.title, "Latest Tournament (v0.34)");
-  assert.equal(aliceBanner.detail.value, "#1 Score: 125,695");
-  assert.equal(aliceBanner.detail.subvalue, "Clan: Bane of Ogre");
+  assert.equal(aliceBanner.detail.value, "#1, Score: 125,695");
+  assert.equal(aliceBanner.detail.subvalue, "Bane of Ogre");
   assert.deepEqual(aliceBanner.usernameStyle, {
     id: "latest-tournament",
     data: {
@@ -277,7 +277,7 @@ test("tournament watcher grants one latest tournament banner without removing ol
   assert.equal(await watcher.syncTournament(), true);
   assert.equal(database.getProfile("Alice").banners["latest-tournament"].title, "Latest Tournament (v0.34)");
   assert.equal(database.getProfile("Bob").banners["latest-tournament"].title, "Latest Tournament (v0.35)");
-  assert.equal(database.getProfile("Bob").banners["latest-tournament"].detail.value, "#1 Score: 130,000");
+  assert.equal(database.getProfile("Bob").banners["latest-tournament"].detail.value, "#1, Score: 130,000");
 });
 
 test("logfile watcher ranks best scores from range deltas", async () => {

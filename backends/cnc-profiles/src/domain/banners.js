@@ -480,8 +480,8 @@ function createWinStreakDetail(streak) {
 
 function createTournamentDetail({ rank, score, clan }) {
   return {
-    value: `#${rank.toLocaleString("en-US")} Score: ${score.toLocaleString("en-US")}`,
-    subvalue: `Clan: ${clan || "-"}`
+    value: `#${rank.toLocaleString("en-US")}, Score: ${score.toLocaleString("en-US")}`,
+    subvalue: clan || "-"
   };
 }
 
