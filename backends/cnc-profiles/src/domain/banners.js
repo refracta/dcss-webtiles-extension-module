@@ -361,8 +361,13 @@ export function createCurrentWinStreakBanner({ streak }) {
   };
 }
 
-export function createDcssContributorBanner() {
-  return getBannerDefinition("dcss-contributor");
+export function createDcssContributorBanner({ lineNumber } = {}) {
+  const banner = getBannerDefinition("dcss-contributor");
+  const safeLineNumber = Math.floor(Number(lineNumber) || 0);
+  if (safeLineNumber > 0) {
+    banner.url = `${BANNER_URLS.credits}#L${safeLineNumber}`;
+  }
+  return banner;
 }
 
 export function createOspContributorBanner(count) {

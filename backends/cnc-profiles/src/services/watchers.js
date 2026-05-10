@@ -139,12 +139,12 @@ export class WatcherService {
       throw new Error(`Credits watcher failed: ${response.status}`);
     }
 
-    const names = parseCreditsContributorNames(await response.text());
+    const entries = parseCreditsContributorEntries(await response.text());
     return this.#replaceManagedBanners({
       source: WATCHER_SOURCES.credits,
       bannerId: "dcss-contributor",
-      activeEntries: names.map((username) => ({ username })),
-      createBanner: () => createDcssContributorBanner()
+      activeEntries: entries,
+      createBanner: (entry) => createDcssContributorBanner({ lineNumber: entry.lineNumber })
     });
   }
 
@@ -761,34 +761,38 @@ function parseLogfileLine(line) {
   return username ? { username, score, durationSeconds, isWin } : null;
 }
 
-export function parseCreditsContributorNames(text) {
-  const names = new Map();
+export function parseCreditsContributorEntries(text) {
+  const entries = new Map();
 
-  const addName = (name) => {
+  const addName = (name, lineNumber) => {
     const cleaned = cleanCreditName(name);
     const key = normalizeUsernameKey(cleaned);
-    if (key && !names.has(key)) {
-      names.set(key, cleaned);
+    if (key && !entries.has(key)) {
+      entries.set(key, {
+        username: cleaned,
+        lineNumber
+      });
     }
   };
 
-  const addNameCandidates = (value) => {
+  const addNameCandidates = (value, lineNumber) => {
     const cleaned = cleanCreditName(value);
     if (!cleaned) return;
 
     for (const alias of extractQuotedAliases(cleaned)) {
-      addName(alias);
+      addName(alias, lineNumber);
     }
 
     for (const part of splitCreditNameList(cleaned)) {
-      addName(part);
+      addName(part, lineNumber);
     }
   };
 
-  for (const rawLine of String(text ?? "").split(/\r?\n/)) {
+  for (const [index, rawLine] of String(text ?? "").split(/\r?\n/).entries()) {
+    const lineNumber = index + 1;
     const line = rawLine.replace(/^\uFEFF/, "");
     if (/^\s{4,}\S/.test(line)) {
-      addNameCandidates(line.trim());
+      addNameCandidates(line.trim(), lineNumber);
       continue;
     }
 
@@ -799,11 +803,15 @@ export function parseCreditsContributorNames(text) {
     if (!lead || /^(Additional|Members|Other|The)\b/i.test(lead)) continue;
 
     for (const part of lead.split(/\s+and\s+/i)) {
-      addNameCandidates(part);
+      addNameCandidates(part, lineNumber);
     }
   }
 
-  return [...names.values()].sort((a, b) => a.localeCompare(b, "en-US"));
+  return [...entries.values()].sort((a, b) => a.username.localeCompare(b.username, "en-US"));
+}
+
+export function parseCreditsContributorNames(text) {
+  return parseCreditsContributorEntries(text).map((entry) => entry.username);
 }
 
 function cleanCreditName(value) {

@@ -6,6 +6,7 @@ import test from "node:test";
 import { ProfileDatabase } from "../src/db/profile-db.js";
 import {
   WatcherService,
+  parseCreditsContributorEntries,
   parseCreditsContributorNames,
   parseLatestTournamentVersion,
   parseOspContributorEntries,
@@ -149,14 +150,30 @@ test("credits watcher grants DCSS contributor banners from credits text", async 
     "William Tanksley, Jr.",
     "Zkyp"
   ]);
+  assert.deepEqual(parseCreditsContributorEntries(credits), [
+    { username: "ASCIIPhilia", lineNumber: 6 },
+    { username: "Baconkid", lineNumber: 8 },
+    { username: "Darshan Shaligram", lineNumber: 4 },
+    { username: "Erik Piper", lineNumber: 4 },
+    { username: "Linley Henzell", lineNumber: 3 },
+    { username: "Medar", lineNumber: 7 },
+    { username: "ploomutoo", lineNumber: 9 },
+    { username: "valerie \"ploomutoo\"", lineNumber: 9 },
+    { username: "Vitor 'Baconkid' Costa", lineNumber: 8 },
+    { username: "William Tanksley, Jr.", lineNumber: 10 },
+    { username: "Zkyp", lineNumber: 7 }
+  ]);
 
   assert.equal(await watcher.syncCredits(), true);
   const banner = database.getProfile("ASCIIPhilia").banners["dcss-contributor"];
   assert.equal(banner.title, "DCSS Contributor\nfrom CREDITS.txt");
-  assert.equal(banner.url, "https://github.com/crawl/crawl/blob/master/crawl-ref/CREDITS.txt");
+  assert.equal(banner.url, "https://github.com/crawl/crawl/blob/master/crawl-ref/CREDITS.txt#L6");
   assert.equal(banner.usernameStyle.id, "dcss-contributor");
   assert.equal(banner.usernameStyle.data.badge, "🛠️");
-  assert.ok(database.getProfile("Baconkid").banners["dcss-contributor"]);
+  assert.equal(
+    database.getProfile("Baconkid").banners["dcss-contributor"].url,
+    "https://github.com/crawl/crawl/blob/master/crawl-ref/CREDITS.txt#L8"
+  );
 
   const emptyWatcher = new WatcherService({
     database,
