@@ -163,7 +163,7 @@ export default class CNCUserinfo {
     // PROJECT_A: Nemelex colors from CNCBanner, sorted
     static NEMELEX_COLORS = ['#008cc0', '#009800', '#8000ff', '#cad700', '#ff4000'];
     static PROFILE_API_BASE = 'https://profiles.nemelex.cards';
-    static PROFILE_ACTIVE_FETCH_MS = 1000;
+    static PROFILE_ACTIVE_FETCH_MS = 250;
     static PROFILE_IDLE_FETCH_MS = 30000;
 
     open(username, event) {
