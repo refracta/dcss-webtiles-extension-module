@@ -22,6 +22,7 @@ export class ProfileDatabase {
     this.filePath = filePath;
     this.db = null;
     this.profileKeyIndex = new Map();
+    this.profileKeyIndexReady = false;
   }
 
   async init() {
@@ -56,13 +57,19 @@ export class ProfileDatabase {
     const target = normalizeUsernameKey(username);
     if (!target) return null;
 
+    if (!this.profileKeyIndexReady) {
+      this.#rebuildProfileKeyIndex();
+    }
+
     const cachedKey = this.profileKeyIndex.get(target);
     if (cachedKey && this.data.profiles[cachedKey]) {
       return cachedKey;
     }
 
-    this.#rebuildProfileKeyIndex();
-    return this.profileKeyIndex.get(target) ?? null;
+    if (cachedKey) {
+      this.profileKeyIndex.delete(target);
+    }
+    return null;
   }
 
   getProfile(username) {
@@ -224,6 +231,7 @@ export class ProfileDatabase {
     for (const [key, profile] of Object.entries(this.data.profiles ?? {})) {
       this.#rememberProfileKey(key, profile?.username || key);
     }
+    this.profileKeyIndexReady = true;
   }
 
   #rememberProfileKey(profileKey, username) {
