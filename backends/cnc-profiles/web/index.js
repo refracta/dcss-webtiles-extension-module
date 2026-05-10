@@ -1209,7 +1209,7 @@ function renderStyledUsername(username, usernameStyle) {
   }
 
   if (usernameStyle.id === "win-streak") {
-    return `${escapeHtml(getWinStreakBadge(usernameStyle.data?.streak))}${escapeHtml(username)}`;
+    return `${createWinStreakBadgeSpan(usernameStyle.data?.streak)}${escapeHtml(username)}`;
   }
 
   if (usernameStyle.id === "latest-tournament") {
@@ -1239,24 +1239,39 @@ function getFastestWinBadge(rank) {
   return "";
 }
 
-function getWinStreakBadge(streak) {
+function createWinStreakBadgeSpan(streak) {
   const safeStreak = Math.max(1, Math.floor(Number(streak) || 1));
-  const keycaps = {
-    0: "0️⃣",
-    1: "1️⃣",
-    2: "2️⃣",
-    3: "3️⃣",
-    4: "4️⃣",
-    5: "5️⃣",
-    6: "6️⃣",
-    7: "7️⃣",
-    8: "8️⃣",
-    9: "9️⃣"
+  return `<span aria-label="${safeStreak} win streak" title="${safeStreak} win streak" style="${styleToText(getWinStreakBadgeStyle(safeStreak))}">${safeStreak.toLocaleString("en-US")}</span>`;
+}
+
+function getWinStreakBadgeStyle(streak) {
+  const t = Math.max(0, Math.min(1, (Math.log2(Math.max(2, Number(streak) || 2)) - 1) / (Math.log2(100) - 1)));
+  const glow = 3 + t * 9;
+  const rim = mixColor("#ffbf5a", "#fff0a6", t);
+  const top = mixColor("#ffb24d", "#fff078", t);
+  const middle = mixColor("#f05a22", "#ff3b12", t);
+  const bottom = mixColor("#8a1c0d", "#3f0703", t);
+  const text = mixColor("#fff4cd", "#ffffff", t);
+  return {
+    display: "inline-flex",
+    "align-items": "center",
+    "justify-content": "center",
+    "min-width": "1.7em",
+    height: "1.25em",
+    padding: "0 0.34em",
+    "margin-right": "0.18em",
+    "border-radius": "999px 999px 760px 760px",
+    color: text,
+    "font-size": "0.78em",
+    "font-weight": "900",
+    "line-height": "1",
+    "letter-spacing": "0",
+    "vertical-align": "0.08em",
+    border: `1px solid ${rim}`,
+    "background-image": `radial-gradient(circle at 50% 12%, ${top} 0%, #ffcf4d ${16 + t * 8}%, transparent ${40 - t * 8}%), linear-gradient(180deg, ${top} 0%, ${middle} ${48 - t * 8}%, ${bottom} 100%)`,
+    "box-shadow": `0 -1px ${3 + t * 4}px rgba(255, 232, 112, ${0.48 + t * 0.42}), 0 0 ${glow}px rgba(255, 68, 18, ${0.36 + t * 0.42}), inset 0 1px 0 rgba(255, 255, 255, ${0.28 + t * 0.24})`,
+    "text-shadow": "0 1px 1px rgba(68, 12, 0, 0.85)"
   };
-  return String(safeStreak)
-    .split("")
-    .map((digit) => keycaps[digit] || digit)
-    .join("");
 }
 
 function createOspContributorSpan(username) {
