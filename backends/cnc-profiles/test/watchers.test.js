@@ -327,7 +327,7 @@ test("logfile watcher ranks best scores from range deltas", async () => {
 
 test("logfile watcher ranks fastest winning games by real time", async () => {
   const database = await createDatabase();
-  const logfile = [
+  let logfile = [
     createLogLine("SlowWinner", 5000, { ktyp: "winning", dur: 8000 }),
     createLogLine("FastWinner", 1000, { ktyp: "winning", dur: 3600 }),
     createLogLine("FastWinner", 900, { ktyp: "winning", dur: 4000 }),
@@ -361,7 +361,7 @@ test("logfile watcher ranks fastest winning games by real time", async () => {
 
 test("logfile watcher grants best win streak banners and breaks on non-wins", async () => {
   const database = await createDatabase();
-  const logfile = [
+  let logfile = [
     createLogLine("Alice", 1000, { ktyp: "winning" }),
     createLogLine("Alice", 2000, { ktyp: "winning" }),
     createLogLine("Alice", 100, { ktyp: "quitting" }),
@@ -372,10 +372,11 @@ test("logfile watcher grants best win streak banners and breaks on non-wins", as
     createLogLine("Carol", 1000, { ktyp: "winning" }),
     createLogLine("Carol", 500, { ktyp: "mon" })
   ].join("\n") + "\n";
+  const requests = [];
   const watcher = new WatcherService({
     database,
     config: createConfig({ logfile: { limit: 100, streakMin: 2 } }),
-    fetchImpl: createLogfileFetch(() => logfile)
+    fetchImpl: createLogfileFetch(() => logfile, requests)
   });
 
   assert.equal(await watcher.syncLogfile(), true);
@@ -389,13 +390,28 @@ test("logfile watcher grants best win streak banners and breaks on non-wins", as
   assert.equal(bobBanner.detail.value, "Best Streak: 3 wins");
   assert.deepEqual(bobBanner.usernameStyle, { id: "win-streak", data: { streak: 3 } });
 
+  assert.equal(database.getProfile("Alice").banners["current-win-streak"], undefined);
+  const bobCurrentBanner = database.getProfile("Bob").banners["current-win-streak"];
+  assert.equal(bobCurrentBanner.title, "Trunk Win Streak");
+  assert.equal(bobCurrentBanner.detail.value, "Current Streak: 3 wins");
+  assert.deepEqual(bobCurrentBanner.usernameStyle, { id: "win-streak", data: { streak: 3 } });
+
   assert.equal(database.getProfile("Carol").banners["win-streak"], undefined);
+  assert.equal(database.getProfile("Carol").banners["current-win-streak"], undefined);
   assert.equal(database.data.watcherState.logfile.streakPlayers.alice.currentStreak, 1);
   assert.equal(database.data.watcherState.logfile.streakPlayers.alice.bestStreak, 2);
   assert.equal(database.data.watcherState.logfile.streakPlayers.bob.currentStreak, 3);
   assert.equal(database.data.watcherState.logfile.streakPlayers.bob.bestStreak, 3);
   assert.equal(database.data.watcherState.logfile.streakPlayers.carol.currentStreak, 0);
   assert.equal(database.data.watcherState.logfile.streakPlayers.carol.bestStreak, 1);
+
+  const offset = database.data.watcherState.logfile.offset;
+  logfile += createLogLine("Bob", 100, { ktyp: "quitting" }) + "\n";
+
+  assert.equal(await watcher.syncLogfile(), true);
+  assert.equal(requests.at(-1)?.range, `bytes=${offset}-`);
+  assert.equal(database.getProfile("Bob").banners["win-streak"].detail.value, "Best Streak: 3 wins");
+  assert.equal(database.getProfile("Bob").banners["current-win-streak"], undefined);
 });
 
 test("logfile watcher uses the best game rank for duplicate player entries", async () => {

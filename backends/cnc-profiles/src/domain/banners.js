@@ -31,6 +31,7 @@ const FASTEST_WIN_EXAMPLES = [
   { id: "rank-6-10", serverRankLabel: "#6-#10", rank: 6, serverRank: 6, durationSeconds: 10800 }
 ];
 const WIN_STREAK_EXAMPLES = [2, 5, 10, 50];
+const CURRENT_WIN_STREAK_EXAMPLES = [2, 5, 10, 50];
 const LATEST_TOURNAMENT_EXAMPLES = [
   { id: "rank-7", version: "0.34", rank: 7, score: 7654321, clan: "Nemelex Xobeh" }
 ];
@@ -117,6 +118,13 @@ export const BANNER_DEFINITIONS = [
     usernameStyle: { id: "win-streak", data: { streak: 1 } }
   },
   {
+    id: "current-win-streak",
+    title: "Trunk Win Streak",
+    url: BANNER_URLS.logfileViewer,
+    detail: createCurrentWinStreakDetail(1),
+    usernameStyle: { id: "win-streak", data: { streak: 1 } }
+  },
+  {
     id: "dcss-contributor",
     title: "DCSS Contributor\nfrom CREDITS.txt",
     url: BANNER_URLS.credits,
@@ -153,7 +161,8 @@ const BANNER_EXAMPLE_BANNERS = [
   ...LATEST_TOURNAMENT_EXAMPLES.map((example) => createLatestTournamentExampleBanner(example)),
   ...RANKING_EXAMPLES.map((example) => createRankingExampleBanner(example)),
   ...FASTEST_WIN_EXAMPLES.map((example) => createFastestWinExampleBanner(example)),
-  ...WIN_STREAK_EXAMPLES.map((streak) => createWinStreakExampleBanner(streak))
+  ...WIN_STREAK_EXAMPLES.map((streak) => createWinStreakExampleBanner(streak)),
+  ...CURRENT_WIN_STREAK_EXAMPLES.map((streak) => createCurrentWinStreakExampleBanner(streak))
 ].filter(Boolean).sort(compareBannerByTitle);
 
 export const INITIAL_PROFILES = [
@@ -336,6 +345,22 @@ export function createWinStreakBanner({ streak }) {
   };
 }
 
+export function createCurrentWinStreakBanner({ streak }) {
+  const safeStreak = Math.max(1, Math.floor(Number(streak) || 1));
+  return {
+    id: "current-win-streak",
+    title: "Trunk Win Streak",
+    url: BANNER_URLS.logfileViewer,
+    detail: createCurrentWinStreakDetail(safeStreak),
+    usernameStyle: {
+      id: "win-streak",
+      data: {
+        streak: safeStreak
+      }
+    }
+  };
+}
+
 export function createDcssContributorBanner() {
   return getBannerDefinition("dcss-contributor");
 }
@@ -416,6 +441,13 @@ function createWinStreakExampleBanner(streak) {
   };
 }
 
+function createCurrentWinStreakExampleBanner(streak) {
+  return {
+    ...createCurrentWinStreakBanner({ streak }),
+    id: `example-current-win-streak-${streak}`
+  };
+}
+
 function createOspContributorExampleBanner(count) {
   return {
     ...createOspContributorBanner(count),
@@ -475,6 +507,12 @@ function createDonationDetail(donation) {
 function createWinStreakDetail(streak) {
   return {
     value: `Best Streak: ${streak.toLocaleString("en-US")} ${streak === 1 ? "win" : "wins"}`
+  };
+}
+
+function createCurrentWinStreakDetail(streak) {
+  return {
+    value: `Current Streak: ${streak.toLocaleString("en-US")} ${streak === 1 ? "win" : "wins"}`
   };
 }
 

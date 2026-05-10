@@ -1,4 +1,5 @@
 import {
+  createCurrentWinStreakBanner,
   createDcssContributorBanner,
   createDonorBanner,
   createFastestWinBanner,
@@ -577,6 +578,16 @@ export class WatcherService {
       }));
   }
 
+  #getCurrentWinStreakEntries(state, streakMin) {
+    return Object.values(state.streakPlayers ?? {})
+      .filter((entry) => entry?.username && Number(entry.currentStreak) >= streakMin)
+      .sort(compareCurrentWinStreakPlayers)
+      .map((entry) => ({
+        username: entry.username,
+        streak: Number(entry.currentStreak)
+      }));
+  }
+
   #replaceLogfileBannersFromState(state, { limit, gameLimit, fastestLimit, fastestGameLimit, streakMin }) {
     this.#pruneLogfileGames(state, gameLimit);
     this.#pruneFastestWinGames(state, fastestGameLimit);
@@ -598,7 +609,13 @@ export class WatcherService {
       activeEntries: this.#getWinStreakEntries(state, streakMin),
       createBanner: (entry) => createWinStreakBanner(entry)
     });
-    return rankingChanged || fastestChanged || streakChanged;
+    const currentStreakChanged = this.#replaceManagedBanners({
+      source: WATCHER_SOURCES.logfile,
+      bannerId: "current-win-streak",
+      activeEntries: this.#getCurrentWinStreakEntries(state, streakMin),
+      createBanner: (entry) => createCurrentWinStreakBanner(entry)
+    });
+    return rankingChanged || fastestChanged || streakChanged || currentStreakChanged;
   }
 }
 
@@ -632,6 +649,12 @@ function compareFastestWinGames(a, b) {
 
 function compareWinStreakPlayers(a, b) {
   return Number(b.bestStreak) - Number(a.bestStreak) ||
+    Number(a.order ?? 0) - Number(b.order ?? 0) ||
+    String(a.username).localeCompare(String(b.username));
+}
+
+function compareCurrentWinStreakPlayers(a, b) {
+  return Number(b.currentStreak) - Number(a.currentStreak) ||
     Number(a.order ?? 0) - Number(b.order ?? 0) ||
     String(a.username).localeCompare(String(b.username));
 }
