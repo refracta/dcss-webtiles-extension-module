@@ -179,30 +179,31 @@ test("seeds initial profiles preserving username casing", async () => {
   );
   assert.deepEqual(
     [
-      exampleProfile.banners["example-win-streak-1"].detail.value,
+      exampleProfile.banners["example-win-streak-2"].detail.value,
       exampleProfile.banners["example-win-streak-5"].detail.value,
       exampleProfile.banners["example-win-streak-10"].detail.value,
-      exampleProfile.banners["example-win-streak-100"].detail.value
+      exampleProfile.banners["example-win-streak-50"].detail.value
     ],
     [
-      "Best Streak: 1 win",
+      "Best Streak: 2 wins",
       "Best Streak: 5 wins",
       "Best Streak: 10 wins",
-      "Best Streak: 100 wins"
+      "Best Streak: 50 wins"
     ]
   );
+  assert.equal(exampleProfile.banners["example-win-streak-1"], undefined);
   assert.deepEqual(
     [
-      exampleProfile.banners["example-win-streak-1"].usernameStyle,
+      exampleProfile.banners["example-win-streak-2"].usernameStyle,
       exampleProfile.banners["example-win-streak-5"].usernameStyle,
       exampleProfile.banners["example-win-streak-10"].usernameStyle,
-      exampleProfile.banners["example-win-streak-100"].usernameStyle
+      exampleProfile.banners["example-win-streak-50"].usernameStyle
     ],
     [
-      { id: "win-streak", data: { streak: 1 } },
+      { id: "win-streak", data: { streak: 2 } },
       { id: "win-streak", data: { streak: 5 } },
       { id: "win-streak", data: { streak: 10 } },
-      { id: "win-streak", data: { streak: 100 } }
+      { id: "win-streak", data: { streak: 50 } }
     ]
   );
 

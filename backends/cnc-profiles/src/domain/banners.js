@@ -30,7 +30,7 @@ const FASTEST_WIN_EXAMPLES = [
   { id: "rank-4-5", serverRankLabel: "#4-#5", rank: 4, serverRank: 4, durationSeconds: 9000 },
   { id: "rank-6-10", serverRankLabel: "#6-#10", rank: 6, serverRank: 6, durationSeconds: 10800 }
 ];
-const WIN_STREAK_EXAMPLES = [1, 5, 10, 100];
+const WIN_STREAK_EXAMPLES = [2, 5, 10, 50];
 const LATEST_TOURNAMENT_EXAMPLES = [
   { id: "rank-7", version: "0.34", rank: 7, score: 7654321, clan: "Nemelex Xobeh" }
 ];

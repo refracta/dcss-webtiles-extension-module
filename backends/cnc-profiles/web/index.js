@@ -1245,13 +1245,17 @@ function createWinStreakBadgeSpan(streak) {
 }
 
 function getWinStreakBadgeStyle(streak) {
-  const t = Math.max(0, Math.min(1, (Math.log2(Math.max(2, Number(streak) || 2)) - 1) / (Math.log2(100) - 1)));
-  const glow = 3 + t * 9;
-  const rim = mixColor("#ffbf5a", "#fff0a6", t);
-  const top = mixColor("#ffb24d", "#fff078", t);
-  const middle = mixColor("#f05a22", "#ff3b12", t);
-  const bottom = mixColor("#8a1c0d", "#3f0703", t);
-  const text = mixColor("#fff4cd", "#ffffff", t);
+  const t = Math.max(0, Math.min(1, ((Number(streak) || 2) - 2) / 48));
+  const heat = Math.pow(t, 0.72);
+  const glow = 2 + heat * 16;
+  const rim = mixColor("#a94418", "#fff1a8", heat);
+  const top = mixColor("#b84a18", "#fff27a", heat);
+  const middle = mixColor("#8f2111", "#ff3214", heat);
+  const bottom = mixColor("#2d0804", "#5c0300", heat);
+  const text = mixColor("#f2b463", "#ffffff", heat);
+  const highlightStop = 10 + heat * 18;
+  const fadeStop = 30 - heat * 8;
+  const middleStop = 60 - heat * 20;
   return {
     display: "inline-flex",
     "align-items": "center",
@@ -1268,8 +1272,9 @@ function getWinStreakBadgeStyle(streak) {
     "letter-spacing": "0",
     "vertical-align": "0.08em",
     border: `1px solid ${rim}`,
-    "background-image": `radial-gradient(circle at 50% 12%, ${top} 0%, #ffcf4d ${16 + t * 8}%, transparent ${40 - t * 8}%), linear-gradient(180deg, ${top} 0%, ${middle} ${48 - t * 8}%, ${bottom} 100%)`,
-    "box-shadow": `0 -1px ${3 + t * 4}px rgba(255, 232, 112, ${0.48 + t * 0.42}), 0 0 ${glow}px rgba(255, 68, 18, ${0.36 + t * 0.42}), inset 0 1px 0 rgba(255, 255, 255, ${0.28 + t * 0.24})`,
+    "background-image": `radial-gradient(circle at 50% 8%, ${top} 0%, #ffd35b ${highlightStop}%, transparent ${fadeStop}%), linear-gradient(180deg, ${top} 0%, ${middle} ${middleStop}%, ${bottom} 100%)`,
+    "box-shadow": `0 -1px ${2 + heat * 7}px rgba(255, 235, 106, ${0.12 + heat * 0.78}), 0 0 ${glow}px rgba(255, 57, 18, ${0.18 + heat * 0.7}), inset 0 1px 0 rgba(255, 255, 255, ${0.12 + heat * 0.4})`,
+    filter: `saturate(${0.82 + heat * 0.9}) brightness(${0.82 + heat * 0.28})`,
     "text-shadow": "0 1px 1px rgba(68, 12, 0, 0.85)"
   };
 }
