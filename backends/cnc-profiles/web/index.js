@@ -1239,7 +1239,7 @@ function renderStyledUsername(username, usernameStyle) {
 }
 
 function wrapStyledUsername(content) {
-  return `<span style="display: inline-block; white-space: nowrap;">${content}</span>`;
+  return `<span style="white-space: nowrap;">${content}</span>`;
 }
 
 function getRankingBadge(rank) {
