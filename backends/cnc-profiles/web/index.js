@@ -1087,20 +1087,31 @@ function getEntityPageElement(scope, type) {
 }
 
 function createBannerButton(profile, banner) {
-  const button = document.createElement("button");
-  button.className = "banner-button";
-  button.type = "button";
-  button.dataset.active = String(profile.currentBannerId === banner.id);
-  button.addEventListener("click", () => selectBanner(banner.id));
+  const card = document.createElement("article");
+  card.className = "banner-button";
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-pressed", String(profile.currentBannerId === banner.id));
+  card.dataset.active = String(profile.currentBannerId === banner.id);
+  card.addEventListener("click", (event) => {
+    if (isBannerTitleLinkEvent(event)) return;
+    selectBanner(banner.id);
+  });
+  card.addEventListener("keydown", (event) => {
+    if (isBannerTitleLinkEvent(event)) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    selectBanner(banner.id);
+  });
 
-  const titleRow = createBannerTitleRow(banner);
+  const titleRow = createBannerTitleRow(banner, { linkTitle: true });
 
   const preview = document.createElement("span");
   preview.className = "banner-preview";
   preview.innerHTML = renderStyledUsername(profile.username, banner.usernameStyle);
 
-  button.append(titleRow, preview);
-  return button;
+  card.append(titleRow, preview);
+  return card;
 }
 
 function createPublicBannerCard(profile, banner) {
@@ -1141,6 +1152,10 @@ function createBannerTitleRow(banner, { linkTitle = false } = {}) {
   }
 
   return row;
+}
+
+function isBannerTitleLinkEvent(event) {
+  return event.target instanceof Element && Boolean(event.target.closest(".banner-title[href]"));
 }
 
 function getBannerTitleParts(banner) {

@@ -216,6 +216,11 @@ select:focus {
   box-shadow: inset 0 0 0 2px rgba(35, 97, 77, 0.18);
 }
 
+.banner-button:focus-visible {
+  outline: 2px solid rgba(35, 97, 77, 0.32);
+  outline-offset: 2px;
+}
+
 .banner-title-row {
   display: grid;
   gap: 3px;
