@@ -48,6 +48,9 @@ test("seeds initial profiles preserving username casing", async () => {
   });
   assert.equal(exampleProfile.banners["example-latest-tournament-rank-7"].title, "Latest Tournament (v0.34)");
   assert.equal(exampleProfile.banners["example-latest-tournament-rank-7"].url, "https://crawl.develz.org/tournament/0.34/players/bannerexamples.html");
+  assert.deepEqual(getBannerDefinition("latest-tournament").detail, {
+    value: "#1, Score: 0"
+  });
   assert.deepEqual(exampleProfile.banners["example-latest-tournament-rank-7"].detail, {
     value: "#7, Score: 7,654,321",
     subvalue: "Nemelex Xobeh"
@@ -399,6 +402,40 @@ test("migrates legacy latest tournament banner detail text", async () => {
         },
         createdAt: "2026-01-01T00:00:00.000Z",
         lastUpdatedAt: "2026-01-01T00:00:00.000Z"
+      },
+      NoClanTournamentUser: {
+        username: "NoClanTournamentUser",
+        banners: {
+          "latest-tournament": {
+            id: "latest-tournament",
+            title: "Latest Tournament (v0.34)",
+            url: "https://crawl.develz.org/tournament/0.34/players/noclantournamentuser.html",
+            detail: {
+              value: "#8 Score: 6,543,210",
+              subvalue: "-"
+            },
+            usernameStyle: {
+              id: "latest-tournament",
+              data: {
+                badge: "🏁",
+                version: "0.34",
+                rank: 8,
+                score: 6543210,
+                clan: ""
+              }
+            }
+          }
+        },
+        currentBannerId: "latest-tournament",
+        selectionMode: "manual",
+        sources: {
+          "latest-tournament": {
+            source: "watcher:tournament",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        },
+        createdAt: "2026-01-01T00:00:00.000Z",
+        lastUpdatedAt: "2026-01-01T00:00:00.000Z"
       }
     }
   }));
@@ -413,6 +450,12 @@ test("migrates legacy latest tournament banner detail text", async () => {
     subvalue: "Nemelex Xobeh"
   });
   assert.equal(profile.banners["latest-tournament"].usernameStyle.data.clan, "Nemelex Xobeh");
+
+  const noClanProfile = database.getProfile("NoClanTournamentUser");
+  assert.deepEqual(noClanProfile.banners["latest-tournament"].detail, {
+    value: "#8, Score: 6,543,210"
+  });
+  assert.equal(noClanProfile.banners["latest-tournament"].usernameStyle.data.clan, "");
 });
 
 async function createDatabase() {

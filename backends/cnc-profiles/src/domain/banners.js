@@ -479,10 +479,13 @@ function createWinStreakDetail(streak) {
 }
 
 function createTournamentDetail({ rank, score, clan }) {
-  return {
-    value: `#${rank.toLocaleString("en-US")}, Score: ${score.toLocaleString("en-US")}`,
-    subvalue: clan || "-"
+  const detail = {
+    value: `#${rank.toLocaleString("en-US")}, Score: ${score.toLocaleString("en-US")}`
   };
+  if (clan) {
+    detail.subvalue = clan;
+  }
+  return detail;
 }
 
 export function createTranslatorBanner(score, { threshold = 500, maxScore = 5000 } = {}) {

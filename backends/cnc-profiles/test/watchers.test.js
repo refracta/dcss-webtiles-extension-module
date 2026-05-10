@@ -272,6 +272,9 @@ test("tournament watcher grants one latest tournament banner without removing ol
       clan: "Bane of Ogre"
     }
   });
+  const bobNoClanBanner = database.getProfile("Bob").banners["latest-tournament"];
+  assert.equal(bobNoClanBanner.detail.value, "#2, Score: 116,222");
+  assert.equal("subvalue" in bobNoClanBanner.detail, false);
 
   version = "0.35";
   assert.equal(await watcher.syncTournament(), true);

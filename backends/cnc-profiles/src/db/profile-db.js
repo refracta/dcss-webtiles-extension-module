@@ -412,9 +412,11 @@ function migrateLatestTournamentBannerDetails(profile) {
     const score = getNonNegativeInteger(styleData.score, parseTournamentScore(detail.value), 0);
     const clan = normalizeTournamentClan(styleData.clan || detail.subvalue);
     const nextDetail = {
-      value: `#${rank.toLocaleString("en-US")}, Score: ${score.toLocaleString("en-US")}`,
-      subvalue: clan || "-"
+      value: `#${rank.toLocaleString("en-US")}, Score: ${score.toLocaleString("en-US")}`
     };
+    if (clan) {
+      nextDetail.subvalue = clan;
+    }
 
     if (JSON.stringify(detail) !== JSON.stringify(nextDetail)) {
       banner.detail = nextDetail;
