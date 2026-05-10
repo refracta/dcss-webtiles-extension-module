@@ -181,6 +181,29 @@ export default class CNCUserinfo {
         this.open(username, event);
     }
 
+    bindLobbyUserContextMenu() {
+        if (this.lobbyUserContextMenuBound) {
+            return;
+        }
+        this.lobbyUserContextMenuBound = true;
+
+        document.addEventListener('contextmenu', (event) => {
+            const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement;
+            const anchor = target?.closest?.('#player_list .username a');
+            if (!anchor) {
+                return;
+            }
+
+            const username = this.getUsernameFromElement(anchor);
+            if (!username) {
+                return;
+            }
+
+            this.open(username, event);
+            event.stopImmediatePropagation?.();
+        }, {capture: true, passive: false});
+    }
+
     getUsernameFromElement(element) {
         if (!element) return '';
 
@@ -665,6 +688,7 @@ export default class CNCUserinfo {
 
         this.userDropdown = new UserDropdown();
         document.body.appendChild(this.userDropdown);
+        this.bindLobbyUserContextMenu();
         const {SourceMapperRegistry: SMR} = DWEM;
         const {IOHook} = DWEM.Modules;
 
