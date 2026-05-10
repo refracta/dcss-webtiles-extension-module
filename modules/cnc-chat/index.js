@@ -473,9 +473,26 @@ export default class CNCChat {
         }
     }
 
+    injectUserCursorStyle() {
+        if (document.getElementById('cnc-chat-user-cursor-style')) {
+            return;
+        }
+
+        const style = document.createElement('style');
+        style.id = 'cnc-chat-user-cursor-style';
+        style.textContent = `
+            #chat_history .chat_sender[data-cnc-username],
+            #chat_history .chat_sender [data-cnc-profile-username] {
+                cursor: pointer;
+            }
+        `;
+        document.head.append(style);
+    }
+
     onLoad() {
         const {SourceMapperRegistry: SMR} = DWEM;
         const {IOHook, RCManager, CNCChat, CommandManager} = DWEM.Modules;
+        this.injectUserCursorStyle();
 
         function chatInjector() {
             receive_message = function (data) {
