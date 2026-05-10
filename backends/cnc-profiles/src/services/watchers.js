@@ -103,6 +103,7 @@ export class WatcherService {
 
     const payload = await response.json();
     const totals = new Map();
+    const resolveUsername = createExistingUsernameResolver(this.database);
 
     for (const donation of payload.currentMonth?.donations ?? []) {
       if (donation.type !== "CNC" || !donation.username) continue;
@@ -113,7 +114,7 @@ export class WatcherService {
         amount: 0
       };
       current.amount += Number(donation.amount) || 0;
-      current.username = resolveExistingUsername(this.database, donation.username) ?? current.username;
+      current.username = resolveUsername(donation.username) ?? current.username;
       totals.set(key, current);
     }
 
@@ -153,11 +154,12 @@ export class WatcherService {
       throw new Error(`OSP watcher failed: ${response.status}`);
     }
 
+    const resolveUsername = createExistingUsernameResolver(this.database);
     const entries = parseOspContributorEntries(await response.json(), {
       uploadPrefix: watcherConfig.uploadPrefix
     }).map((entry) => ({
       ...entry,
-      username: resolveExistingUsername(this.database, entry.username) ?? entry.username
+      username: resolveUsername(entry.username) ?? entry.username
     }));
 
     return this.#replaceManagedBanners({
@@ -186,9 +188,10 @@ export class WatcherService {
       playerUrlTemplate: watcherConfig.playerUrlTemplate,
       version
     });
+    const resolveUsername = createExistingUsernameResolver(this.database);
     let changed = false;
     for (const entry of entries) {
-      const username = resolveExistingUsername(this.database, entry.username) ?? entry.username;
+      const username = resolveUsername(entry.username) ?? entry.username;
       changed = this.database.upsertBanner(username, createLatestTournamentBanner(entry), {
         source: WATCHER_SOURCES.tournament,
         autoEquip: true
@@ -263,13 +266,14 @@ export class WatcherService {
     const threshold = Number(watcherConfig.threshold) || 500;
     const maxScore = Number(watcherConfig.maxScore) || 5000;
     const activeEntries = [];
+    const resolveUsername = createExistingUsernameResolver(this.database);
 
     for (const user of payload.users ?? []) {
       const score = (Number(user.created) || 0) + (Number(user.edited) || 0) + (Number(user.deleted) || 0);
       if (score < threshold || !user.username) continue;
 
       activeEntries.push({
-        username: resolveExistingUsername(this.database, user.username) ?? user.username,
+        username: resolveUsername(user.username) ?? user.username,
         score
       });
     }
@@ -401,6 +405,9 @@ export class WatcherService {
 
       for (const line of lines) {
         changed = this.#updateLogfileGame(state, line.replace(/\r$/, ""), rankingLimits) || changed;
+        if (state.nextGameOrder > 0 && state.nextGameOrder % 1000 === 0) {
+          await yieldToEventLoop();
+        }
       }
     }
 
@@ -431,7 +438,7 @@ export class WatcherService {
 
     const entry = {
       key,
-      username: resolveExistingUsername(this.database, game.username) ?? game.username,
+      username: game.username,
       score: game.score,
       durationSeconds: game.durationSeconds,
       order
@@ -595,9 +602,20 @@ export class WatcherService {
   }
 }
 
-function resolveExistingUsername(database, username) {
-  const profile = database.getProfile(username);
-  return profile?.username ?? null;
+function createExistingUsernameResolver(database) {
+  const usernames = new Map();
+  for (const profile of Object.values(database.data.profiles ?? {})) {
+    const key = normalizeUsernameKey(profile?.username);
+    if (key && !usernames.has(key)) {
+      usernames.set(key, profile.username);
+    }
+  }
+
+  return (username) => usernames.get(normalizeUsernameKey(username)) ?? null;
+}
+
+function yieldToEventLoop() {
+  return new Promise((resolve) => setImmediate(resolve));
 }
 
 function compareLogfileGames(a, b) {

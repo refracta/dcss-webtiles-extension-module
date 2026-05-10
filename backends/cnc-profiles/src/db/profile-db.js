@@ -21,6 +21,7 @@ export class ProfileDatabase {
   constructor(filePath) {
     this.filePath = filePath;
     this.db = null;
+    this.profileKeyIndex = new Map();
   }
 
   async init() {
@@ -30,6 +31,7 @@ export class ProfileDatabase {
     await this.db.read();
     this.db.data ??= createDefaultProfileDatabase();
     this.#migrate();
+    this.#rebuildProfileKeyIndex();
     this.#seedInitialProfiles();
     await this.write();
   }
@@ -54,7 +56,13 @@ export class ProfileDatabase {
     const target = normalizeUsernameKey(username);
     if (!target) return null;
 
-    return Object.keys(this.data.profiles).find((key) => normalizeUsernameKey(key) === target) ?? null;
+    const cachedKey = this.profileKeyIndex.get(target);
+    if (cachedKey && this.data.profiles[cachedKey]) {
+      return cachedKey;
+    }
+
+    this.#rebuildProfileKeyIndex();
+    return this.profileKeyIndex.get(target) ?? null;
   }
 
   getProfile(username) {
@@ -75,6 +83,7 @@ export class ProfileDatabase {
       const profile = this.data.profiles[existingKey];
       if (profile.username !== cleanUsername) {
         profile.username = cleanUsername;
+        this.#rememberProfileKey(existingKey, cleanUsername);
         this.touchProfile(profile, now);
       }
       return profile;
@@ -90,6 +99,7 @@ export class ProfileDatabase {
       lastUpdatedAt: now.toISOString()
     };
     this.data.profiles[cleanUsername] = profile;
+    this.#rememberProfileKey(cleanUsername, cleanUsername);
     return profile;
   }
 
@@ -207,6 +217,25 @@ export class ProfileDatabase {
     }
 
     this.db.data.schemaVersion = PROFILE_SCHEMA_VERSION;
+  }
+
+  #rebuildProfileKeyIndex() {
+    this.profileKeyIndex.clear();
+    for (const [key, profile] of Object.entries(this.data.profiles ?? {})) {
+      this.#rememberProfileKey(key, profile?.username || key);
+    }
+  }
+
+  #rememberProfileKey(profileKey, username) {
+    const normalizedProfileKey = normalizeUsernameKey(profileKey);
+    if (normalizedProfileKey) {
+      this.profileKeyIndex.set(normalizedProfileKey, profileKey);
+    }
+
+    const normalizedUsername = normalizeUsernameKey(username);
+    if (normalizedUsername) {
+      this.profileKeyIndex.set(normalizedUsername, profileKey);
+    }
   }
 
   #seedInitialProfiles() {
