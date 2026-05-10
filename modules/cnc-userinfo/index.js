@@ -163,6 +163,8 @@ export default class CNCUserinfo {
     // PROJECT_A: Nemelex colors from CNCBanner, sorted
     static NEMELEX_COLORS = ['#008cc0', '#009800', '#8000ff', '#cad700', '#ff4000'];
     static PROFILE_API_BASE = 'https://profiles.nemelex.cards';
+    static PROFILE_ACTIVE_FETCH_MS = 1000;
+    static PROFILE_IDLE_FETCH_MS = 30000;
 
     open(username, event) {
         const cleanUsername = this.normalizeUsername(username);
@@ -557,7 +559,7 @@ export default class CNCUserinfo {
         return String(username || '')
             .replaceAll(' (admin)', '')
             .trim()
-            .replace(/^(?:🤖|👑|🏆|🥇|💎|🌟|⭐|⚡|🚀|🏎️?|💨|🛠️?|[0-9]\uFE0F?\u20E3)+/u, '')
+            .replace(/^(?:🤖|👑|🏆|🥇|💎|🌟|⭐|⚡|🚀|🏎️?|💨|🛠️?|🏁|[0-9]\uFE0F?\u20E3)+/u, '')
             .trim();
     }
 
@@ -571,9 +573,15 @@ export default class CNCUserinfo {
     }
 
     trackProfileUsername(username) {
-        const key = this.getProfileKey(username);
+        const cleanUsername = this.normalizeUsername(username);
+        const key = this.getProfileKey(cleanUsername);
         if (!key) return;
-        this.trackedProfileUsernames.set(key, username);
+
+        const isNewTrackedUsername = !this.trackedProfileUsernames.has(key);
+        this.trackedProfileUsernames.set(key, cleanUsername);
+        if (isNewTrackedUsername || !this.profileCache.has(key)) {
+            this.scheduleProfileFetch(CNCUserinfo.PROFILE_ACTIVE_FETCH_MS);
+        }
     }
 
     async fetchTrackedProfiles() {
@@ -622,6 +630,7 @@ export default class CNCUserinfo {
             return;
         }
 
+        this.clearProfileFetchTimer();
         const fetchPromise = this.requestProfileBatch(profiles);
         this.profileFetchPromise = fetchPromise;
         this.profileFetchInFlight = true;
@@ -633,6 +642,7 @@ export default class CNCUserinfo {
                 this.profileFetchPromise = null;
                 this.profileFetchInFlight = false;
             }
+            this.scheduleNextProfileFetch();
         }
     }
 
@@ -649,24 +659,108 @@ export default class CNCUserinfo {
             }
 
             const data = await response.json();
+            const checkedAt = data.generatedAt || new Date().toISOString();
+            const requestedUsernames = new Map();
+            for (const item of profiles) {
+                const key = this.getProfileKey(item.username);
+                if (key) {
+                    requestedUsernames.set(key, item.username);
+                }
+            }
+
             for (const profile of data.profiles || []) {
                 const key = this.getProfileKey(profile.username);
-                this.profileCache.set(key, {profile});
+                this.profileCache.set(key, {
+                    profile,
+                    username: profile.username,
+                    checkedAt,
+                    missing: false
+                });
                 this.refreshStyledUsername(profile.username);
                 this.userDropdown.refresh(profile.username);
             }
 
             for (const username of data.missing || []) {
                 const key = this.getProfileKey(username);
-                if (!this.profileCache.has(key)) {
-                    this.profileCache.set(key, {profile: null});
+                if (!key) {
+                    continue;
                 }
+
+                const previous = this.profileCache.get(key);
+                const cacheUsername = requestedUsernames.get(key) || previous?.username || username;
+                this.profileCache.set(key, {
+                    profile: null,
+                    username: cacheUsername,
+                    checkedAt,
+                    missing: true
+                });
+
+                if (previous?.profile) {
+                    this.refreshStyledUsername(cacheUsername);
+                    this.userDropdown.refresh(cacheUsername);
+                }
+            }
+
+            for (const username of data.unchanged || []) {
+                const key = this.getProfileKey(username);
+                const previous = this.profileCache.get(key);
+                if (!key || !previous) {
+                    continue;
+                }
+
+                this.profileCache.set(key, {
+                    ...previous,
+                    checkedAt,
+                    missing: !previous.profile
+                });
             }
         } catch (e) {
             if (localStorage.DWEM_DEBUG) {
                 console.warn('Failed to fetch CNC profiles', e);
             }
         }
+    }
+
+    scheduleNextProfileFetch() {
+        if (!this.trackedProfileUsernames?.size) {
+            return;
+        }
+
+        const hasUncheckedProfile = Array.from(this.trackedProfileUsernames.keys())
+            .some((key) => !this.profileCache.has(key));
+        this.scheduleProfileFetch(hasUncheckedProfile
+            ? CNCUserinfo.PROFILE_ACTIVE_FETCH_MS
+            : CNCUserinfo.PROFILE_IDLE_FETCH_MS);
+    }
+
+    scheduleProfileFetch(delay) {
+        if (!this.trackedProfileUsernames?.size) {
+            return;
+        }
+
+        const safeDelay = Math.max(0, Number(delay) || 0);
+        const nextAt = Date.now() + safeDelay;
+        if (this.profileFetchTimer && this.profileFetchNextAt && this.profileFetchNextAt <= nextAt) {
+            return;
+        }
+
+        this.clearProfileFetchTimer();
+        this.profileFetchNextAt = nextAt;
+        this.profileFetchTimer = setTimeout(() => {
+            this.profileFetchTimer = null;
+            this.profileFetchNextAt = 0;
+            this.fetchTrackedProfiles();
+        }, safeDelay);
+    }
+
+    clearProfileFetchTimer() {
+        if (!this.profileFetchTimer) {
+            return;
+        }
+
+        clearTimeout(this.profileFetchTimer);
+        this.profileFetchTimer = null;
+        this.profileFetchNextAt = 0;
     }
 
     refreshStyledUsername(username) {
@@ -687,9 +781,8 @@ export default class CNCUserinfo {
         this.trackedProfileUsernames = new Map();
         this.profileFetchInFlight = false;
         this.profileFetchPromise = null;
-        this.profileFetchTimer = setInterval(() => {
-            this.fetchTrackedProfiles();
-        }, 1000);
+        this.profileFetchTimer = null;
+        this.profileFetchNextAt = 0;
 
         this.userDropdown = new UserDropdown();
         document.body.appendChild(this.userDropdown);
