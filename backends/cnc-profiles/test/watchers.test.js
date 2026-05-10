@@ -301,14 +301,14 @@ test("logfile watcher ranks best scores from range deltas", async () => {
   assert.equal(await watcher.syncLogfile(), true);
   assert.equal(database.getProfile("Bob").banners.ranking.title, "Trunk Score Ranking #1");
   assert.equal(database.getProfile("Bob").banners.ranking.usernameStyle.data.badge, "👑");
-  assert.equal(database.getProfile("Bob").banners.ranking.detail.value, "(Server Ranking #1)");
+  assert.equal(database.getProfile("Bob").banners.ranking.detail.value, "(CNC Ranking #1)");
   assert.equal(database.getProfile("Bob").banners.ranking.detail.subvalue, "Score: 3,000");
   assert.equal(database.getProfile("Carol").banners.ranking.title, "Trunk Score Ranking #3");
-  assert.equal(database.getProfile("Carol").banners.ranking.detail.value, "(Server Ranking #2)");
+  assert.equal(database.getProfile("Carol").banners.ranking.detail.value, "(CNC Ranking #2)");
   assert.equal(database.getProfile("Carol").banners.ranking.detail.subvalue, "Score: 2,000");
   assert.equal(database.getProfile("Carol").banners.ranking.usernameStyle.data.badge, "🏆");
   assert.equal(database.getProfile("Alice").banners.ranking.title, "Trunk Score Ranking #4");
-  assert.equal(database.getProfile("Alice").banners.ranking.detail.value, "(Server Ranking #3)");
+  assert.equal(database.getProfile("Alice").banners.ranking.detail.value, "(CNC Ranking #3)");
 
   const offset = database.data.watcherState.logfile.offset;
   logfile += createLogLine("Alice", 4000) + "\n";
@@ -319,10 +319,10 @@ test("logfile watcher ranks best scores from range deltas", async () => {
   assert.equal(database.getProfile("Alice").banners.ranking.usernameStyle.data.badge, "👑");
   assert.equal(database.getProfile("Alice").banners.ranking.detail.subvalue, "Score: 4,000");
   assert.equal(database.getProfile("Bob").banners.ranking.title, "Trunk Score Ranking #2");
-  assert.equal(database.getProfile("Bob").banners.ranking.detail.value, "(Server Ranking #2)");
+  assert.equal(database.getProfile("Bob").banners.ranking.detail.value, "(CNC Ranking #2)");
   assert.equal(database.getProfile("Bob").banners.ranking.usernameStyle.data.badge, "🏆");
   assert.equal(database.getProfile("Carol").banners.ranking.title, "Trunk Score Ranking #4");
-  assert.equal(database.getProfile("Carol").banners.ranking.detail.value, "(Server Ranking #3)");
+  assert.equal(database.getProfile("Carol").banners.ranking.detail.value, "(CNC Ranking #3)");
 });
 
 test("logfile watcher ranks fastest winning games by real time", async () => {
@@ -344,14 +344,14 @@ test("logfile watcher ranks fastest winning games by real time", async () => {
 
   const fastBanner = database.getProfile("FastWinner").banners["fastest-win"];
   assert.equal(fastBanner.title, "Trunk Fastest Wins");
-  assert.equal(fastBanner.detail.value, "(Server Ranking #1)");
+  assert.equal(fastBanner.detail.value, "(CNC Ranking #1)");
   assert.equal(fastBanner.detail.subvalue, "Time: 1:00:00");
   assert.equal(fastBanner.usernameStyle.id, "fastest-win");
   assert.equal(fastBanner.usernameStyle.data.badge, "⚡");
   assert.equal(fastBanner.usernameStyle.data.durationSeconds, 3600);
 
   const middleBanner = database.getProfile("MiddleWinner").banners["fastest-win"];
-  assert.equal(middleBanner.detail.value, "(Server Ranking #2)");
+  assert.equal(middleBanner.detail.value, "(CNC Ranking #2)");
   assert.equal(middleBanner.detail.subvalue, "Time: 2:00:00");
   assert.equal(middleBanner.usernameStyle.data.badge, "🚀");
 
@@ -431,11 +431,11 @@ test("logfile watcher uses the best game rank for duplicate player entries", asy
   assert.equal(await watcher.syncLogfile(), true);
   assert.equal(database.getProfile("TopPlayer").banners.ranking.title, "Trunk Score Ranking #1");
   assert.equal(database.getProfile("TargetPlayer").banners.ranking.title, "Trunk Score Ranking #3");
-  assert.equal(database.getProfile("TargetPlayer").banners.ranking.detail.value, "(Server Ranking #2)");
+  assert.equal(database.getProfile("TargetPlayer").banners.ranking.detail.value, "(CNC Ranking #2)");
   assert.equal(database.getProfile("TargetPlayer").banners.ranking.detail.subvalue, "Score: 4,000");
   assert.equal(database.getProfile("TargetPlayer").banners.ranking.usernameStyle.data.badge, "🏆");
   assert.equal(database.getProfile("OtherPlayer").banners.ranking.title, "Trunk Score Ranking #4");
-  assert.equal(database.getProfile("OtherPlayer").banners.ranking.detail.value, "(Server Ranking #3)");
+  assert.equal(database.getProfile("OtherPlayer").banners.ranking.detail.value, "(CNC Ranking #3)");
 });
 
 test("logfile watcher resets old unique-player ranking state", async () => {

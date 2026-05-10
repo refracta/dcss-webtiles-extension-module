@@ -132,12 +132,12 @@ test("seeds initial profiles preserving username casing", async () => {
       exampleProfile.banners["example-ranking-rank-51-100"].detail.value
     ],
     [
-      "(Server Ranking #1)",
-      "(Server Ranking #2-#3)",
-      "(Server Ranking #4-#10)",
-      "(Server Ranking #11-#25)",
-      "(Server Ranking #26-#50)",
-      "(Server Ranking #51-#100)"
+      "(CNC Ranking #1)",
+      "(CNC Ranking #2-#3)",
+      "(CNC Ranking #4-#10)",
+      "(CNC Ranking #11-#25)",
+      "(CNC Ranking #26-#50)",
+      "(CNC Ranking #51-#100)"
     ]
   );
   assert.deepEqual(
@@ -162,10 +162,10 @@ test("seeds initial profiles preserving username casing", async () => {
       exampleProfile.banners["example-fastest-win-rank-6-10"].detail.value
     ],
     [
-      "(Server Ranking #1)",
-      "(Server Ranking #2-#3)",
-      "(Server Ranking #4-#5)",
-      "(Server Ranking #6-#10)"
+      "(CNC Ranking #1)",
+      "(CNC Ranking #2-#3)",
+      "(CNC Ranking #4-#5)",
+      "(CNC Ranking #6-#10)"
     ]
   );
   assert.deepEqual(

@@ -290,7 +290,7 @@ export function createRankingBanner({ rank, serverRank, score }) {
     title: `Trunk Score Ranking #${safeRank}`,
     url: BANNER_URLS.logfileViewer,
     detail: {
-      value: `(Server Ranking #${safeServerRank})`,
+      value: `(CNC Ranking #${safeServerRank})`,
       subvalue: `Score: ${safeScore.toLocaleString("en-US")}`
     },
     usernameStyle: {
@@ -314,7 +314,7 @@ export function createFastestWinBanner({ rank, serverRank, durationSeconds }) {
     title: "Trunk Fastest Wins",
     url: BANNER_URLS.logfileViewer,
     detail: {
-      value: `(Server Ranking #${safeServerRank})`,
+      value: `(CNC Ranking #${safeServerRank})`,
       subvalue: `Time: ${formatDurationSeconds(safeDurationSeconds)}`
     },
     usernameStyle: {
@@ -416,7 +416,7 @@ function createRankingExampleBanner({ id, serverRankLabel, rank, serverRank, sco
     title: "Trunk Score Ranking",
     detail: {
       ...banner.detail,
-      value: `(Server Ranking ${serverRankLabel})`
+      value: `(CNC Ranking ${serverRankLabel})`
     }
   };
 }
@@ -429,7 +429,7 @@ function createFastestWinExampleBanner({ id, serverRankLabel, rank, serverRank, 
     title: "Trunk Fastest Wins",
     detail: {
       ...banner.detail,
-      value: `(Server Ranking ${serverRankLabel})`
+      value: `(CNC Ranking ${serverRankLabel})`
     }
   };
 }
