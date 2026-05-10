@@ -1204,19 +1204,19 @@ function renderStyledUsername(username, usernameStyle) {
   }
 
   if (usernameStyle.id === "bot") {
-    return wrapStyledUsername(`${escapeHtml(usernameStyle.data?.prefix || "🤖")}${escapeHtml(username)}`);
+    return wrapStyledUsername(`${createUsernamePrefixSpan(usernameStyle.data?.prefix || "🤖")}${escapeHtml(username)}`);
   }
 
   if (usernameStyle.id === "ranking") {
-    return wrapStyledUsername(`${escapeHtml(usernameStyle.data?.badge || getRankingBadge(usernameStyle.data?.rank))}${escapeHtml(username)}`);
+    return wrapStyledUsername(`${createUsernamePrefixSpan(usernameStyle.data?.badge || getRankingBadge(usernameStyle.data?.rank))}${escapeHtml(username)}`);
   }
 
   if (usernameStyle.id === "fastest-win") {
-    return wrapStyledUsername(`${escapeHtml(usernameStyle.data?.badge || getFastestWinBadge(usernameStyle.data?.rank))}${escapeHtml(username)}`);
+    return wrapStyledUsername(`${createUsernamePrefixSpan(usernameStyle.data?.badge || getFastestWinBadge(usernameStyle.data?.rank))}${escapeHtml(username)}`);
   }
 
   if (usernameStyle.id === "dcss-contributor") {
-    return wrapStyledUsername(`${escapeHtml(usernameStyle.data?.badge || "🛠️")}${escapeHtml(username)}`);
+    return wrapStyledUsername(`${createUsernamePrefixSpan(usernameStyle.data?.badge || "🛠️")}${escapeHtml(username)}`);
   }
 
   if (usernameStyle.id === "osp-contributor") {
@@ -1232,7 +1232,7 @@ function renderStyledUsername(username, usernameStyle) {
   }
 
   if (usernameStyle.id === "latest-tournament") {
-    return wrapStyledUsername(`${escapeHtml(usernameStyle.data?.badge || "🏁")}${escapeHtml(username)}`);
+    return wrapStyledUsername(`${createUsernamePrefixSpan(usernameStyle.data?.badge || "🏁")}${escapeHtml(username)}`);
   }
 
   return wrapStyledUsername(escapeHtml(username));
@@ -1240,6 +1240,10 @@ function renderStyledUsername(username, usernameStyle) {
 
 function wrapStyledUsername(content) {
   return `<span style="white-space: nowrap;">${content}</span>`;
+}
+
+function createUsernamePrefixSpan(prefix) {
+  return `<span style="display: inline-block; text-decoration: none;">${escapeHtml(prefix)}</span>`;
 }
 
 function getRankingBadge(rank) {

@@ -324,19 +324,19 @@ export default class CNCUserinfo {
         }
 
         if (usernameStyle.id === 'bot') {
-            return `${this.escapeHtml(usernameStyle.data?.prefix || '🤖')}${this.escapeHtml(username)}`;
+            return `${this.createUsernamePrefixSpan(usernameStyle.data?.prefix || '🤖')}${this.escapeHtml(username)}`;
         }
 
         if (usernameStyle.id === 'ranking') {
-            return `${this.escapeHtml(usernameStyle.data?.badge || this.getRankingBadge(usernameStyle.data?.rank))}${this.escapeHtml(username)}`;
+            return `${this.createUsernamePrefixSpan(usernameStyle.data?.badge || this.getRankingBadge(usernameStyle.data?.rank))}${this.escapeHtml(username)}`;
         }
 
         if (usernameStyle.id === 'fastest-win') {
-            return `${this.escapeHtml(usernameStyle.data?.badge || this.getFastestWinBadge(usernameStyle.data?.rank))}${this.escapeHtml(username)}`;
+            return `${this.createUsernamePrefixSpan(usernameStyle.data?.badge || this.getFastestWinBadge(usernameStyle.data?.rank))}${this.escapeHtml(username)}`;
         }
 
         if (usernameStyle.id === 'dcss-contributor') {
-            return `${this.escapeHtml(usernameStyle.data?.badge || '🛠️')}${this.escapeHtml(username)}`;
+            return `${this.createUsernamePrefixSpan(usernameStyle.data?.badge || '🛠️')}${this.escapeHtml(username)}`;
         }
 
         if (usernameStyle.id === 'osp-contributor') {
@@ -352,10 +352,14 @@ export default class CNCUserinfo {
         }
 
         if (usernameStyle.id === 'latest-tournament') {
-            return `${this.escapeHtml(usernameStyle.data?.badge || '🏁')}${this.escapeHtml(username)}`;
+            return `${this.createUsernamePrefixSpan(usernameStyle.data?.badge || '🏁')}${this.escapeHtml(username)}`;
         }
 
         return this.escapeHtml(username);
+    }
+
+    createUsernamePrefixSpan(prefix) {
+        return `<span style="display: inline-block; text-decoration: none;">${this.escapeHtml(prefix)}</span>`;
     }
 
     createBannerTitleDiv(banner) {
