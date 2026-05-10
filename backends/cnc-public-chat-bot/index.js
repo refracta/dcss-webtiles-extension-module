@@ -6,6 +6,8 @@ import {Client, Events, GatewayIntentBits, EmbedBuilder} from 'discord.js';
 
 fs.mkdirSync('tmp', {recursive: true});
 const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+const discordWebhookUrl = String(process.env.DISCORD_WEBHOOK_URL || config.discordWebhookUrl || '').trim();
+const discordWebhookId = getDiscordWebhookId(discordWebhookUrl);
 const client = new Client({intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]});
 await client.login(config.discordToken);
 let socket, channel;
@@ -23,6 +25,7 @@ client.once(Events.ClientReady, async readyClient => {
 });
 client.on('messageCreate', (message) => {
     if (message.author.id === client.user.id) return;
+    if (message.webhookId && message.webhookId === discordWebhookId) return;
 
     if (socket && message.channel.name === config.discordChannel) {
         const sender = message?.member?.displayName || message.author.username;
@@ -65,9 +68,13 @@ while (true) {
                     } else if (data.msg === 'chat') {
                         try {
                             const {window: {document}} = new JSDOM(data.content);
-                            const sender = document.querySelector('.chat_sender').textContent;
+                            const senderElement = document.querySelector('.chat_sender');
+                            const profileElement = senderElement?.querySelector('[data-cnc-profile-username]');
+                            const sender = senderElement?.getAttribute('data-cnc-username') ||
+                                profileElement?.getAttribute('data-cnc-profile-username') ||
+                                senderElement?.textContent;
                             const message = document.querySelector('.chat_msg').textContent;
-                            if (channel && sender !== config.username) {
+                            if (sender && sender !== config.username) {
                                 if (message && message.match(new RegExp(`${config.entrypoint}/entities/\\d{1,}`))) {
                                     try {
                                         let {file, type, user, item, color} = await fetch(message).then(r => r.json());
@@ -75,7 +82,11 @@ while (true) {
                                             const imageEmbed = new EmbedBuilder()
                                                 .setTitle(`${user}'s ${type.charAt(0).toUpperCase() + type.slice(1)}:`)
                                                 .setImage(file);
-                                            channel.send({embeds: [imageEmbed]});
+                                            await sendDiscordMessage(sender, {
+                                                embeds: [imageEmbed.toJSON()]
+                                            }, {
+                                                embeds: [imageEmbed]
+                                            });
                                         } else if (type === 'item') {
                                             color = parseInt(color.slice(1), 16);
                                             const itemEmbed = new EmbedBuilder()
@@ -83,13 +94,17 @@ while (true) {
                                                 .setTitle(`${user}'s Item`)
                                                 .setDescription(item)
                                                 .setThumbnail(file);
-                                            channel.send({embeds: [itemEmbed]});
+                                            await sendDiscordMessage(sender, {
+                                                embeds: [itemEmbed.toJSON()]
+                                            }, {
+                                                embeds: [itemEmbed]
+                                            });
                                         }
                                     } catch (e) {
                                         console.error(new Date(), e);
                                     }
                                 } else {
-                                    channel.send(`${sender}: ${message}`);
+                                    await sendDiscordText(sender, message);
                                 }
                                 console.log(new Date(), `[WEBSOCKET] ${sender}: ${message}`);
                             }
@@ -158,5 +173,52 @@ while (true) {
     } finally {
         await new Promise(resolve => setTimeout(resolve, 1000 * 10));
     }
+}
+
+async function sendDiscordText(sender, text) {
+    const content = String(text ?? '');
+    if (!content) return;
+
+    for (let i = 0; i < content.length; i += 1900) {
+        const chunk = content.slice(i, i + 1900);
+        await sendDiscordMessage(sender, {
+            content: chunk
+        }, `${sender}: ${chunk}`);
+    }
+}
+
+async function sendDiscordMessage(sender, webhookPayload, channelPayload) {
+    if (discordWebhookUrl) {
+        const response = await fetch(discordWebhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: formatDiscordWebhookUsername(sender),
+                allowed_mentions: {parse: []},
+                ...webhookPayload
+            })
+        });
+        if (!response.ok) {
+            const responseText = await response.text().catch(() => '');
+            throw new Error(`Discord webhook failed: ${response.status} ${responseText}`);
+        }
+        return;
+    }
+
+    if (channel) {
+        await channel.send(channelPayload);
+    }
+}
+
+function formatDiscordWebhookUsername(sender) {
+    const username = String(sender ?? '').trim();
+    return (username || config.username).slice(0, 80);
+}
+
+function getDiscordWebhookId(url) {
+    const match = /^https:\/\/discord(?:app)?\.com\/api\/webhooks\/([^/]+)/.exec(String(url ?? '').trim());
+    return match?.[1] || '';
 }
 

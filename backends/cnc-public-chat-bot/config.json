@@ -6,5 +6,6 @@
   "gameId": "dcss-0.31-sprint",
   "discordGuild": "NetHack Live & Crawl Nemelex Cards",
   "discordChannel": "crawl-nemelex-cards",
+  "discordWebhookUrl": "",
   "discordToken": ""
 }
