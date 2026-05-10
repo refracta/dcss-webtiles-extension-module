@@ -122,7 +122,7 @@ export const BANNER_DEFINITIONS = [
     title: "Trunk Win Streak",
     url: BANNER_URLS.logfileViewer,
     detail: createCurrentWinStreakDetail(1),
-    usernameStyle: { id: "win-streak", data: { streak: 1 } }
+    usernameStyle: { id: "current-win-streak", data: { streak: 1 } }
   },
   {
     id: "dcss-contributor",
@@ -353,7 +353,7 @@ export function createCurrentWinStreakBanner({ streak }) {
     url: BANNER_URLS.logfileViewer,
     detail: createCurrentWinStreakDetail(safeStreak),
     usernameStyle: {
-      id: "win-streak",
+      id: "current-win-streak",
       data: {
         streak: safeStreak
       }

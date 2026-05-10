@@ -1212,6 +1212,10 @@ function renderStyledUsername(username, usernameStyle) {
     return `${createWinStreakBadgeSpan(usernameStyle.data?.streak)}${escapeHtml(username)}`;
   }
 
+  if (usernameStyle.id === "current-win-streak") {
+    return `${createCurrentWinStreakBadgeSpan(usernameStyle.data?.streak)}${escapeHtml(username)}`;
+  }
+
   if (usernameStyle.id === "latest-tournament") {
     return `${escapeHtml(usernameStyle.data?.badge || "🏁")}${escapeHtml(username)}`;
   }
@@ -1242,6 +1246,11 @@ function getFastestWinBadge(rank) {
 function createWinStreakBadgeSpan(streak) {
   const safeStreak = Math.max(1, Math.floor(Number(streak) || 1));
   return `<span aria-label="${safeStreak} win streak" title="${safeStreak} win streak" style="${styleToText(getWinStreakBadgeStyle(safeStreak))}">${safeStreak.toLocaleString("en-US")}</span>`;
+}
+
+function createCurrentWinStreakBadgeSpan(streak) {
+  const safeStreak = Math.max(1, Math.floor(Number(streak) || 1));
+  return `<span aria-label="${safeStreak} current win streak" title="${safeStreak} current win streak" style="${styleToText(getCurrentWinStreakBadgeStyle(safeStreak))}">${safeStreak.toLocaleString("en-US")}</span>`;
 }
 
 function getWinStreakBadgeStyle(streak) {
@@ -1276,6 +1285,41 @@ function getWinStreakBadgeStyle(streak) {
     "box-shadow": `0 -1px ${3 + heat * 6}px rgba(255, 235, 106, ${0.34 + heat * 0.56}), 0 0 ${glow}px rgba(255, 57, 18, ${0.28 + heat * 0.6}), inset 0 1px 0 rgba(255, 255, 255, ${0.24 + heat * 0.28})`,
     filter: `saturate(${1 + heat * 0.65}) brightness(${1 + heat * 0.12})`,
     "text-shadow": "0 1px 1px rgba(68, 12, 0, 0.85)"
+  };
+}
+
+function getCurrentWinStreakBadgeStyle(streak) {
+  const t = Math.max(0, Math.min(1, ((Number(streak) || 2) - 2) / 48));
+  const charge = Math.pow(t, 0.7);
+  const glow = 4 + charge * 14;
+  const rim = mixColor("#7fd7ff", "#dff7ff", charge);
+  const top = mixColor("#71d2ff", "#e4fbff", charge);
+  const middle = mixColor("#268cff", "#0f6eff", charge);
+  const bottom = mixColor("#134a9c", "#052464", charge);
+  const text = mixColor("#e6f8ff", "#ffffff", charge);
+  const highlightStop = 16 + charge * 12;
+  const fadeStop = 40 - charge * 12;
+  const middleStop = 58 - charge * 18;
+  return {
+    display: "inline-flex",
+    "align-items": "center",
+    "justify-content": "center",
+    "min-width": "1.7em",
+    height: "1.25em",
+    padding: "0 0.34em",
+    "margin-right": "0.18em",
+    "border-radius": "999px",
+    color: text,
+    "font-size": "0.78em",
+    "font-weight": "900",
+    "line-height": "1",
+    "letter-spacing": "0",
+    "vertical-align": "0.08em",
+    border: `1px solid ${rim}`,
+    "background-image": `radial-gradient(circle at 50% 10%, ${top} 0%, #b8efff ${highlightStop}%, transparent ${fadeStop}%), linear-gradient(180deg, ${top} 0%, ${middle} ${middleStop}%, ${bottom} 100%)`,
+    "box-shadow": `0 -1px ${3 + charge * 6}px rgba(184, 239, 255, ${0.36 + charge * 0.5}), 0 0 ${glow}px rgba(27, 126, 255, ${0.26 + charge * 0.58}), inset 0 1px 0 rgba(255, 255, 255, ${0.26 + charge * 0.28})`,
+    filter: `saturate(${1 + charge * 0.6}) brightness(${1 + charge * 0.12})`,
+    "text-shadow": "0 1px 1px rgba(3, 20, 58, 0.85)"
   };
 }
 

@@ -228,10 +228,10 @@ test("seeds initial profiles preserving username casing", async () => {
       exampleProfile.banners["example-current-win-streak-50"].usernameStyle
     ],
     [
-      { id: "win-streak", data: { streak: 2 } },
-      { id: "win-streak", data: { streak: 5 } },
-      { id: "win-streak", data: { streak: 10 } },
-      { id: "win-streak", data: { streak: 50 } }
+      { id: "current-win-streak", data: { streak: 2 } },
+      { id: "current-win-streak", data: { streak: 5 } },
+      { id: "current-win-streak", data: { streak: 10 } },
+      { id: "current-win-streak", data: { streak: 50 } }
     ]
   );
 

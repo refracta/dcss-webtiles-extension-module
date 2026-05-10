@@ -394,7 +394,7 @@ test("logfile watcher grants best win streak banners and breaks on non-wins", as
   const bobCurrentBanner = database.getProfile("Bob").banners["current-win-streak"];
   assert.equal(bobCurrentBanner.title, "Trunk Win Streak");
   assert.equal(bobCurrentBanner.detail.value, "Current Streak: 3 wins");
-  assert.deepEqual(bobCurrentBanner.usernameStyle, { id: "win-streak", data: { streak: 3 } });
+  assert.deepEqual(bobCurrentBanner.usernameStyle, { id: "current-win-streak", data: { streak: 3 } });
 
   assert.equal(database.getProfile("Carol").banners["win-streak"], undefined);
   assert.equal(database.getProfile("Carol").banners["current-win-streak"], undefined);
