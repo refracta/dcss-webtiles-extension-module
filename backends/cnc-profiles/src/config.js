@@ -46,6 +46,13 @@ const DEFAULT_CONFIG = {
       uploadPrefix: "https://osp.nemelex.cards/uploads",
       pullPeriod: 300
     },
+    tournament: {
+      enabled: true,
+      branchesUrl: "https://api.github.com/repos/crawl/dcss_tourney/branches?per_page=100",
+      rankingsUrlTemplate: "https://crawl.develz.org/tournament/{version}/all-players-ranks.html",
+      playerUrlTemplate: "https://crawl.develz.org/tournament/{version}/players/{username}.html",
+      pullPeriod: 86400
+    },
     logfile: {
       enabled: true,
       url: "https://archive.nemelex.cards/meta/crawl-git/logfile",

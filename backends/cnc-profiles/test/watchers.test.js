@@ -4,7 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { ProfileDatabase } from "../src/db/profile-db.js";
-import { WatcherService, parseCreditsContributorNames, parseOspContributorEntries } from "../src/services/watchers.js";
+import {
+  WatcherService,
+  parseCreditsContributorNames,
+  parseLatestTournamentVersion,
+  parseOspContributorEntries,
+  parseTournamentRankingEntries
+} from "../src/services/watchers.js";
 
 test("donation watcher creates and removes conditional donor banners", async () => {
   const database = await createDatabase();
@@ -198,6 +204,80 @@ test("osp watcher grants contributor banners from REGISTER counts", async () => 
   });
   assert.equal(await emptyWatcher.syncOsp(), true);
   assert.equal(database.getProfile("ASCIIPhilia").banners["osp-contributor"], undefined);
+});
+
+test("tournament watcher grants one latest tournament banner without removing older participation", async () => {
+  const database = await createDatabase();
+  let version = "0.34";
+  const watcher = new WatcherService({
+    database,
+    config: createConfig(),
+    fetchImpl: async (url) => {
+      if (url === "https://example.test/tournament-branches") {
+        return okJson([
+          { name: "0.33-tourney" },
+          { name: "0.34-tourney" },
+          { name: "0.35-tweaks" },
+          { name: `${version}-tourney` }
+        ]);
+      }
+      if (url === `https://example.test/tournament/${version}/all-players-ranks.html`) {
+        return okText(createTournamentHtml(version));
+      }
+      throw new Error(`unexpected url: ${url}`);
+    }
+  });
+
+  assert.equal(parseLatestTournamentVersion([
+    { name: "0.31-tourney" },
+    { name: "0.30-tourney" },
+    { name: "0.31-tweaks" },
+    { name: "0.32-tourney" }
+  ]), "0.32");
+  assert.deepEqual(parseTournamentRankingEntries(createTournamentHtml("0.34"), {
+    pageUrl: "https://example.test/tournament/0.34/all-players-ranks.html",
+    playerUrlTemplate: "https://example.test/tournament/{version}/players/{username}.html",
+    version: "0.34"
+  }), [
+    {
+      username: "Alice",
+      version: "0.34",
+      rank: 1,
+      score: 125695,
+      clan: "Bane of Ogre",
+      url: "https://example.test/tournament/0.34/players/alice.html"
+    },
+    {
+      username: "Bob",
+      version: "0.34",
+      rank: 2,
+      score: 116222,
+      clan: "",
+      url: "https://example.test/tournament/0.34/players/bob.html"
+    }
+  ]);
+
+  assert.equal(await watcher.syncTournament(), true);
+  const aliceBanner = database.getProfile("Alice").banners["latest-tournament"];
+  assert.equal(aliceBanner.title, "Latest Tournament (v0.34)");
+  assert.equal(aliceBanner.detail.value, "#1 Score: 125,695");
+  assert.equal(aliceBanner.detail.subvalue, "Clan: Bane of Ogre");
+  assert.deepEqual(aliceBanner.usernameStyle, {
+    id: "latest-tournament",
+    data: {
+      badge: "🏁",
+      version: "0.34",
+      rank: 1,
+      score: 125695,
+      clan: "Bane of Ogre"
+    }
+  });
+
+  version = "0.35";
+  assert.equal(await watcher.syncTournament(), true);
+  assert.equal(database.getProfile("Alice").banners["latest-tournament"].title, "Latest Tournament (v0.34)");
+  assert.equal(database.getProfile("Bob").banners["latest-tournament"].title, "Latest Tournament (v0.35)");
+  assert.equal(database.getProfile("Bob").banners["latest-tournament"].detail.value, "#1 Score: 130,000");
 });
 
 test("logfile watcher ranks best scores from range deltas", async () => {
@@ -424,6 +504,13 @@ function createConfig(overrides = {}) {
         uploadPrefix: "https://osp.nemelex.cards/uploads",
         pullPeriod: 300
       },
+      tournament: {
+        branchesUrl: "https://example.test/tournament-branches",
+        rankingsUrlTemplate: "https://example.test/tournament/{version}/all-players-ranks.html",
+        playerUrlTemplate: "https://example.test/tournament/{version}/players/{username}.html",
+        pullPeriod: 86400,
+        ...(overrides.tournament ?? {})
+      },
       logfile: {
         url: "https://example.test/logfile",
         pullPeriod: 300,
@@ -431,7 +518,7 @@ function createConfig(overrides = {}) {
         ...(overrides.logfile ?? {})
       },
       ...Object.fromEntries(
-        Object.entries(overrides).filter(([key]) => key !== "logfile")
+        Object.entries(overrides).filter(([key]) => !["logfile", "tournament"].includes(key))
       )
     }
   };
@@ -481,6 +568,41 @@ function createOspRow(register, pathValue, sound) {
     SOUND: sound,
     RCFILE: "init.txt"
   };
+}
+
+function createTournamentHtml(version) {
+  const rows = version === "0.35"
+    ? [
+        createTournamentRow({ rank: 1, username: "Bob", clan: "New Clan", score: "130,000" })
+      ]
+    : [
+        createTournamentRow({ rank: 1, username: "Alice", clan: "Bane of Ogre", score: "125,695" }),
+        createTournamentRow({ rank: 2, username: "Bob", clan: "", score: "116,222" })
+      ];
+
+  return `
+    <table>
+      <thead>
+        <tr><th>#</th><th>Player</th><th>Clan</th><th>Overall Score</th></tr>
+      </thead>
+      ${rows.join("\n")}
+    </table>
+  `;
+}
+
+function createTournamentRow({ rank, username, clan, score }) {
+  const lowerUsername = username.toLocaleLowerCase("en-US");
+  const clanCell = clan
+    ? `<a href="https://example.test/clans/${clan.toLocaleLowerCase("en-US").replaceAll(" ", "-")}.html">${clan}</a>`
+    : "";
+  return `
+    <tr>
+      <th scope="row">${rank}</th>
+      <td><a href="players/${lowerUsername}.html">${username}</a></td>
+      <td>${clanCell}</td>
+      <th scope="row">${score}</th>
+    </tr>
+  `;
 }
 
 function createLogfileFetch(getLogfile, requests = []) {

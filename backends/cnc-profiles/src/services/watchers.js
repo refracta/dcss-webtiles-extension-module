@@ -2,6 +2,7 @@ import {
   createDcssContributorBanner,
   createDonorBanner,
   createFastestWinBanner,
+  createLatestTournamentBanner,
   createOspContributorBanner,
   createRankingBanner,
   createTranslatorBanner,
@@ -14,6 +15,7 @@ const WATCHER_SOURCES = {
   donation: "watcher:donation",
   logfile: "watcher:logfile",
   osp: "watcher:osp",
+  tournament: "watcher:tournament",
   translation: "watcher:translation"
 };
 
@@ -65,6 +67,10 @@ export class WatcherService {
 
       if (this.config.watchers?.osp?.enabled && this.#shouldRun("osp", this.config.watchers.osp.pullPeriod)) {
         changed = (await this.#runWatcher("osp", () => this.syncOsp())) || changed;
+      }
+
+      if (this.config.watchers?.tournament?.enabled && this.#shouldRun("tournament", this.config.watchers.tournament.pullPeriod)) {
+        changed = (await this.#runWatcher("tournament", () => this.syncTournament())) || changed;
       }
 
       if (this.config.watchers?.logfile?.enabled && this.#shouldRun("logfile", this.config.watchers.logfile.pullPeriod)) {
@@ -160,6 +166,36 @@ export class WatcherService {
       activeEntries: entries,
       createBanner: (entry) => createOspContributorBanner(entry.count)
     });
+  }
+
+  async syncTournament() {
+    const watcherConfig = this.config.watchers.tournament;
+    const version = await this.#getLatestTournamentVersion(watcherConfig);
+    if (!version) {
+      return false;
+    }
+
+    const rankingsUrl = formatTournamentUrl(watcherConfig.rankingsUrlTemplate, { version });
+    const response = await this.fetch(rankingsUrl, { headers: { Accept: "text/html" } });
+    if (!response.ok) {
+      throw new Error(`Tournament watcher failed: ${response.status}`);
+    }
+
+    const entries = parseTournamentRankingEntries(await response.text(), {
+      pageUrl: rankingsUrl,
+      playerUrlTemplate: watcherConfig.playerUrlTemplate,
+      version
+    });
+    let changed = false;
+    for (const entry of entries) {
+      const username = resolveExistingUsername(this.database, entry.username) ?? entry.username;
+      changed = this.database.upsertBanner(username, createLatestTournamentBanner(entry), {
+        source: WATCHER_SOURCES.tournament,
+        autoEquip: true
+      }).changed || changed;
+    }
+
+    return changed;
   }
 
   async syncLogfile() {
@@ -305,6 +341,19 @@ export class WatcherService {
 
     const length = Number(getHeader(response.headers, "content-length"));
     return Number.isFinite(length) && length >= 0 ? length : null;
+  }
+
+  async #getLatestTournamentVersion(watcherConfig) {
+    if (watcherConfig.version) {
+      return String(watcherConfig.version).trim();
+    }
+
+    const response = await this.fetch(watcherConfig.branchesUrl, { headers: { Accept: "application/json" } });
+    if (!response.ok) {
+      throw new Error(`Tournament branch watcher failed: ${response.status}`);
+    }
+
+    return parseLatestTournamentVersion(await response.json());
   }
 
   #getLogfileState() {
@@ -763,6 +812,61 @@ export function parseOspContributorEntries(payload, { uploadPrefix = "https://os
     .sort((a, b) => Number(b.count) - Number(a.count) || a.username.localeCompare(b.username, "en-US"));
 }
 
+export function parseLatestTournamentVersion(payload) {
+  const branches = Array.isArray(payload) ? payload : [];
+  const versions = branches
+    .map((branch) => String(branch?.name ?? branch ?? ""))
+    .map((name) => /^v?(\d+(?:\.\d+)+)-tourney$/i.exec(name)?.[1] ?? "")
+    .filter(Boolean)
+    .sort(compareVersionStrings);
+
+  return versions.at(-1) ?? "";
+}
+
+export function parseTournamentRankingEntries(html, {
+  pageUrl = "",
+  playerUrlTemplate = "https://crawl.develz.org/tournament/{version}/players/{username}.html",
+  version = ""
+} = {}) {
+  const entries = [];
+  let headers = [];
+
+  for (const rowMatch of String(html ?? "").matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const cells = extractTournamentCells(rowMatch[1]);
+    if (!cells.length) continue;
+
+    const normalizedHeaders = cells.map((cell) => normalizeTournamentHeader(cell.text));
+    if (normalizedHeaders.includes("player") && normalizedHeaders.some((header) => header === "#" || header === "ranking")) {
+      headers = normalizedHeaders;
+      continue;
+    }
+    if (!headers.length) continue;
+
+    const rankCell = cells[getTournamentColumnIndex(headers, ["#", "ranking"], 0)];
+    const playerCell = cells[getTournamentColumnIndex(headers, ["player"], 1)];
+    const clanCell = cells[getTournamentColumnIndex(headers, ["clan"], 2)];
+    const scoreCell = cells[getTournamentColumnIndex(headers, ["overall score", "score"], 3)];
+    const username = playerCell?.text?.trim() ?? "";
+    const rank = parseIntegerText(rankCell?.text ?? rankCell?.dataSort);
+    const score = parseIntegerText(scoreCell?.text ?? scoreCell?.dataSort);
+    if (!username || !rank) continue;
+
+    entries.push({
+      username,
+      version,
+      rank,
+      score,
+      clan: clanCell?.text?.trim() ?? "",
+      url: resolveTournamentUrl(
+        formatTournamentUrl(playerUrlTemplate, { version, username }) || playerCell?.href,
+        pageUrl
+      )
+    });
+  }
+
+  return entries.sort((a, b) => a.rank - b.rank || a.username.localeCompare(b.username, "en-US"));
+}
+
 function isValidOspSoundRow(row, uploadPrefix) {
   if (!row || typeof row !== "object") return false;
 
@@ -773,6 +877,92 @@ function isValidOspSoundRow(row, uploadPrefix) {
   const register = String(row.REGISTER ?? "").trim();
 
   return Boolean(regex && pathValue && sound && rcfile && register && sound.startsWith(uploadPrefix));
+}
+
+function compareVersionStrings(left, right) {
+  const leftParts = String(left).split(".").map((part) => Number.parseInt(part, 10) || 0);
+  const rightParts = String(right).split(".").map((part) => Number.parseInt(part, 10) || 0);
+  const length = Math.max(leftParts.length, rightParts.length);
+  for (let i = 0; i < length; i += 1) {
+    const diff = (leftParts[i] ?? 0) - (rightParts[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return String(left).localeCompare(String(right), "en-US");
+}
+
+function extractTournamentCells(rowHtml) {
+  const cells = [];
+  for (const cellMatch of String(rowHtml ?? "").matchAll(/<t[dh]\b([^>]*)>([\s\S]*?)<\/t[dh]>/gi)) {
+    const attrs = cellMatch[1];
+    const inner = cellMatch[2];
+    const anchorAttrs = /<a\b([^>]*)>/i.exec(inner)?.[1] ?? "";
+    cells.push({
+      dataSort: decodeHtml(getHtmlAttribute(attrs, "data-sort")),
+      href: decodeHtml(getHtmlAttribute(anchorAttrs, "href")),
+      text: normalizeWhitespace(decodeHtml(stripHtmlTags(inner)))
+    });
+  }
+  return cells;
+}
+
+function normalizeTournamentHeader(value) {
+  const normalized = normalizeWhitespace(value).toLowerCase();
+  return normalized === "overall score" ? "overall score" : normalized;
+}
+
+function getTournamentColumnIndex(headers, names, fallback) {
+  const index = headers.findIndex((header) => names.includes(header));
+  return index >= 0 ? index : fallback;
+}
+
+function parseIntegerText(value) {
+  return Number.parseInt(String(value ?? "").replace(/[^\d-]/g, ""), 10) || 0;
+}
+
+function stripHtmlTags(value) {
+  return String(value ?? "")
+    .replace(/<script\b[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]*>/g, "");
+}
+
+function normalizeWhitespace(value) {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function getHtmlAttribute(attrs, name) {
+  const match = new RegExp(`${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i").exec(attrs);
+  return match?.[1] ?? match?.[2] ?? match?.[3] ?? "";
+}
+
+function decodeHtml(value) {
+  const named = {
+    amp: "&",
+    apos: "'",
+    gt: ">",
+    lt: "<",
+    nbsp: " ",
+    quot: "\""
+  };
+  return String(value ?? "")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number.parseInt(code, 10)))
+    .replace(/&#x([\da-f]+);/gi, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)))
+    .replace(/&([a-z]+);/gi, (_, name) => named[name.toLowerCase()] ?? `&${name};`);
+}
+
+function formatTournamentUrl(template, values = {}) {
+  const safeTemplate = template || "https://crawl.develz.org/tournament/{version}/all-players-ranks.html";
+  return safeTemplate
+    .replaceAll("{version}", encodeURIComponent(values.version ?? ""))
+    .replaceAll("{username}", encodeURIComponent(String(values.username ?? "").toLocaleLowerCase("en-US")));
+}
+
+function resolveTournamentUrl(url, baseUrl) {
+  try {
+    return new URL(url, baseUrl || undefined).toString();
+  } catch {
+    return String(url || "");
+  }
 }
 
 function getHeader(headers, name) {

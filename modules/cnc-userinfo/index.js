@@ -221,7 +221,8 @@ export default class CNCUserinfo {
             localStorage.LATE_TOURNAMENT_VERSION = (await fetch('https://api.github.com/repos/crawl/dcss_tourney/branches?per_page=100').then(r => r.json())).filter(e => e.name.includes('-tourney')).pop().name.replace('-tourney', '');
         } catch (e) {
         }
-        window.open(`https://crawl.develz.org/tournament/${localStorage.LATE_TOURNAMENT_VERSION}/players/${username}.html`, '_blank');
+        const tournamentUsername = this.normalizeUsername(username).toLocaleLowerCase('en-US');
+        window.open(`https://crawl.develz.org/tournament/${localStorage.LATE_TOURNAMENT_VERSION}/players/${tournamentUsername}.html`, '_blank');
     }
 
     patchUpdateSpectators(data) {
@@ -342,6 +343,10 @@ export default class CNCUserinfo {
 
         if (usernameStyle.id === 'win-streak') {
             return `${this.escapeHtml(this.getWinStreakBadge(usernameStyle.data?.streak))}${this.escapeHtml(username)}`;
+        }
+
+        if (usernameStyle.id === 'latest-tournament') {
+            return `${this.escapeHtml(usernameStyle.data?.badge || '🏁')}${this.escapeHtml(username)}`;
         }
 
         return this.escapeHtml(username);

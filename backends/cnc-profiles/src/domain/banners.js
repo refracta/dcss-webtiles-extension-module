@@ -8,6 +8,7 @@ export const BANNER_URLS = {
   translation: "https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing",
   credits: "https://github.com/crawl/crawl/blob/master/crawl-ref/CREDITS.txt",
   osp: "https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md",
+  tournament: "https://crawl.develz.org/tournament",
   profiles: "https://profiles.nemelex.cards"
 };
 
@@ -30,6 +31,9 @@ const FASTEST_WIN_EXAMPLES = [
   { id: "rank-6-10", serverRankLabel: "#6-#10", rank: 6, serverRank: 6, durationSeconds: 10800 }
 ];
 const WIN_STREAK_EXAMPLES = [1, 5, 10, 100];
+const LATEST_TOURNAMENT_EXAMPLES = [
+  { id: "rank-7", version: "0.34", rank: 7, score: 7654321, clan: "Nemelex Xobeh" }
+];
 
 export const BANNER_DEFINITIONS = [
   {
@@ -124,6 +128,13 @@ export const BANNER_DEFINITIONS = [
     url: BANNER_URLS.osp,
     usernameStyle: { id: "osp-contributor", data: { count: 1 } }
   },
+  {
+    id: "latest-tournament",
+    title: "Latest Tournament (v0.34)",
+    url: `${BANNER_URLS.tournament}/0.34/all-players-ranks.html`,
+    detail: createTournamentDetail({ rank: 1, score: 0, clan: "" }),
+    usernameStyle: { id: "latest-tournament", data: { badge: "🏁", version: "0.34", rank: 1, score: 0, clan: "" } }
+  },
   ...PSEUDO_CNC_RANKS.map((rank) => createPseudoCncBanner(rank)),
   ...PSEUDO_DONOR_AMOUNTS.map((amount, index) => createPseudoDonorBanner(index + 1, amount))
 ];
@@ -139,6 +150,7 @@ const BANNER_EXAMPLE_BANNERS = [
   ...BANNER_EXAMPLE_BANNER_IDS.map((id) => getBannerDefinition(id)),
   ...PSEUDO_TRANSLATOR_SCORES.map((score) => createPseudoTranslatorBanner(score)),
   createOspContributorExampleBanner(10),
+  ...LATEST_TOURNAMENT_EXAMPLES.map((example) => createLatestTournamentExampleBanner(example)),
   ...RANKING_EXAMPLES.map((example) => createRankingExampleBanner(example)),
   ...FASTEST_WIN_EXAMPLES.map((example) => createFastestWinExampleBanner(example)),
   ...WIN_STREAK_EXAMPLES.map((streak) => createWinStreakExampleBanner(streak))
@@ -343,6 +355,34 @@ export function createOspContributorBanner(count) {
   };
 }
 
+export function createLatestTournamentBanner({ version, rank, score, clan, url }) {
+  const safeVersion = String(version || "").trim();
+  const safeRank = Math.max(1, Math.floor(Number(rank) || 1));
+  const safeScore = Math.max(0, Math.floor(Number(score) || 0));
+  const safeClan = String(clan || "").trim();
+  const safeUrl = String(url || "").trim() || `${BANNER_URLS.tournament}/${encodeURIComponent(safeVersion)}/all-players-ranks.html`;
+  return {
+    id: "latest-tournament",
+    title: `Latest Tournament (v${safeVersion})`,
+    url: safeUrl,
+    detail: createTournamentDetail({
+      rank: safeRank,
+      score: safeScore,
+      clan: safeClan
+    }),
+    usernameStyle: {
+      id: "latest-tournament",
+      data: {
+        badge: "🏁",
+        version: safeVersion,
+        rank: safeRank,
+        score: safeScore,
+        clan: safeClan
+      }
+    }
+  };
+}
+
 function createRankingExampleBanner({ id, serverRankLabel, rank, serverRank, score }) {
   const banner = createRankingBanner({ rank, serverRank, score });
   return {
@@ -380,6 +420,19 @@ function createOspContributorExampleBanner(count) {
   return {
     ...createOspContributorBanner(count),
     id: `example-osp-contributor-${count}`
+  };
+}
+
+function createLatestTournamentExampleBanner({ id, version, rank, score, clan }) {
+  return {
+    ...createLatestTournamentBanner({
+      version,
+      rank,
+      score,
+      clan,
+      url: `${BANNER_URLS.tournament}/${encodeURIComponent(version)}/players/bannerexamples.html`
+    }),
+    id: `example-latest-tournament-${id}`
   };
 }
 
@@ -422,6 +475,13 @@ function createDonationDetail(donation) {
 function createWinStreakDetail(streak) {
   return {
     value: `Best Streak: ${streak.toLocaleString("en-US")} ${streak === 1 ? "win" : "wins"}`
+  };
+}
+
+function createTournamentDetail({ rank, score, clan }) {
+  return {
+    value: `#${rank.toLocaleString("en-US")} Score: ${score.toLocaleString("en-US")}`,
+    subvalue: `Clan: ${clan || "-"}`
   };
 }
 

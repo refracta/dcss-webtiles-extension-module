@@ -1212,6 +1212,10 @@ function renderStyledUsername(username, usernameStyle) {
     return `${escapeHtml(getWinStreakBadge(usernameStyle.data?.streak))}${escapeHtml(username)}`;
   }
 
+  if (usernameStyle.id === "latest-tournament") {
+    return `${escapeHtml(usernameStyle.data?.badge || "🏁")}${escapeHtml(username)}`;
+  }
+
   return escapeHtml(username);
 }
 

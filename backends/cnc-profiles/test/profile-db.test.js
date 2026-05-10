@@ -46,6 +46,22 @@ test("seeds initial profiles preserving username casing", async () => {
     id: "osp-contributor",
     data: { count: 10 }
   });
+  assert.equal(exampleProfile.banners["example-latest-tournament-rank-7"].title, "Latest Tournament (v0.34)");
+  assert.equal(exampleProfile.banners["example-latest-tournament-rank-7"].url, "https://crawl.develz.org/tournament/0.34/players/bannerexamples.html");
+  assert.deepEqual(exampleProfile.banners["example-latest-tournament-rank-7"].detail, {
+    value: "#7 Score: 7,654,321",
+    subvalue: "Clan: Nemelex Xobeh"
+  });
+  assert.deepEqual(exampleProfile.banners["example-latest-tournament-rank-7"].usernameStyle, {
+    id: "latest-tournament",
+    data: {
+      badge: "🏁",
+      version: "0.34",
+      rank: 7,
+      score: 7654321,
+      clan: "Nemelex Xobeh"
+    }
+  });
   for (const rank of PSEUDO_CNC_RANKS) {
     const banner = exampleProfile.banners[`pseudo-cnc-${rank}`];
     assert.equal(banner.title, getPseudoCncTitle(rank));
