@@ -101,7 +101,7 @@ class UserDropdown extends HTMLDivElement {
             : '';
 
         this.dropdownContent.innerHTML = `
-            <div style="font-weight: bold"><a href="${DWEM.Modules.CNCUserinfo.escapeHtml(profileUrl)}" target="_blank" rel="noopener noreferrer">${DWEM.Modules.CNCUserinfo.applyStyledUsername(realUsername)}${isAdmin ? ' (ADMIN)' : ''}</a></div>
+            <div style="font-weight: bold"><a data-cnc-user-profile-link="true" href="${DWEM.Modules.CNCUserinfo.escapeHtml(profileUrl)}" target="_blank" rel="noopener noreferrer">${DWEM.Modules.CNCUserinfo.applyStyledUsername(realUsername)}${isAdmin ? ' (ADMIN)' : ''}</a></div>
             ${titleDiv}
             <div><a href="https://crawl.akrasiac.org/scoring/players/${lowerUsername}.html" target="_blank">CAO Scoreboard</a></div>
             <div><a href="https://crawl.akrasiac.org/scoring03/players/${realUsername}.html" target="_blank"">CAO Scoreboard (Old)</a></div>
@@ -115,6 +115,11 @@ class UserDropdown extends HTMLDivElement {
             <div><a href="https://archive.nemelex.cards/ttyrec/${realUsername}?C=M&O=D" target="_blank"">CNC - ttyrecs</a></div>
             <div><a href="https://archive.nemelex.cards/rcfiles/?user=${realUsername}" target="_blank"">CNC - rcfiles</a></div>
         `;
+        const profileLink = this.dropdownContent.querySelector('[data-cnc-user-profile-link]');
+        profileLink?.addEventListener('contextmenu', (event) => {
+            this.dropdownContent.style.display = 'none';
+            DWEM.Modules.CNCUserinfo.openWatch(realUsername, event);
+        });
         const rect = this.dropdownContent.getBoundingClientRect();
         this.position(x, y, rect);
         this.style.visibility = '';
@@ -181,6 +186,15 @@ export default class CNCUserinfo {
     openFromElement(element, event) {
         const username = this.getUsernameFromElement(element || event?.currentTarget || event?.target);
         this.open(username, event);
+    }
+
+    openWatch(username, event) {
+        const cleanUsername = this.normalizeUsername(username);
+        if (!cleanUsername) return;
+
+        location.hash = `#watch-${cleanUsername}`;
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
     }
 
     bindLobbyUserContextMenu() {
@@ -934,6 +948,7 @@ export default class CNCUserinfo {
 
         CNCUserinfo.open = this.open.bind(this);
         CNCUserinfo.openFromElement = this.openFromElement.bind(this);
+        CNCUserinfo.openWatch = this.openWatch.bind(this);
 
         // Make instance methods available as static methods for other modules
         CNCUserinfo.createNemelexSpan = this.createNemelexSpan.bind(this);
