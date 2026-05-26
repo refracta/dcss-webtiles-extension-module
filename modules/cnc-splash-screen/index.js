@@ -49,11 +49,12 @@ export default class CNCSplashScreen {
             'title_troll_gozag.png',
             'title_vinestalker_bites_lom_lobon_by steelcold.png',
             'title_xom.jpg',
-            'title_yiuf.png'
+            'title_yiuf.png',
+            'title_coglin_blueprint_by_flameblast12.png'
         ];
         if (shouldUseXMasImages()) {
             Array.from(document.querySelectorAll('#loader_center img')).forEach(e => e.remove());
-            images = images.map(e => `xmas/${e}`);
+            images = images.map(e => `xmas/${e}`).filter(e => !e.includes('title_coglin_blueprint_by_flameblast12.png'));
         }
         const loaderCenter = document.querySelector('#loader_center');
         for (const name of images) {
