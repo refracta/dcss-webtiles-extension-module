@@ -184,6 +184,7 @@ export default class BannerTemplate {
             <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">서버 상태</a> -
             <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="사랑방은 한옥에서 손님을 맞이하는 방을 말합니다. 이 기능이 켜져있으면 자동으로 관전자 수가 제일 많은 플레이어를 관전합니다.">사랑방<span id="sarangbang-second"></span></a> -
             <a href="https://terminal.nemelex.cards">웹 터미널</a> -
+            <a href="https://refracta.github.io/pocketzot-dwem/">모바일 <span style="color: yellow;">(New)</span></a> -
             <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()" title="좌클릭: URL 입력 또는 랜덤 재생 | 우클릭: 내 wtrec 파일 업로드 후 재생">WTRec 재생 (베타)</a> -
             <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM 모듈 관리자 (Ctrl + F12)</a>`;
         }
@@ -193,6 +194,7 @@ export default class BannerTemplate {
                         <a href="https://grafana.abstr.net/d/d256ff3c-64f5-42f1-ac0c-cf6637664308/cnc-server-status">Server Status</a> -
                         <a id="sarangbang" href="javascript:DWEM.Modules.CNCBanner.toggleSarangbang()" title="The 'Sarangbang' refers to the room in traditional korean houses used to receive guests. When this feature is enabled, it will automatically find and watch the player with the highest number of spectators.">Sarangbang<span id="sarangbang-second"></span></a> -
                         <a href="https://terminal.nemelex.cards">Web Terminal</a> -
+                        <a href="https://refracta.github.io/pocketzot-dwem/">Mobile <span style="color: yellow;">(New)</span></a> -
                         <a href="javascript:DWEM.Modules.CNCBanner.playWTRec()" title="Left click: Enter URL or play random | Right click: Upload your wtrec and play">Play WTRec (Beta)</a> -
                         <a href="javascript:DWEM.Modules.ModuleManager.toggle()">DWEM Module Manager (Ctrl + F12)</a>`;
     }
