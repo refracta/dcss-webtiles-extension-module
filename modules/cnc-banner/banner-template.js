@@ -31,14 +31,15 @@ export default class BannerTemplate {
             startUTC: new Date(Date.UTC(2025, 11 - 1, 28, 0, 0, 0)),
             endUTC: new Date(Date.UTC(2026, 1 - 1, 3, 0, 0, 0)),
             url: 'https://www.crawlcosplay.org/cctt'
-        },
-        {
-            id: 'cnc-anniversary-tournament',
-            name: 'CNC 2nd Anniversary Tournament',
-            startUTC: new Date(Date.UTC(2026, 6 - 1, 10, 15, 0, 0)),
-            endUTC: new Date(Date.UTC(2026, 6 - 1, 25, 14, 59, 59)),
-            url: 'https://docs.google.com/document/d/e/2PACX-1vSFy2_8ZJeitgui9bAwO9MOxB4D6RLTdeXZr68l9DFFgi9FQgnDhm4JCc7MASSID_5qPpE_yqr1c4np/pub'
         }
+        // ,
+        // {
+        //     id: 'cnc-anniversary-tournament',
+        //     name: 'CNC 2nd Anniversary Tournament',
+        //     startUTC: new Date(Date.UTC(2026, 6 - 1, 10, 15, 0, 0)),
+        //     endUTC: new Date(Date.UTC(2026, 6 - 1, 25, 14, 59, 59)),
+        //     url: 'https://docs.google.com/document/d/e/2PACX-1vSFy2_8ZJeitgui9bAwO9MOxB4D6RLTdeXZr68l9DFFgi9FQgnDhm4JCc7MASSID_5qPpE_yqr1c4np/pub'
+        // }
     ];
 
     getKoreanBanner(currentUser) {
