@@ -272,6 +272,7 @@ Hit     50
     assert.match(html, /fetchJson\(imagePath\)/);
     assert.match(html, /data-captured-at="2026-06-13T00:00:00.000Z"/);
     assert.match(html, /Dungeon Crawl Stone Soup 0.35-a0-test/);
+    assert.match(html, /href="\/ranking"/);
     assert.match(html, /formatCaptureTimes\(\)/);
     assert.doesNotMatch(html, /Tile id:/);
     assert.doesNotMatch(html, /id="goonkemon-capture"/);

@@ -1733,6 +1733,26 @@ h1 {
 	    color: var(--crawl-dim);
 	    font-size: 12px;
 	}
+	.page-actions {
+	    display: flex;
+	    justify-content: flex-end;
+	    margin-top: 12px;
+	    padding-top: 10px;
+	    border-top: 1px solid var(--crawl-border-dim);
+	}
+	.crawl-button {
+	    display: inline-block;
+	    border: 1px solid var(--crawl-border);
+	    background: #101010;
+	    color: #fff;
+	    padding: 4px 10px;
+	    text-decoration: none;
+	}
+	.crawl-button:hover,
+	.crawl-button:focus {
+	    background: #1c1c1c;
+	    color: var(--crawl-yellow);
+	}
 .lightgrey, .lightgray { color: #b8b8b8; }
 .darkgrey, .darkgray { color: #666; }
 .white, .w { color: #fff; }
@@ -1797,6 +1817,9 @@ ${status}
 		</div>
 		<div class="source">Captured for ${escapeHtml(username)} at <span data-captured-at="${escapeAttribute(capturedAt)}">${escapeHtml(capturedAt)}</span>${versionText ? ` (${escapeHtml(versionText)})` : ''}.</div>
 		</section>
+		<nav class="page-actions" aria-label="Page actions">
+		<a class="crawl-button" href="/ranking">View ranking</a>
+		</nav>
 	</div>
 </section>
 </main>
