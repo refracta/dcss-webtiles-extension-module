@@ -31,15 +31,14 @@ export default class BannerTemplate {
             startUTC: new Date(Date.UTC(2025, 11 - 1, 28, 0, 0, 0)),
             endUTC: new Date(Date.UTC(2026, 1 - 1, 3, 0, 0, 0)),
             url: 'https://www.crawlcosplay.org/cctt'
+        },
+        {
+            id: 'cnc-anniversary-tournament',
+            name: 'CNC 2nd Anniversary Tournament',
+            startUTC: new Date(Date.UTC(2026, 6 - 1, 17, 15, 0, 0)),
+            endUTC: new Date(Date.UTC(2026, 7 - 1, 1, 15, 0, 0)),
+            url: 'https://refracta.github.io/nemelex.cards/cnc-2nd-anniversary-tournament/details.html'
         }
-        // ,
-        // {
-        //     id: 'cnc-anniversary-tournament',
-        //     name: 'CNC 2nd Anniversary Tournament',
-        //     startUTC: new Date(Date.UTC(2026, 6 - 1, 10, 15, 0, 0)),
-        //     endUTC: new Date(Date.UTC(2026, 6 - 1, 25, 14, 59, 59)),
-        //     url: 'https://docs.google.com/document/d/e/2PACX-1vSFy2_8ZJeitgui9bAwO9MOxB4D6RLTdeXZr68l9DFFgi9FQgnDhm4JCc7MASSID_5qPpE_yqr1c4np/pub'
-        // }
     ];
 
     getKoreanBanner(currentUser) {
@@ -237,8 +236,8 @@ export default class BannerTemplate {
 
     getTournamentProposalText(locale) {
         return locale === 'ko'
-            ? `<a href="https://discord.gg/BQyRwpnvGH">#event-suggestion</a>에서 CNC 2nd Anniversary Tournament의 대회 제안을 받고 있습니다.`
-            : `We are accepting tournament proposals for the CNC 2nd Anniversary Tournament at <a href="https://discord.gg/BQyRwpnvGH">#event-suggestion</a>.`;
+            ? `<a href="https://refracta.github.io/nemelex.cards/cnc-2nd-anniversary-tournament/details.html">CNC 2nd Anniversary Tournament</a>가 6월 18일 00:00 KST부터 2주간 진행됩니다.`
+            : `<a href="https://refracta.github.io/nemelex.cards/cnc-2nd-anniversary-tournament/details.html">CNC 2nd Anniversary Tournament</a> runs for two weeks from June 18, 2026 00:00 KST.`;
     }
 
     getUserLinks(locale, currentUser) {
