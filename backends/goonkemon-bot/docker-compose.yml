@@ -9,5 +9,5 @@ services:
             - .env
         command: sh -c "if [ ! -e node_modules ]; then npm install; fi && node index.js"
         ports:
-            - "127.0.0.1:8787:8787"
+            - "43040:8787"
         restart: unless-stopped
