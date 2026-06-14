@@ -21,6 +21,7 @@ export default class CNCEvent {
         this.latestDescribeMonster = null;
         this.watching = false;
         this.playing = false;
+        this.jqueryPaneCycleControllerInstalled = false;
     }
 
     onLoad() {
@@ -234,7 +235,22 @@ export default class CNCEvent {
         this.globalPaneCycleControllerInstalled = true;
         document.addEventListener('keydown', event => this.handleGlobalPaneCycleKey(event), true);
         document.addEventListener('keypress', event => this.handleGlobalPaneCycleKey(event), true);
-        $(document).on('game_keydown.cnc-event game_keypress.cnc-event', event => this.handleGlobalPaneCycleKey(event));
+        this.installJQueryPaneCycleController();
+    }
+
+    installJQueryPaneCycleController() {
+        if (this.jqueryPaneCycleControllerInstalled) {
+            return;
+        }
+
+        const jq = window.jQuery || window.$;
+        if (typeof jq !== 'function') {
+            setTimeout(() => this.installJQueryPaneCycleController(), 50);
+            return;
+        }
+
+        this.jqueryPaneCycleControllerInstalled = true;
+        jq(document).on('game_keydown.cnc-event game_keypress.cnc-event', event => this.handleGlobalPaneCycleKey(event));
     }
 
     handleGlobalPaneCycleKey(event) {
