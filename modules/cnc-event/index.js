@@ -29,6 +29,7 @@ export default class CNCEvent {
         const mapper = source => this.injectDescribeMonsterPane(source);
         SMR.add('./ui-layouts', mapper);
         this.injectStyle();
+        this.installSpectatorPaneCycleController();
 
         DWEM.Modules.IOHook.handle_message.before.addHandler('cnc-event-version-tracker', data => {
             if (data?.msg === 'game_client') {
@@ -213,6 +214,74 @@ export default class CNCEvent {
         const $bodyPanes = $popup.find('.body.paneset > .pane');
         const currentIndex = this.currentPaneIndex($popup, $bodyPanes);
         this.setPaneIndex($popup, currentIndex);
+    }
+
+    installSpectatorPaneCycleController() {
+        if (this.spectatorPaneCycleControllerInstalled) {
+            return;
+        }
+
+        this.spectatorPaneCycleControllerInstalled = true;
+        document.addEventListener('keydown', event => this.handleSpectatorPaneCycleKey(event), true);
+    }
+
+    handleSpectatorPaneCycleKey(event) {
+        if (!this.isSpectating() || !this.isPaneCycleKey(event)) {
+            return;
+        }
+
+        const popup = this.findActiveGoonkemonPopupElement();
+        if (!popup) {
+            return;
+        }
+
+        const currentIndex = this.currentPaneIndexElement(popup);
+        this.setPaneIndexElement(popup, currentIndex + 1);
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+    }
+
+    isPaneCycleKey(event) {
+        const key = event.key || '';
+        const code = event.which || event.keyCode || event.charCode || 0;
+        return key === '!' || (key === '1' && event.shiftKey) || code === 33 || (code === 49 && event.shiftKey);
+    }
+
+    findActiveGoonkemonPopupElement() {
+        const popups = Array.from(document.querySelectorAll('.describe-monster')).filter(element => {
+            const connected = element.isConnected !== false;
+            const hasPane = element.querySelector('[data-goonkemon-score-pane]');
+            const visible = element.offsetParent !== null || element.getClientRects().length > 0;
+            return connected && hasPane && visible;
+        });
+        return popups.at(-1) || null;
+    }
+
+    currentPaneIndexElement(popup) {
+        const bodyPanes = Array.from(popup.querySelectorAll('.body.paneset > .pane'));
+        const bodyIndex = bodyPanes.findIndex(pane => pane.classList.contains('current'));
+        if (bodyIndex >= 0) {
+            return bodyIndex;
+        }
+
+        const footerPanes = Array.from(popup.querySelectorAll('.footer > .paneset > .pane'));
+        const footerIndex = footerPanes.findIndex(pane => pane.classList.contains('current'));
+        return footerIndex >= 0 ? footerIndex : 0;
+    }
+
+    setPaneIndexElement(popup, index) {
+        const bodyPanes = Array.from(popup.querySelectorAll('.body.paneset > .pane'));
+        if (!bodyPanes.length) {
+            return;
+        }
+
+        const normalizedIndex = ((Number(index) || 0) % bodyPanes.length + bodyPanes.length) % bodyPanes.length;
+        bodyPanes.forEach((pane, paneIndex) => pane.classList.toggle('current', paneIndex === normalizedIndex));
+
+        const footerPanes = Array.from(popup.querySelectorAll('.footer > .paneset > .pane'));
+        footerPanes.forEach((pane, paneIndex) => pane.classList.toggle('current', paneIndex === normalizedIndex));
+        popup.dataset.goonkemonPaneIndex = String(normalizedIndex);
     }
 
     currentPaneIndex($popup, $bodyPanes = null) {
