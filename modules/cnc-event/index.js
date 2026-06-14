@@ -234,6 +234,7 @@ export default class CNCEvent {
         this.globalPaneCycleControllerInstalled = true;
         document.addEventListener('keydown', event => this.handleGlobalPaneCycleKey(event), true);
         document.addEventListener('keypress', event => this.handleGlobalPaneCycleKey(event), true);
+        $(document).on('game_keydown.cnc-event game_keypress.cnc-event', event => this.handleGlobalPaneCycleKey(event));
     }
 
     handleGlobalPaneCycleKey(event) {
@@ -276,20 +277,36 @@ export default class CNCEvent {
 
         const currentIndex = this.currentPaneIndex($popup, $bodyPanes);
         this.setPaneIndex($popup, currentIndex + 1);
-        $popup.data('goonkemon-last-cycle-keydown', event.type === 'keydown' ? Date.now() : 0);
+        $popup.data('goonkemon-last-cycle-keydown', this.isKeydownEvent(event) ? Date.now() : 0);
         this.stopPaneCycleEvent(event);
     }
 
     isPaneCycleKey(event) {
-        return event.key === '!' || (event.key === '1' && event.shiftKey);
+        const key = event.key || event.originalEvent?.key || '';
+        const code = event.which || event.keyCode || event.charCode ||
+            event.originalEvent?.which || event.originalEvent?.keyCode || event.originalEvent?.charCode || 0;
+        const shiftKey = Boolean(event.shiftKey || event.originalEvent?.shiftKey);
+
+        return key === '!' ||
+            (key === '1' && shiftKey) ||
+            code === 33 ||
+            (code === 49 && shiftKey);
     }
 
     isDuplicatePaneCycleEvent($popup, event) {
-        if (event.type !== 'keypress') {
+        if (!this.isKeypressEvent(event)) {
             return false;
         }
         const lastKeydown = Number($popup.data('goonkemon-last-cycle-keydown')) || 0;
         return lastKeydown > 0 && Date.now() - lastKeydown < 250;
+    }
+
+    isKeydownEvent(event) {
+        return /(?:^|_)keydown$/.test(String(event.type || ''));
+    }
+
+    isKeypressEvent(event) {
+        return /(?:^|_)keypress$/.test(String(event.type || ''));
     }
 
     stopPaneCycleEvent(event) {
