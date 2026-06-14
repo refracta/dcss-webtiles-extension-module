@@ -229,7 +229,7 @@ function buildScoreBreakdown(score) {
             spell.range || '',
             spell.schools || ''
         ].filter(Boolean).join(' '),
-        calculation: `${Number(spell.level || 0)} * ${SCORE_RULES.spellLevelMultiplier}`,
+        calculation: `${Number(spell.level)} * ${SCORE_RULES.spellLevelMultiplier}`,
         points: Number(spell.score || 0)
     }));
 
