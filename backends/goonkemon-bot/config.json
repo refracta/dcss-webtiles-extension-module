@@ -1,5 +1,6 @@
 {
     "entrypoint": "https://crawl.nemelex.cards",
+    "publicBaseUrl": "https://goonkemon.nemelex.cards",
     "websocket": "wss://crawl.nemelex.cards/socket",
     "username": "Goonkemon",
     "password": "",

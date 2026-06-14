@@ -9,6 +9,7 @@ const DEFAULT_CAPTURE_TIMEOUT_MS = 4000;
 const DEFAULT_WATCH_TIMEOUT_MS = 3000;
 const DEFAULT_RECONNECT_DELAY_MS = 10000;
 const DEFAULT_PUBLIC_CHAT_USERNAME = 'CNCPublicChat';
+const DEFAULT_PUBLIC_BASE_URL = 'https://goonkemon.nemelex.cards';
 const INFINITY_GLYPH = '\u221e';
 const RESIST_MAX = {
     rF: 3,
@@ -252,6 +253,7 @@ export class GoonkemonBot {
         this.email = config.email || process.env.GOONKEMON_EMAIL || '';
         this.autoRegister = config.autoRegister === true || process.env.GOONKEMON_AUTO_REGISTER === 'true';
         this.entrypoint = config.entrypoint || process.env.GOONKEMON_ENTRYPOINT || '';
+        this.publicBaseUrl = config.publicBaseUrl || process.env.GOONKEMON_PUBLIC_BASE_URL || DEFAULT_PUBLIC_BASE_URL;
         this.publicChatUsername = config.publicChatUsername || config.idleWatchUsername || DEFAULT_PUBLIC_CHAT_USERNAME;
         this.trigger = config.trigger || DEFAULT_TRIGGER;
         this.captureTimeoutMs = Number(config.captureTimeoutMs || DEFAULT_CAPTURE_TIMEOUT_MS);
@@ -483,10 +485,11 @@ export class GoonkemonBot {
             const analysis = analyzeGoonkemonMonster(capture.monster, {iconNameById});
             const score = scoreAnalysis(analysis);
             const saved = await this.saveCapture(target, capture, analysis);
+            const detailUrl = captureDetailUrl(this.publicBaseUrl, saved.id);
 
             await this.returnToPublicChat();
-            this.socket?.chat_msg(formatSuccessMessage(target, score));
-            this.logger.log(new Date(), `Goonkemon scored ${target}: ${score.total}`, saved.jsonPath);
+            this.socket?.chat_msg(formatSuccessMessage(score, detailUrl));
+            this.logger.log(new Date(), `Goonkemon scored ${target}: ${score.total}`, detailUrl, saved.jsonPath);
         } catch (error) {
             const message = formatFailureMessage(error);
             this.logger.warn(new Date(), target, message);
@@ -1430,17 +1433,17 @@ function formatTimestamp(date) {
         `T${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}Z`;
 }
 
-function formatSuccessMessage(username, score) {
-    return `Goonkemon: ${username} caught ${score.title} - ${score.total} pts ` +
-        `(stats ${score.scaledStatScore}, spells ${score.spellScore}, status x${formatChatMultiplier(score.statusMultiplier)}).`;
+export function formatSuccessMessage(score, detailUrl = '') {
+    const title = String(score?.title || 'Unknown Goonkemon').replace(/\s+/g, ' ').trim();
+    const points = Number.isFinite(Number(score?.total)) ? String(score.total) : '?';
+    const url = String(detailUrl || '').trim();
+    return `Goonkemon: ${title} ${points} pts${url ? ` - ${url}` : ''}`;
 }
 
-function formatChatMultiplier(value) {
-    const number = Number(value);
-    if (!Number.isFinite(number)) {
-        return '1';
-    }
-    return String(Math.round(number * 100) / 100);
+export function captureDetailUrl(publicBaseUrl, id) {
+    const baseUrl = String(publicBaseUrl || DEFAULT_PUBLIC_BASE_URL).trim().replace(/\/+$/, '');
+    const captureId = String(id || '').trim();
+    return captureId ? `${baseUrl}/${encodeURIComponent(captureId)}` : baseUrl;
 }
 
 function formatFailureMessage(error) {

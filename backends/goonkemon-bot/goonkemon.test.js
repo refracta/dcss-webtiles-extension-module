@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
     analyzeGoonkemonMonster,
     assertNotExploreMode,
+    captureDetailUrl,
+    formatSuccessMessage,
     isExploreModeCapture,
     isGotchaTrigger,
     parseMonsterStatuses,
@@ -25,6 +27,16 @@ test('parses webtiles chat html', () => {
         sender: 'labter',
         message: 'gotcha!'
     });
+});
+
+test('formats public capture announcement with detail url', () => {
+    const url = captureDetailUrl('https://goonkemon.nemelex.cards/', '20260614T021841Z-wizardmodephilia-Dionkal.');
+
+    assert.equal(url, 'https://goonkemon.nemelex.cards/20260614T021841Z-wizardmodephilia-Dionkal.');
+    assert.equal(
+        formatSuccessMessage({title: 'Dionkal.', total: 68}, url),
+        'Goonkemon: Dionkal. 68 pts - https://goonkemon.nemelex.cards/20260614T021841Z-wizardmodephilia-Dionkal.'
+    );
 });
 
 test('scores a random pandemonium lord from x-v monster data', () => {
