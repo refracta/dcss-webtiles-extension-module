@@ -29,6 +29,7 @@ export default class CNCEvent {
         const mapper = source => this.injectDescribeMonsterPane(source);
         SMR.add('./ui-layouts', mapper);
         this.injectStyle();
+        this.installGlobalPaneCycleController();
 
         DWEM.Modules.IOHook.handle_message.before.addHandler('cnc-event-version-tracker', data => {
             if (data?.msg === 'game_client') {
@@ -223,6 +224,38 @@ export default class CNCEvent {
 
         element.addEventListener('keydown', event => this.handlePaneCycleKey($popup, event), true);
         element.addEventListener('keypress', event => this.handlePaneCycleKey($popup, event), true);
+    }
+
+    installGlobalPaneCycleController() {
+        if (this.globalPaneCycleControllerInstalled) {
+            return;
+        }
+
+        this.globalPaneCycleControllerInstalled = true;
+        document.addEventListener('keydown', event => this.handleGlobalPaneCycleKey(event), true);
+        document.addEventListener('keypress', event => this.handleGlobalPaneCycleKey(event), true);
+    }
+
+    handleGlobalPaneCycleKey(event) {
+        if (!this.isPaneCycleKey(event)) {
+            return;
+        }
+
+        const $popup = this.findActiveGoonkemonPopup();
+        if (!$popup.length) {
+            return;
+        }
+
+        this.handlePaneCycleKey($popup, event);
+    }
+
+    findActiveGoonkemonPopup() {
+        const popups = $('.describe-monster').toArray().filter(element => {
+            const connected = element.isConnected !== false;
+            const hasPane = $(element).find('[data-goonkemon-score-pane]').length > 0;
+            return connected && hasPane;
+        });
+        return $(popups.at(-1) || []);
     }
 
     handlePaneCycleKey($popup, event) {
