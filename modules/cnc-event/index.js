@@ -57,6 +57,17 @@ export default class CNCEvent {
             this.latestDescribeMonster = this.cloneMessage(desc);
         }, 1000);
 
+        DWEM.Modules.IOHook.handle_message.before.addHandler('cnc-event-describe-monster-pane-state', data => {
+            const pane = this.findDescribeMonsterPane(data);
+            if (pane == null || data?.msg !== 'ui-state' || !this.isSpectating()) {
+                return;
+            }
+            this.pendingDescribeMonsterPaneSync = {
+                previousIndex: this.currentActiveGoonkemonPaneIndex(),
+                pane
+            };
+        }, 1000);
+
         DWEM.Modules.IOHook.handle_message.after.addHandler('cnc-event-describe-monster-fallback', data => {
             const renderedDesc = this.findDescribeMonsterPayload(data);
             if (!renderedDesc) {
@@ -65,6 +76,16 @@ export default class CNCEvent {
             const desc = this.latestDescribeMonster || renderedDesc;
             setTimeout(() => this.enhanceLatestDescribeMonster(desc), 0);
         }, -1000);
+
+        DWEM.Modules.IOHook.handle_message.after.addHandler('cnc-event-describe-monster-pane-sync', data => {
+            const pane = this.findDescribeMonsterPane(data);
+            if (pane == null) {
+                return;
+            }
+            const pending = data?.msg === 'ui-state' ? this.pendingDescribeMonsterPaneSync : null;
+            this.pendingDescribeMonsterPaneSync = null;
+            setTimeout(() => this.syncLatestDescribeMonsterPane(pane, pending || {}), 0);
+        }, -2000);
     }
 
     injectDescribeMonsterPane(source) {
@@ -145,6 +166,26 @@ export default class CNCEvent {
         return null;
     }
 
+    findDescribeMonsterPane(data) {
+        if (data?.msg === 'ui-state' && data.type === 'describe-monster' && data.pane != null) {
+            const pane = Number(data.pane);
+            return Number.isFinite(pane) ? pane : null;
+        }
+
+        if (data?.msg === 'ui-stack' && Array.isArray(data.items)) {
+            for (let i = data.items.length - 1; i >= 0; i--) {
+                const item = data.items[i];
+                if (item?.type !== 'describe-monster' || item.pane == null) {
+                    continue;
+                }
+                const pane = Number(item.pane);
+                return Number.isFinite(pane) ? pane : null;
+            }
+        }
+
+        return null;
+    }
+
     hasDescribeMonsterPayload(item) {
         return item?.type === 'describe-monster' &&
             (item.title != null || item.body != null || Array.isArray(item.spellset));
@@ -216,6 +257,30 @@ export default class CNCEvent {
         this.setPaneIndex($popup, currentIndex);
     }
 
+    syncLatestDescribeMonsterPane(pane, options = {}) {
+        if (!this.isSpectating()) {
+            return;
+        }
+
+        const $popup = $('.describe-monster').last();
+        if (!$popup.length) {
+            return;
+        }
+
+        if (this.latestDescribeMonster) {
+            this.enhanceDescribeMonster($popup, this.latestDescribeMonster);
+        }
+        if (!$popup.find('[data-goonkemon-score-pane]').length) {
+            return;
+        }
+
+        const previousIndex = Number(options.previousIndex);
+        const targetPane = Number.isFinite(previousIndex) && previousIndex >= 0
+            ? previousIndex + 1
+            : pane;
+        this.setPaneIndex($popup, targetPane);
+    }
+
     installSpectatorPaneCycleController() {
         if (this.spectatorPaneCycleControllerInstalled) {
             return;
@@ -256,6 +321,11 @@ export default class CNCEvent {
             return connected && hasPane && visible;
         });
         return popups.at(-1) || null;
+    }
+
+    currentActiveGoonkemonPaneIndex() {
+        const popup = this.findActiveGoonkemonPopupElement();
+        return popup ? this.currentPaneIndexElement(popup) : null;
     }
 
     currentPaneIndexElement(popup) {
