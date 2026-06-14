@@ -1,4 +1,6 @@
 const DEFAULT_API_BASE = 'https://goonkemon.nemelex.cards';
+const EVENT_END_AT = '2026-07-02T00:00:00+09:00';
+const EVENT_END_LABEL = '2026-07-02 00:00 KST';
 const EVENT_LORD_NAMES = [
     'cerebov',
     'lom lobon',
@@ -24,6 +26,11 @@ export default class CNCEvent {
     }
 
     onLoad() {
+        if (!this.isEventActive()) {
+            console.info(`CNCEvent disabled after event end (${EVENT_END_LABEL}).`);
+            return;
+        }
+
         const {SourceMapperRegistry: SMR} = DWEM;
 
         const mapper = source => this.injectDescribeMonsterPane(source);
@@ -86,6 +93,10 @@ export default class CNCEvent {
             this.pendingDescribeMonsterPaneSync = null;
             setTimeout(() => this.syncLatestDescribeMonsterPane(pane, pending || {}), 0);
         }, -2000);
+    }
+
+    isEventActive(now = Date.now()) {
+        return Number(now) < Date.parse(EVENT_END_AT);
     }
 
     injectDescribeMonsterPane(source) {
