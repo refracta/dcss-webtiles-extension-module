@@ -18,29 +18,17 @@ export default class CNCEvent {
         this.gameClientVersion = null;
         this.versionText = null;
         this.gameStarted = null;
+        this.latestDescribeMonster = null;
     }
 
     onLoad() {
         const {SourceMapperRegistry: SMR} = DWEM;
 
-        function uiLayoutsInjector() {
-            const originalDescribeMonster = ui_handlers["describe-monster"];
-            ui_handlers["describe-monster"] = function (desc) {
-                const $popup = originalDescribeMonster(desc);
-                try {
-                    DWEM.Modules.CNCEvent?.enhanceDescribeMonster?.($popup, desc);
-                } catch (error) {
-                    console.error('CNCEvent describe-monster enhancement failed:', error);
-                }
-                return $popup;
-            };
-        }
-
-        const mapper = SMR.getSourceMapper('BeforeReturnInjection', `!${uiLayoutsInjector.toString()}()`);
+        const mapper = source => this.injectDescribeMonsterPane(source);
         SMR.add('./ui-layouts', mapper);
         this.injectStyle();
 
-        DWEM.Modules.IOHook.handle_message.after.addHandler('cnc-event-version-tracker', data => {
+        DWEM.Modules.IOHook.handle_message.before.addHandler('cnc-event-version-tracker', data => {
             if (data?.msg === 'game_client') {
                 this.gameClientVersion = data.version || this.gameClientVersion;
             } else if (data?.msg === 'version') {
@@ -48,18 +36,49 @@ export default class CNCEvent {
             } else if (data?.msg === 'game_started') {
                 this.gameStarted = {...data};
             }
-        });
+        }, 1000);
 
-        DWEM.Modules.IOHook.handle_message.after.addHandler('cnc-event-describe-monster-fallback', data => {
+        DWEM.Modules.IOHook.handle_message.before.addHandler('cnc-event-describe-monster-cache', data => {
             const desc = this.findDescribeMonsterPayload(data);
             if (!desc) {
                 return;
             }
+            this.latestDescribeMonster = this.cloneMessage(desc);
+        }, 1000);
+
+        DWEM.Modules.IOHook.handle_message.after.addHandler('cnc-event-describe-monster-fallback', data => {
+            const renderedDesc = this.findDescribeMonsterPayload(data);
+            if (!renderedDesc) {
+                return;
+            }
+            const desc = this.latestDescribeMonster || renderedDesc;
             setTimeout(() => this.enhanceLatestDescribeMonster(desc), 0);
-        });
+        }, -1000);
     }
 
-    enhanceDescribeMonster($popup, desc) {
+    injectDescribeMonsterPane(source) {
+        const scrollerLoopPattern = /(\s*)for \(var i = 0; i < \$panes\.length; i\+\+\)\r?\n\s*scroller\(\$panes\.eq\(i\)\[0\]\);/;
+        const match = source.match(scrollerLoopPattern);
+        if (!match) {
+            console.warn('CNCEvent could not find describe_monster scroller hook point.');
+            return source;
+        }
+
+        const indent = match[1] || '';
+        const injection = `${indent}try {
+            var goonkemon_desc = DWEM.Modules.CNCEvent?.latestDescribeMonster || desc;
+            DWEM.Modules.CNCEvent?.enhanceDescribeMonster?.($popup, goonkemon_desc, {preScroller: true});
+            $panes = $body.find(".pane");
+            $footer = $popup.find(".footer > .paneset");
+            have_quote = $footer.length > 0;
+        } catch (error) {
+            console.error("CNCEvent describe-monster enhancement failed:", error);
+        }`;
+
+        return source.replace(scrollerLoopPattern, `${injection}\n\n${match[0]}`);
+    }
+
+    enhanceDescribeMonster($popup, desc, options = {}) {
         if (!$popup?.hasClass?.('describe-monster')) {
             return;
         }
@@ -79,6 +98,9 @@ export default class CNCEvent {
         this.ensureFooter($popup);
         this.refreshFooter($popup, desc);
         this.installFooterSync($popup);
+        if (!options.preScroller) {
+            this.installFallbackPaneCycleGuard($popup);
+        }
         this.loadScorePane($scorePane, desc);
     }
 
@@ -88,6 +110,14 @@ export default class CNCEvent {
             return;
         }
         this.enhanceDescribeMonster($popup, desc);
+    }
+
+    cloneMessage(data) {
+        try {
+            return JSON.parse(JSON.stringify(data));
+        } catch (error) {
+            return {...data};
+        }
     }
 
     findDescribeMonsterPayload(data) {
@@ -128,7 +158,7 @@ export default class CNCEvent {
         if (String(desc.quote || '') !== '') {
             labels.push('Quote');
         }
-        labels.push('Goonkemon score');
+        labels.push('Goonkemon');
 
         const $footerPanes = $popup.find('.footer > .paneset');
         if (!$footerPanes.length) {
@@ -170,6 +200,44 @@ export default class CNCEvent {
         const $footerPanes = $popup.find('.footer > .paneset > .pane');
         $footerPanes.removeClass('current');
         $footerPanes.eq(currentIndex).addClass('current');
+    }
+
+    installFallbackPaneCycleGuard($popup) {
+        const element = $popup?.[0];
+        if (!element || $popup.data('goonkemon-cycle-guard')) {
+            return;
+        }
+        $popup.data('goonkemon-cycle-guard', true);
+
+        element.addEventListener('keydown', event => this.handleFallbackPaneKey($popup, event), true);
+        element.addEventListener('keypress', event => this.handleFallbackPaneKey($popup, event), true);
+    }
+
+    handleFallbackPaneKey($popup, event) {
+        const $currentPane = $popup.find('.body.paneset > .pane.current');
+        if (!$currentPane.is('[data-goonkemon-score-pane]')) {
+            return;
+        }
+
+        if (event.key === '!') {
+            this.cyclePaneSet($popup.find('.body.paneset'));
+            this.cyclePaneSet($popup.find('.footer > .paneset'));
+            this.syncFooterCurrent($popup);
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+    }
+
+    cyclePaneSet($paneSet) {
+        const $panes = $paneSet.children('.pane');
+        if (!$panes.length) {
+            return;
+        }
+        const $current = $panes.filter('.current').removeClass('current');
+        const next = $panes.index($current) + 1;
+        $panes.eq(next % $panes.length).addClass('current');
     }
 
     renderScorePaneShell() {
@@ -306,11 +374,13 @@ export default class CNCEvent {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1px;
     margin: 0.5em 0;
+    min-width: 0;
 }
 .goonkemon-pane .score-cell {
     min-width: 0;
     border: 1px solid #333;
     padding: 2px 4px;
+    overflow-wrap: anywhere;
 }
 .goonkemon-pane .score-label {
     color: #888;
@@ -323,13 +393,24 @@ export default class CNCEvent {
 .goonkemon-pane .score-detail {
     display: grid;
     gap: 0.75em;
+    min-width: 0;
 }
 .goonkemon-pane .score-equations {
     display: grid;
     gap: 0.15em;
+    min-width: 0;
+}
+.goonkemon-pane .score-equation {
+    overflow-wrap: anywhere;
+}
+.goonkemon-pane .score-section {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
 }
 .goonkemon-pane .score-table {
-    width: 100%;
+    width: max-content;
+    max-width: 100%;
     border-collapse: collapse;
 }
 .goonkemon-pane .score-table th,
@@ -338,10 +419,19 @@ export default class CNCEvent {
     padding: 2px 4px;
     text-align: left;
     vertical-align: top;
+    overflow-wrap: anywhere;
 }
 .goonkemon-pane .score-table th {
     color: #888;
     font-weight: normal;
+}
+.describe-monster .body.paneset,
+.describe-monster .body.paneset > .pane,
+.describe-monster .body.paneset .simplebar-content,
+.describe-monster .goonkemon-pane {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .goonkemon-pane .score-points {
     text-align: right;
