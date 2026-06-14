@@ -101,7 +101,7 @@ class UserDropdown extends HTMLDivElement {
             : '';
 
         this.dropdownContent.innerHTML = `
-            <div style="font-weight: bold"><a data-cnc-user-profile-link="true" href="${DWEM.Modules.CNCUserinfo.escapeHtml(profileUrl)}" target="_blank" rel="noopener noreferrer">${DWEM.Modules.CNCUserinfo.applyStyledUsername(realUsername)}${isAdmin ? ' (ADMIN)' : ''}</a></div>
+            <div data-cnc-watch-row="true" style="font-weight: bold"><a data-cnc-user-profile-link="true" href="${DWEM.Modules.CNCUserinfo.escapeHtml(profileUrl)}" target="_blank" rel="noopener noreferrer">${DWEM.Modules.CNCUserinfo.applyStyledUsername(realUsername)}${isAdmin ? ' (ADMIN)' : ''}</a></div>
             ${titleDiv}
             <div><a href="https://crawl.akrasiac.org/scoring/players/${lowerUsername}.html" target="_blank">CAO Scoreboard</a></div>
             <div><a href="https://crawl.akrasiac.org/scoring03/players/${realUsername}.html" target="_blank"">CAO Scoreboard (Old)</a></div>
@@ -115,8 +115,8 @@ class UserDropdown extends HTMLDivElement {
             <div><a href="https://archive.nemelex.cards/ttyrec/${realUsername}?C=M&O=D" target="_blank"">CNC - ttyrecs</a></div>
             <div><a href="https://archive.nemelex.cards/rcfiles/?user=${realUsername}" target="_blank"">CNC - rcfiles</a></div>
         `;
-        const profileLink = this.dropdownContent.querySelector('[data-cnc-user-profile-link]');
-        profileLink?.addEventListener('contextmenu', (event) => {
+        const watchRow = this.dropdownContent.querySelector('[data-cnc-watch-row]');
+        watchRow?.addEventListener('contextmenu', (event) => {
             this.dropdownContent.style.display = 'none';
             DWEM.Modules.CNCUserinfo.openWatch(realUsername, event);
         });
@@ -192,7 +192,9 @@ export default class CNCUserinfo {
         const cleanUsername = this.normalizeUsername(username);
         if (!cleanUsername) return;
 
-        location.hash = `#watch-${cleanUsername}`;
+        const watchUrl = new URL(window.location.href);
+        watchUrl.hash = `watch-${cleanUsername}`;
+        window.open(watchUrl.toString(), '_blank', 'noopener');
         event?.preventDefault?.();
         event?.stopPropagation?.();
     }
