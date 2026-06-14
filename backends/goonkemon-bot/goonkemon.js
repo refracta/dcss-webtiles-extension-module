@@ -12,8 +12,8 @@ const DEFAULT_PUBLIC_CHAT_USERNAME = 'CNCPublicChat';
 const DEFAULT_PUBLIC_BASE_URL = 'https://goonkemon.nemelex.cards';
 const INFINITY_GLYPH = '\u221e';
 const RESIST_MAX = {
-    rF: 3,
-    rC: 3,
+    rF: 2,
+    rC: 2,
     rElec: 1
 };
 const STATUS_ICON_BUFFS = new Set([

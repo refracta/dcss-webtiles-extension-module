@@ -450,14 +450,15 @@ test('accepts infinite resistance glyphs from crawl markup', () => {
         msg: 'ui-push',
         type: 'describe-monster',
         title: 'Cerebov',
-        body: 'Max HP: ~650 Will: \u221e AC: ++++ EV: ++ rF: \u221e rC: ... rElec: \u221e\n\nAttack  Max Damage\nHit     70\n',
+        body: 'Max HP: ~650 Will: \u221e AC: ++++ EV: ++ rF: \u221e rC: \u221e rElec: \u221e\n\nAttack  Max Damage\nHit     70\n',
         spellset: []
     });
 
     assert.equal(score.stats.willPips, 5);
-    assert.equal(score.stats.resists.rF, 6);
+    assert.equal(score.stats.resists.rF, 4);
+    assert.equal(score.stats.resists.rC, 4);
     assert.equal(score.stats.resists.rElec, 2);
-    assert.equal(score.stats.resistScore, 28);
+    assert.equal(score.stats.resistScore, 34);
 });
 
 test('subtracts vulnerable resistance pips', () => {
