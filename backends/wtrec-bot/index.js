@@ -25,12 +25,22 @@ const CONFIGURED_FORCED_DONOR_RECORDING_USERNAMES = Array.isArray(config.forcedD
     ? config.forcedDonorRecordingUsernames
     : [];
 const FORCED_DONOR_RECORDING_USERNAMES = ['ASCIIPhilia', ...CONFIGURED_FORCED_DONOR_RECORDING_USERNAMES];
-const SPECIAL_RECORDING_PERIODS = Array.isArray(config.specialRecordingPeriods)
+const CNC_2ND_ANNIVERSARY_RECORDING_PERIOD = {
+    name: 'cnc-2nd-anniversary-tournament',
+    start: '2026-06-17T15:00:00.000Z',
+    end: '2026-07-01T15:00:00.000Z'
+};
+const CONFIGURED_SPECIAL_RECORDING_PERIODS = Array.isArray(config.specialRecordingPeriods)
     ? config.specialRecordingPeriods
     : [{
+        name: 'dcsk-2026',
         start: '2026-02-06T20:00:00.000Z',
         end: '2026-02-22T20:00:00.000Z'
     }];
+const SPECIAL_RECORDING_PERIODS = [
+    CNC_2ND_ANNIVERSARY_RECORDING_PERIOD,
+    ...CONFIGURED_SPECIAL_RECORDING_PERIODS
+];
 const DONOR_RECORDING_MESSAGE = 'Thank you for your server support. Server-side WTREC recording has been enabled.';
 
 for (const username of FORCED_DONOR_RECORDING_USERNAMES) {
@@ -160,7 +170,7 @@ function isSpecialRecordingPeriod(now = new Date()) {
         const startTime = Date.parse(start);
         const endTime = Date.parse(end);
         return Number.isFinite(startTime) && Number.isFinite(endTime) &&
-            now.getTime() >= startTime && now.getTime() <= endTime;
+            now.getTime() >= startTime && now.getTime() < endTime;
     });
 }
 
