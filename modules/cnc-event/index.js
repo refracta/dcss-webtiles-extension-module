@@ -253,7 +253,8 @@ export default class CNCEvent {
         const popups = $('.describe-monster').toArray().filter(element => {
             const connected = element.isConnected !== false;
             const hasPane = $(element).find('[data-goonkemon-score-pane]').length > 0;
-            return connected && hasPane;
+            const visible = element.offsetParent !== null || element.getClientRects().length > 0;
+            return connected && hasPane && visible;
         });
         return $(popups.at(-1) || []);
     }
