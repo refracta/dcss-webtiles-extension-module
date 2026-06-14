@@ -1,0 +1,22 @@
+{
+    "entrypoint": "https://crawl.nemelex.cards",
+    "websocket": "wss://crawl.nemelex.cards/socket",
+    "username": "Goonkemon",
+    "password": "",
+    "email": "",
+    "autoRegister": false,
+    "publicChatUsername": "CNCPublicChat",
+    "trigger": "gotcha!",
+    "captureTimeoutMs": 4000,
+    "watchTimeoutMs": 3000,
+    "reconnectDelayMs": 10000,
+    "storageDir": "data/goonkemon",
+    "httpHost": "0.0.0.0",
+    "httpPort": 8787,
+    "allowedOrigins": [
+        "https://crawl.nemelex.cards",
+        "https://test.nemelex.cards",
+        "http://localhost:6060",
+        "http://127.0.0.1:6060"
+    ]
+}

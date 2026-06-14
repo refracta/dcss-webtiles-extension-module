@@ -1,0 +1,25 @@
+{
+    "name": "goonkemon-bot",
+    "version": "1.0.0",
+    "description": "One-off Goonkemon scoring bot for DCSS WebTiles",
+    "main": "index.js",
+    "scripts": {
+        "test": "node --test goonkemon.test.js",
+        "check": "node --check index.js && node --check goonkemon.js && node --check score-rules.js && node --check server.js && node --check stress-test.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/refracta/dcss-webtiles-extension-module.git"
+    },
+    "author": "refracta",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/refracta/dcss-webtiles-extension-module/issues"
+    },
+    "homepage": "https://github.com/refracta/dcss-webtiles-extension-module#readme",
+    "type": "module",
+    "dependencies": {
+        "jsdom": "^24.1.1",
+        "websocket": "^1.0.35"
+    }
+}

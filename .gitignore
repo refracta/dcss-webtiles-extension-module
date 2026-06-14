@@ -2,3 +2,6 @@ files/
 backends/cnc-profiles/data/
 backends/cnc-profiles/node_modules/
 backends/cnc-profiles/.env
+backends/goonkemon-bot/data/
+backends/goonkemon-bot/node_modules/
+backends/goonkemon-bot/.env
