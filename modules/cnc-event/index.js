@@ -19,6 +19,8 @@ export default class CNCEvent {
         this.versionText = null;
         this.gameStarted = null;
         this.latestDescribeMonster = null;
+        this.watching = false;
+        this.playing = false;
     }
 
     onLoad() {
@@ -35,6 +37,14 @@ export default class CNCEvent {
                 this.versionText = data.text || data.version || this.versionText;
             } else if (data?.msg === 'game_started') {
                 this.gameStarted = {...data};
+                this.playing = true;
+                this.watching = false;
+            } else if (data?.msg === 'watching_started') {
+                this.watching = true;
+                this.playing = false;
+            } else if (data?.msg === 'go_lobby' || data?.msg === 'game_ended') {
+                this.watching = false;
+                this.playing = false;
             }
         }, 1000);
 
@@ -98,9 +108,7 @@ export default class CNCEvent {
         this.ensureFooter($popup);
         this.refreshFooter($popup, desc);
         this.installFooterSync($popup);
-        if (!options.preScroller) {
-            this.installFallbackPaneCycleGuard($popup);
-        }
+        this.installPaneCycleController($popup);
         this.loadScorePane($scorePane, desc);
     }
 
@@ -173,6 +181,7 @@ export default class CNCEvent {
         const currentIndex = Math.max(0, $popup.find('.body.paneset > .pane').index(
             $popup.find('.body.paneset > .pane.current')
         ));
+        $popup.data('goonkemon-pane-index', currentIndex);
         $footerPanes.empty();
         labels.forEach((label, index) => {
             const text = labels.map((item, itemIndex) =>
@@ -201,55 +210,96 @@ export default class CNCEvent {
 
     syncFooterCurrent($popup) {
         const $bodyPanes = $popup.find('.body.paneset > .pane');
-        const currentIndex = Math.max(0, $bodyPanes.index($bodyPanes.filter('.current')));
-        const $footerPanes = $popup.find('.footer > .paneset > .pane');
-        $footerPanes.removeClass('current');
-        $footerPanes.eq(currentIndex).addClass('current');
+        const currentIndex = this.currentPaneIndex($popup, $bodyPanes);
+        this.setPaneIndex($popup, currentIndex);
     }
 
-    installFallbackPaneCycleGuard($popup) {
+    installPaneCycleController($popup) {
         const element = $popup?.[0];
         if (!element || $popup.data('goonkemon-cycle-guard')) {
             return;
         }
         $popup.data('goonkemon-cycle-guard', true);
 
-        element.addEventListener('keydown', event => this.handleFallbackPaneKey($popup, event), true);
-        element.addEventListener('keypress', event => this.handleFallbackPaneKey($popup, event), true);
+        element.addEventListener('keydown', event => this.handlePaneCycleKey($popup, event), true);
+        element.addEventListener('keypress', event => this.handlePaneCycleKey($popup, event), true);
     }
 
-    handleFallbackPaneKey($popup, event) {
-        const $currentPane = $popup.find('.body.paneset > .pane.current');
-        if (!$currentPane.is('[data-goonkemon-score-pane]')) {
+    handlePaneCycleKey($popup, event) {
+        if (!this.isPaneCycleKey(event)) {
             return;
         }
 
-        if (event.key === '!') {
-            this.cyclePaneSet($popup.find('.body.paneset'));
-            this.cyclePaneSet($popup.find('.footer > .paneset'));
-            this.syncFooterCurrent($popup);
+        const $bodyPanes = $popup.find('.body.paneset > .pane');
+        if (!$bodyPanes.filter('[data-goonkemon-score-pane]').length) {
+            return;
         }
 
+        if (this.isDuplicatePaneCycleEvent($popup, event)) {
+            this.stopPaneCycleEvent(event);
+            return;
+        }
+
+        const currentIndex = this.currentPaneIndex($popup, $bodyPanes);
+        this.setPaneIndex($popup, currentIndex + 1);
+        $popup.data('goonkemon-last-cycle-keydown', event.type === 'keydown' ? Date.now() : 0);
+        this.stopPaneCycleEvent(event);
+    }
+
+    isPaneCycleKey(event) {
+        return event.key === '!' || (event.key === '1' && event.shiftKey);
+    }
+
+    isDuplicatePaneCycleEvent($popup, event) {
+        if (event.type !== 'keypress') {
+            return false;
+        }
+        const lastKeydown = Number($popup.data('goonkemon-last-cycle-keydown')) || 0;
+        return lastKeydown > 0 && Date.now() - lastKeydown < 250;
+    }
+
+    stopPaneCycleEvent(event) {
         event.preventDefault();
         event.stopImmediatePropagation();
         event.stopPropagation();
     }
 
-    cyclePaneSet($paneSet) {
-        const $panes = $paneSet.children('.pane');
-        if (!$panes.length) {
+    currentPaneIndex($popup, $bodyPanes = null) {
+        const $panes = $bodyPanes || $popup.find('.body.paneset > .pane');
+        const bodyIndex = $panes.index($panes.filter('.current'));
+        if (bodyIndex >= 0) {
+            return bodyIndex;
+        }
+
+        const $footerPanes = $popup.find('.footer > .paneset > .pane');
+        const footerIndex = $footerPanes.index($footerPanes.filter('.current'));
+        if (footerIndex >= 0) {
+            return footerIndex;
+        }
+
+        const storedIndex = Number($popup.data('goonkemon-pane-index'));
+        return Number.isFinite(storedIndex) ? storedIndex : 0;
+    }
+
+    setPaneIndex($popup, index) {
+        const $bodyPanes = $popup.find('.body.paneset > .pane');
+        if (!$bodyPanes.length) {
             return;
         }
-        const $current = $panes.filter('.current').removeClass('current');
-        const next = $panes.index($current) + 1;
-        $panes.eq(next % $panes.length).addClass('current');
+
+        const normalizedIndex = ((Number(index) || 0) % $bodyPanes.length + $bodyPanes.length) % $bodyPanes.length;
+        $bodyPanes.removeClass('current').eq(normalizedIndex).addClass('current');
+
+        const $footerPanes = $popup.find('.footer > .paneset > .pane');
+        $footerPanes.removeClass('current').eq(normalizedIndex).addClass('current');
+        $popup.data('goonkemon-pane-index', normalizedIndex);
     }
 
     renderScorePaneShell() {
         return `
 <div class="goonkemon-pane" style="padding: 2px 0;">
   <div class="goonkemon-score-content fg7">Loading Goonkemon score...</div>
-  <div style="margin-top: 0.75em;">
+  <div data-goonkemon-submit-row="true" style="margin-top: 0.75em;">
     <button type="button" data-goonkemon-submit="true" style="font: inherit; padding: 2px 8px;">Submit Goonkemon</button>
     <span data-goonkemon-submit-status="true" class="fg7" style="margin-left: 0.5em;"></span>
   </div>
@@ -260,8 +310,13 @@ export default class CNCEvent {
         const $content = $pane.find('.goonkemon-score-content');
         const $button = $pane.find('[data-goonkemon-submit]');
         const $status = $pane.find('[data-goonkemon-submit-status]');
+        const $submitRow = $pane.find('[data-goonkemon-submit-row]');
 
-        $button.on('click', () => this.submitRequest($button, $status));
+        if (this.isSpectating()) {
+            $submitRow.hide();
+        } else {
+            $button.on('click', () => this.submitRequest($button, $status));
+        }
 
         try {
             const result = await this.postJson('/score', {
@@ -320,6 +375,11 @@ export default class CNCEvent {
             versionText: this.versionText,
             gameStarted: this.gameStarted || null
         };
+    }
+
+    isSpectating() {
+        const site = DWEM.Modules.SiteInformation || {};
+        return Boolean((site.watching || this.watching) && !(site.playing || this.playing));
     }
 
     isEligibleGoonkemonMonster(monster) {
