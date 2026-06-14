@@ -129,7 +129,7 @@ export default class CNCEvent {
             for (let i = data.items.length - 1; i >= 0; i--) {
                 const item = data.items[i];
                 if (item?.type === 'describe-monster') {
-                    return {msg: 'ui-push', ...item};
+                    return {...item, msg: 'ui-push'};
                 }
             }
         }
@@ -395,6 +395,11 @@ export default class CNCEvent {
     gap: 0.75em;
     min-width: 0;
 }
+.goonkemon-pane .score-detail > div,
+.goonkemon-pane .goonkemon-score-content {
+    min-width: 0;
+    max-width: 100%;
+}
 .goonkemon-pane .score-equations {
     display: grid;
     gap: 0.15em;
@@ -409,8 +414,9 @@ export default class CNCEvent {
     overflow-x: auto;
 }
 .goonkemon-pane .score-table {
-    width: max-content;
+    width: 100%;
     max-width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
 }
 .goonkemon-pane .score-table th,

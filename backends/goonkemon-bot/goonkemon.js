@@ -748,7 +748,7 @@ function extendSocket(socket) {
     return socket;
 }
 
-function findMonsterDescription(data) {
+export function findMonsterDescription(data) {
     if (data?.msg === 'ui-push' && data.type === 'describe-monster') {
         return data;
     }
@@ -757,7 +757,7 @@ function findMonsterDescription(data) {
         for (let i = data.items.length - 1; i >= 0; i--) {
             const item = data.items[i];
             if (item?.type === 'describe-monster') {
-                return {msg: 'ui-push', ...item};
+                return {...item, msg: 'ui-push'};
             }
         }
     }

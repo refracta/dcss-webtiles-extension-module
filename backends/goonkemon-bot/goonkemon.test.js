@@ -7,6 +7,7 @@ import {
     analyzeGoonkemonMonster,
     assertNotExploreMode,
     captureDetailUrl,
+    findMonsterDescription,
     formatSuccessMessage,
     GoonkemonBot,
     isExploreModeCapture,
@@ -78,6 +79,23 @@ test('saveCapture removes dots from the lord name id component', async () => {
     } finally {
         fs.rmSync(storageDir, {recursive: true, force: true});
     }
+});
+
+test('normalizes describe-monster items restored from ui-stack', () => {
+    const monster = findMonsterDescription({
+        msg: 'ui-stack',
+        items: [{
+            msg: 'ui-state',
+            type: 'describe-monster',
+            title: 'Dionkal.',
+            body: 'One of the many lords of Pandemonium.\nMax HP: 200 Will: + AC: + EV: + rF: ... rC: ... rElec: .',
+            spellset: []
+        }]
+    });
+
+    assert.equal(monster.msg, 'ui-push');
+    assert.equal(monster.type, 'describe-monster');
+    assert.equal(analyzeGoonkemonMonster(monster).title, 'Dionkal.');
 });
 
 test('scores a random pandemonium lord from x-v monster data', () => {
