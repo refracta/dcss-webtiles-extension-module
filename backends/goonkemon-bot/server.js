@@ -504,14 +504,27 @@ document.querySelectorAll('[data-time]').forEach(element => {
     const raw = element.dataset.time || '';
     const date = new Date(raw);
     if (!Number.isNaN(date.valueOf())) {
-        element.textContent = new Intl.DateTimeFormat(undefined, {
-            dateStyle: 'medium',
-            timeStyle: 'medium',
-            timeZoneName: 'short'
-        }).format(date);
+        element.textContent = formatDateTime(date);
         element.title = raw;
     }
 });
+
+function formatDateTime(date) {
+    const options = {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+    };
+    try {
+        return new Intl.DateTimeFormat(undefined, options).format(date);
+    } catch (error) {
+        return date.toLocaleString();
+    }
+}
 </script>
 </body>
 </html>`;

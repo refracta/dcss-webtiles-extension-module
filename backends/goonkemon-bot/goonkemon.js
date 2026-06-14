@@ -621,7 +621,7 @@ export class GoonkemonBot {
 
     async saveCapture(username, capture, analysis) {
         const now = new Date();
-        const id = `${formatTimestamp(now)}-${safeFilename(username)}-${safeFilename(analysis.title)}`;
+        const id = `${formatTimestamp(now)}-${safeFilename(username)}-${safeCaptureTitle(analysis.title)}`;
         const dir = path.join(this.storageDir, safeFilename(username));
         fs.mkdirSync(dir, {recursive: true});
 
@@ -1434,10 +1434,10 @@ function formatTimestamp(date) {
 }
 
 export function formatSuccessMessage(score, detailUrl = '') {
-    const title = String(score?.title || 'Unknown Goonkemon').replace(/\s+/g, ' ').trim();
+    const title = displayCaptureTitle(score?.title);
     const points = Number.isFinite(Number(score?.total)) ? String(score.total) : '?';
     const url = String(detailUrl || '').trim();
-    return `Goonkemon: ${title} ${points} pts${url ? ` - ${url}` : ''}`;
+    return `${title} (${points} pts)${url ? ` - ${url}` : ''}`;
 }
 
 export function captureDetailUrl(publicBaseUrl, id) {
@@ -1449,6 +1449,20 @@ export function captureDetailUrl(publicBaseUrl, id) {
 function formatFailureMessage(error) {
     const reason = String(error?.message || error || 'unknown error').replace(/\s+/g, ' ').trim();
     return `Goonkemon: could not score this x-v target: ${reason}`;
+}
+
+function safeCaptureTitle(value) {
+    return safeFilename(value)
+        .replace(/\./g, '')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 80) || 'unknown';
+}
+
+function displayCaptureTitle(value) {
+    return String(value || 'Unknown Goonkemon')
+        .replace(/\s+/g, ' ')
+        .replace(/\.+$/g, '')
+        .trim() || 'Unknown Goonkemon';
 }
 
 function captureVersionText(capture) {
@@ -1869,13 +1883,26 @@ function formatCaptureTimes() {
         if (Number.isNaN(date.valueOf())) {
             return;
         }
-        element.textContent = new Intl.DateTimeFormat(undefined, {
-            dateStyle: 'medium',
-            timeStyle: 'medium',
-            timeZoneName: 'short'
-        }).format(date);
+        element.textContent = formatDateTime(date);
         element.title = raw;
     });
+}
+
+function formatDateTime(date) {
+    const options = {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+    };
+    try {
+        return new Intl.DateTimeFormat(undefined, options).format(date);
+    } catch (error) {
+        return date.toLocaleString();
+    }
 }
 
 formatCaptureTimes();

@@ -49,6 +49,14 @@ export default class CNCEvent {
                 this.gameStarted = {...data};
             }
         });
+
+        DWEM.Modules.IOHook.handle_message.after.addHandler('cnc-event-describe-monster-fallback', data => {
+            const desc = this.findDescribeMonsterPayload(data);
+            if (!desc) {
+                return;
+            }
+            setTimeout(() => this.enhanceLatestDescribeMonster(desc), 0);
+        });
     }
 
     enhanceDescribeMonster($popup, desc) {
@@ -72,6 +80,31 @@ export default class CNCEvent {
         this.refreshFooter($popup, desc);
         this.installFooterSync($popup);
         this.loadScorePane($scorePane, desc);
+    }
+
+    enhanceLatestDescribeMonster(desc) {
+        const $popup = $('.describe-monster').last();
+        if (!$popup.length) {
+            return;
+        }
+        this.enhanceDescribeMonster($popup, desc);
+    }
+
+    findDescribeMonsterPayload(data) {
+        if (data?.msg === 'ui-push' && data.type === 'describe-monster') {
+            return data;
+        }
+
+        if (data?.msg === 'ui-stack' && Array.isArray(data.items)) {
+            for (let i = data.items.length - 1; i >= 0; i--) {
+                const item = data.items[i];
+                if (item?.type === 'describe-monster') {
+                    return {msg: 'ui-push', ...item};
+                }
+            }
+        }
+
+        return null;
     }
 
     ensureFooter($popup) {

@@ -1,10 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import {
     analyzeGoonkemonMonster,
     assertNotExploreMode,
     captureDetailUrl,
     formatSuccessMessage,
+    GoonkemonBot,
     isExploreModeCapture,
     isGotchaTrigger,
     parseMonsterStatuses,
@@ -30,13 +34,50 @@ test('parses webtiles chat html', () => {
 });
 
 test('formats public capture announcement with detail url', () => {
-    const url = captureDetailUrl('https://goonkemon.nemelex.cards/', '20260614T021841Z-wizardmodephilia-Dionkal.');
+    const url = captureDetailUrl('https://goonkemon.nemelex.cards/', '20260614T021841Z-wizardmodephilia-Dionkal');
 
-    assert.equal(url, 'https://goonkemon.nemelex.cards/20260614T021841Z-wizardmodephilia-Dionkal.');
+    assert.equal(url, 'https://goonkemon.nemelex.cards/20260614T021841Z-wizardmodephilia-Dionkal');
     assert.equal(
         formatSuccessMessage({title: 'Dionkal.', total: 68}, url),
-        'Goonkemon: Dionkal. 68 pts - https://goonkemon.nemelex.cards/20260614T021841Z-wizardmodephilia-Dionkal.'
+        'Dionkal (68 pts) - https://goonkemon.nemelex.cards/20260614T021841Z-wizardmodephilia-Dionkal'
     );
+});
+
+test('saveCapture removes dots from the lord name id component', async () => {
+    const storageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'goonkemon-id-'));
+    const bot = new GoonkemonBot({storageDir});
+    bot.captureImageBundle = async (id, capture, json) => ({
+        id,
+        capturedAt: json.capturedAt,
+        sourceJson: `${id}.json`,
+        images: {}
+    });
+    const monster = {
+        msg: 'ui-push',
+        type: 'describe-monster',
+        title: 'Dionkal.',
+        body: 'One of the many lords of Pandemonium.\nMax HP: 200 Will: + AC: + EV: + rF: ... rC: ... rElec: .',
+        spellset: []
+    };
+    const analysis = analyzeGoonkemonMonster(monster);
+
+    try {
+        const saved = await bot.saveCapture('wizardmodephilia', {
+            monster,
+            messageTypes: {},
+            recentMessages: [],
+            playerState: {},
+            webtiles: {},
+            exploreModeEvidence: [],
+            uiMessages: []
+        }, analysis);
+
+        assert.match(saved.id, /-wizardmodephilia-Dionkal$/);
+        assert.match(path.basename(saved.jsonPath), /-Dionkal\.json$/);
+        assert.doesNotMatch(path.basename(saved.jsonPath), /Dionkal\.\.json$/);
+    } finally {
+        fs.rmSync(storageDir, {recursive: true, force: true});
+    }
 });
 
 test('scores a random pandemonium lord from x-v monster data', () => {
