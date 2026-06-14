@@ -5,6 +5,8 @@ services:
         volumes:
             - .:/usr/src
         working_dir: /usr/src
+        env_file:
+            - .env
         command: sh -c "if [ ! -e node_modules ]; then npm install; fi && node index.js"
         ports:
             - "127.0.0.1:8787:8787"
