@@ -121,20 +121,25 @@ export default class CNCEvent {
     }
 
     findDescribeMonsterPayload(data) {
-        if (data?.msg === 'ui-push' && data.type === 'describe-monster') {
+        if (this.hasDescribeMonsterPayload(data)) {
             return data;
         }
 
         if (data?.msg === 'ui-stack' && Array.isArray(data.items)) {
             for (let i = data.items.length - 1; i >= 0; i--) {
                 const item = data.items[i];
-                if (item?.type === 'describe-monster') {
+                if (this.hasDescribeMonsterPayload(item)) {
                     return {...item, msg: 'ui-push'};
                 }
             }
         }
 
         return null;
+    }
+
+    hasDescribeMonsterPayload(item) {
+        return item?.type === 'describe-monster' &&
+            (item.title != null || item.body != null || Array.isArray(item.spellset));
     }
 
     ensureFooter($popup) {

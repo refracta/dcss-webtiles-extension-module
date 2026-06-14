@@ -749,20 +749,25 @@ function extendSocket(socket) {
 }
 
 export function findMonsterDescription(data) {
-    if (data?.msg === 'ui-push' && data.type === 'describe-monster') {
+    if (hasMonsterDescriptionPayload(data)) {
         return data;
     }
 
     if (data?.msg === 'ui-stack' && Array.isArray(data.items)) {
         for (let i = data.items.length - 1; i >= 0; i--) {
             const item = data.items[i];
-            if (item?.type === 'describe-monster') {
+            if (hasMonsterDescriptionPayload(item)) {
                 return {...item, msg: 'ui-push'};
             }
         }
     }
 
     return null;
+}
+
+function hasMonsterDescriptionPayload(item) {
+    return item?.type === 'describe-monster' &&
+        (item.title != null || item.body != null || Array.isArray(item.spellset));
 }
 
 function isSavedUiMessage(data) {

@@ -85,17 +85,34 @@ test('normalizes describe-monster items restored from ui-stack', () => {
     const monster = findMonsterDescription({
         msg: 'ui-stack',
         items: [{
-            msg: 'ui-state',
+            msg: 'ui-push',
             type: 'describe-monster',
             title: 'Dionkal.',
             body: 'One of the many lords of Pandemonium.\nMax HP: 200 Will: + AC: + EV: + rF: ... rC: ... rElec: .',
             spellset: []
+        }, {
+            msg: 'ui-state',
+            type: 'describe-monster',
+            pane: 2
         }]
     });
 
     assert.equal(monster.msg, 'ui-push');
     assert.equal(monster.type, 'describe-monster');
     assert.equal(analyzeGoonkemonMonster(monster).title, 'Dionkal.');
+});
+
+test('ignores shallow describe-monster ui-state messages', () => {
+    const monster = findMonsterDescription({
+        msg: 'ui-stack',
+        items: [{
+            msg: 'ui-state',
+            type: 'describe-monster',
+            pane: 2
+        }]
+    });
+
+    assert.equal(monster, null);
 });
 
 test('scores a random pandemonium lord from x-v monster data', () => {
