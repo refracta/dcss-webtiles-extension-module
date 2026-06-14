@@ -144,6 +144,36 @@ Bite     45
     assert.equal(score.total, 105);
 });
 
+test('treats monster spells without a level as level 9', () => {
+    const analysis = analyzeGoonkemonMonster({
+        msg: 'ui-push',
+        type: 'describe-monster',
+        title: 'Spellcase the pandemonium lord',
+        body: `
+One of the many lords of Pandemonium.
+Max HP: 100 Will: + AC: + EV: + rF: ... rC: ... rElec: .
+
+Attack  Max Damage
+Hit     20
+`,
+        spellset: [{
+            spells: [
+                {title: 'Monster Only Spell', range_string: 'Range: 5'}
+            ]
+        }]
+    });
+    const score = scoreAnalysis({
+        ...analysis,
+        spells: [{title: 'Saved Monster Spell', range: 'Range: 5'}]
+    });
+
+    assert.equal(analysis.spells[0].level, 9);
+    assert.equal(score.spells[0].level, 9);
+    assert.equal(score.spells[0].score, 18);
+    assert.match(score.breakdown.spells.components[0].source, /L9/);
+    assert.match(score.breakdown.spells.components[0].calculation, /9 \* 2/);
+});
+
 test('scores composite branded attack damage', () => {
     const score = scoreGoonkemon({
         msg: 'ui-push',

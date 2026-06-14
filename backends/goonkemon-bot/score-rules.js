@@ -1,3 +1,5 @@
+export const MONSTER_SPELL_DEFAULT_LEVEL = 9;
+
 export const SCORE_RULES = {
     hpDivisor: 50,
     hpBase: 1,
@@ -159,7 +161,8 @@ function normalizeAttacks(attacks) {
 
 function normalizeSpells(spells) {
     return (Array.isArray(spells) ? spells : []).map(spell => {
-        const level = Number(spell.level || 0);
+        const numericLevel = Number(spell.level);
+        const level = Number.isFinite(numericLevel) ? numericLevel : MONSTER_SPELL_DEFAULT_LEVEL;
         return {
             title: spell.title || 'Unknown spell',
             level,

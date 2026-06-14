@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {JSDOM} from "jsdom";
 import {createWebtilesSocket, WebSocket} from "./webtiles-socket.js";
-import {scoreAnalysis} from './score-rules.js';
+import {MONSTER_SPELL_DEFAULT_LEVEL, scoreAnalysis} from './score-rules.js';
 
 const DEFAULT_TRIGGER = 'gotcha!';
 const DEFAULT_CAPTURE_TIMEOUT_MS = 4000;
@@ -1302,7 +1302,7 @@ function parseMonsterSpells(spellset) {
         for (const spell of group.spells || []) {
             const level = Number.isFinite(Number(spell.level))
                 ? Number(spell.level)
-                : parseNumberAfter(String(spell.range_string || ''), /\((?:[^0-9]*)(\d+)/, 0);
+                : MONSTER_SPELL_DEFAULT_LEVEL;
             spells.push({
                 title: cleanText(spell.title || ''),
                 level,
