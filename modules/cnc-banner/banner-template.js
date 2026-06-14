@@ -171,8 +171,6 @@ export default class BannerTemplate {
             <br>
             ${this.getTranslationText(locale)}
             <br>
-            ${this.getTournamentProposalText(locale)}
-            <br>
             ${this.getTournaments()}
         </p>`;
     }
@@ -232,12 +230,6 @@ export default class BannerTemplate {
         return locale === 'ko'
             ? `DWEM에 <a href="https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing">번역 모듈</a>이 추가되었습니다. 한국어로 게임을 <a href="${TRANSLATION_ARCE_URL}">즐겨보세요</a>. 관심이 있다면 번역 작업에도 도움을 주세요!`
             : `<a href="https://docs.google.com/document/d/1AFNN3L139L3U9cMPNpFOViutlpaJ2rCdiJtkJ0g2ykY/edit?usp=sharing">Translation Module</a> has been added to DWEM. If you are interested, please help with the translation work.`;
-    }
-
-    getTournamentProposalText(locale) {
-        return locale === 'ko'
-            ? `<a href="https://refracta.github.io/nemelex.cards/cnc-2nd-anniversary-tournament/details.html">CNC 2nd Anniversary Tournament</a>가 6월 18일 00:00 KST부터 2주간 진행됩니다.`
-            : `<a href="https://refracta.github.io/nemelex.cards/cnc-2nd-anniversary-tournament/details.html">CNC 2nd Anniversary Tournament</a> runs for two weeks from June 18, 2026 00:00 KST.`;
     }
 
     getUserLinks(locale, currentUser) {
