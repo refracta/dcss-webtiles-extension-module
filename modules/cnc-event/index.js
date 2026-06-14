@@ -21,7 +21,6 @@ export default class CNCEvent {
         this.latestDescribeMonster = null;
         this.watching = false;
         this.playing = false;
-        this.jqueryPaneCycleControllerInstalled = false;
     }
 
     onLoad() {
@@ -30,7 +29,6 @@ export default class CNCEvent {
         const mapper = source => this.injectDescribeMonsterPane(source);
         SMR.add('./ui-layouts', mapper);
         this.injectStyle();
-        this.installGlobalPaneCycleController();
 
         DWEM.Modules.IOHook.handle_message.before.addHandler('cnc-event-version-tracker', data => {
             if (data?.msg === 'game_client') {
@@ -108,9 +106,8 @@ export default class CNCEvent {
         $body.append($scorePane);
 
         this.ensureFooter($popup);
-        this.refreshFooter($popup, desc);
+        this.refreshFooter($popup, desc, options);
         this.installFooterSync($popup);
-        this.installPaneCycleController($popup);
         this.loadScorePane($scorePane, desc);
     }
 
@@ -165,7 +162,7 @@ export default class CNCEvent {
         ));
     }
 
-    refreshFooter($popup, desc) {
+    refreshFooter($popup, desc, options = {}) {
         const labels = ['Description'];
         if (String(desc.status || '') !== '') {
             labels.push('Status');
@@ -180,17 +177,19 @@ export default class CNCEvent {
             return;
         }
 
-        const currentIndex = Math.max(0, $popup.find('.body.paneset > .pane').index(
-            $popup.find('.body.paneset > .pane.current')
-        ));
-        $popup.data('goonkemon-pane-index', currentIndex);
+        const currentIndex = options.preScroller
+            ? -1
+            : $popup.find('.body.paneset > .pane').index($popup.find('.body.paneset > .pane.current'));
+        if (currentIndex >= 0) {
+            $popup.data('goonkemon-pane-index', currentIndex);
+        }
         $footerPanes.empty();
         labels.forEach((label, index) => {
             const text = labels.map((item, itemIndex) =>
                 itemIndex === index ? `<b class="fg15">${this.escapeHtml(item)}</b>` : this.escapeHtml(item)
             ).join(' | ');
             const $pane = $('<div class="pane"></div>').html(text);
-            if (index === currentIndex) {
+            if (currentIndex >= 0 && index === currentIndex) {
                 $pane.addClass('current');
             }
             $footerPanes.append($pane);
@@ -214,121 +213,6 @@ export default class CNCEvent {
         const $bodyPanes = $popup.find('.body.paneset > .pane');
         const currentIndex = this.currentPaneIndex($popup, $bodyPanes);
         this.setPaneIndex($popup, currentIndex);
-    }
-
-    installPaneCycleController($popup) {
-        const element = $popup?.[0];
-        if (!element || $popup.data('goonkemon-cycle-guard')) {
-            return;
-        }
-        $popup.data('goonkemon-cycle-guard', true);
-
-        element.addEventListener('keydown', event => this.handlePaneCycleKey($popup, event), true);
-        element.addEventListener('keypress', event => this.handlePaneCycleKey($popup, event), true);
-    }
-
-    installGlobalPaneCycleController() {
-        if (this.globalPaneCycleControllerInstalled) {
-            return;
-        }
-
-        this.globalPaneCycleControllerInstalled = true;
-        document.addEventListener('keydown', event => this.handleGlobalPaneCycleKey(event), true);
-        document.addEventListener('keypress', event => this.handleGlobalPaneCycleKey(event), true);
-        this.installJQueryPaneCycleController();
-    }
-
-    installJQueryPaneCycleController() {
-        if (this.jqueryPaneCycleControllerInstalled) {
-            return;
-        }
-
-        const jq = window.jQuery || window.$;
-        if (typeof jq !== 'function') {
-            setTimeout(() => this.installJQueryPaneCycleController(), 50);
-            return;
-        }
-
-        this.jqueryPaneCycleControllerInstalled = true;
-        jq(document).on('game_keydown.cnc-event game_keypress.cnc-event', event => this.handleGlobalPaneCycleKey(event));
-    }
-
-    handleGlobalPaneCycleKey(event) {
-        if (!this.isPaneCycleKey(event)) {
-            return;
-        }
-
-        const $popup = this.findActiveGoonkemonPopup();
-        if (!$popup.length) {
-            return;
-        }
-
-        this.handlePaneCycleKey($popup, event);
-    }
-
-    findActiveGoonkemonPopup() {
-        const popups = $('.describe-monster').toArray().filter(element => {
-            const connected = element.isConnected !== false;
-            const hasPane = $(element).find('[data-goonkemon-score-pane]').length > 0;
-            const visible = element.offsetParent !== null || element.getClientRects().length > 0;
-            return connected && hasPane && visible;
-        });
-        return $(popups.at(-1) || []);
-    }
-
-    handlePaneCycleKey($popup, event) {
-        if (!this.isPaneCycleKey(event)) {
-            return;
-        }
-
-        const $bodyPanes = $popup.find('.body.paneset > .pane');
-        if (!$bodyPanes.filter('[data-goonkemon-score-pane]').length) {
-            return;
-        }
-
-        if (this.isDuplicatePaneCycleEvent($popup, event)) {
-            this.stopPaneCycleEvent(event);
-            return;
-        }
-
-        const currentIndex = this.currentPaneIndex($popup, $bodyPanes);
-        this.setPaneIndex($popup, currentIndex + 1);
-        $popup.data('goonkemon-last-cycle-keydown', this.isKeydownEvent(event) ? Date.now() : 0);
-        this.stopPaneCycleEvent(event);
-    }
-
-    isPaneCycleKey(event) {
-        const key = event.key || event.originalEvent?.key || '';
-        const code = event.which || event.keyCode || event.charCode ||
-            event.originalEvent?.which || event.originalEvent?.keyCode || event.originalEvent?.charCode || 0;
-        const shiftKey = Boolean(event.shiftKey || event.originalEvent?.shiftKey);
-
-        return key === '!' ||
-            (key === '1' && shiftKey) ||
-            code === 33 ||
-            (code === 49 && shiftKey);
-    }
-
-    isDuplicatePaneCycleEvent($popup, event) {
-        if (!this.isKeypressEvent(event)) {
-            return false;
-        }
-        const lastKeydown = Number($popup.data('goonkemon-last-cycle-keydown')) || 0;
-        return lastKeydown > 0 && Date.now() - lastKeydown < 250;
-    }
-
-    isKeydownEvent(event) {
-        return /(?:^|_)keydown$/.test(String(event.type || ''));
-    }
-
-    isKeypressEvent(event) {
-        return /(?:^|_)keypress$/.test(String(event.type || ''));
-    }
-
-    stopPaneCycleEvent(event) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        event.stopPropagation();
     }
 
     currentPaneIndex($popup, $bodyPanes = null) {
