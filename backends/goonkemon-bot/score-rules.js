@@ -13,7 +13,9 @@ export const SCORE_RULES = {
     },
     attackDivisor: 10,
     spellLevelMultiplier: 2,
-    buffMultiplier: 1.5,
+    buffMultiplierBase: 1,
+    buffMultiplierStep: 0.1,
+    buffMultiplierMax: 1.5,
     debuffMultiplier: 0.9,
     friendlySummonedMultiplier: 1.5
 };
@@ -102,7 +104,10 @@ function scoreStatusMultiplier(statuses = {}) {
     const hasFriendly = normalized.attitude.some(status => status.name === 'FRIENDLY');
     const hasSummoned = normalized.special.some(status => status.name === 'SUMMONED');
     const friendlySummoned = hasFriendly && hasSummoned;
-    const buff = Math.pow(SCORE_RULES.buffMultiplier, buffCount);
+    const buff = Math.min(
+        SCORE_RULES.buffMultiplierBase + SCORE_RULES.buffMultiplierStep * buffCount,
+        SCORE_RULES.buffMultiplierMax
+    );
     const debuff = Math.pow(SCORE_RULES.debuffMultiplier, debuffCount);
     const friendlySummonedBonus = friendlySummoned ? SCORE_RULES.friendlySummonedMultiplier : 1;
 
@@ -270,7 +275,7 @@ function buildStatusMultiplierComponents(details = {}) {
         {
             label: 'Buffs',
             source: formatStatusSource(statuses.buffs),
-            calculation: `${SCORE_RULES.buffMultiplier} ^ ${Number(details.buffCount || 0)}`,
+            calculation: `min(${SCORE_RULES.buffMultiplierBase} + ${SCORE_RULES.buffMultiplierStep} * ${Number(details.buffCount || 0)}, ${SCORE_RULES.buffMultiplierMax})`,
             points: formatMultiplier(details.buff ?? 1)
         },
         {

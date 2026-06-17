@@ -334,7 +334,7 @@ Hit     30
         }
     });
     const score = scoreAnalysis(analysis);
-    const expectedMultiplier = Math.pow(1.5, 2) * 0.9 * 1.5;
+    const expectedMultiplier = Math.min(1 + 0.1 * 2, 1.5) * 0.9 * 1.5;
 
     assert.equal(score.statusMultiplierDetails.buffCount, 2);
     assert.equal(score.statusMultiplierDetails.debuffCount, 1);
@@ -344,9 +344,31 @@ Hit     30
 
     const html = renderScoreHtml(analysis);
     assert.match(html, /Buffs/);
-    assert.match(html, /1\.5 \^ 2/);
+    assert.match(html, /min\(1 \+ 0\.1 \* 2, 1\.5\)/);
     assert.match(html, /0\.9 \^ 1/);
     assert.match(html, /FRIENDLY \+ SUMMONED/);
+});
+
+test('caps buff score multiplier at 1.5', () => {
+    const score = scoreAnalysis({
+        title: 'Bufflord the pandemonium lord',
+        stats: {},
+        statuses: {
+            buffs: [
+                {name: 'HASTED'},
+                {name: 'MIGHT'},
+                {name: 'RESISTANCE'},
+                {name: 'ENKINDLED_1'},
+                {name: 'ENKINDLED_2'},
+                {name: 'ENKINDLED_3'},
+                {name: 'ENKINDLED_4'}
+            ]
+        }
+    });
+
+    assert.equal(score.statusMultiplierDetails.buffCount, 7);
+    assert.equal(score.statusMultiplierDetails.buff, 1.5);
+    assert.equal(score.statusMultiplier, 1.5);
 });
 
 test('parses tile status icons and foreground flags', () => {
