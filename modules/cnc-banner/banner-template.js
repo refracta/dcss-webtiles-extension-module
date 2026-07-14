@@ -4,6 +4,7 @@ import {escapeHtml, getLocale, getModuleBaseUrl, shouldUseAprilFools} from './ut
 const SOUND_SUPPORT_ARCE_URL = 'https://crawl.nemelex.cards/?arce_append=%23%20Recommended%20settings%0Asounds_on%20%3D%20true%0Asound_pack%20%2B%3D%20https%3A%2F%2Fsound-packs.nemelex.cards%2FDCSS-UST%2Fv1.0.1.zip%0Asound_pack%20%2B%3D%20https%3A%2F%2Fosp.nemelex.cards%2Fbuild%2Flatest.zip%3A%5B%22init.txt%22%5D%0Aone_SDL_sound_channel%20%3D%20true%0Asound_fade_time%20%3D%200.5%0Abgm_volume%20%3D%200.5';
 const TRANSLATION_ARCE_URL = 'https://crawl.nemelex.cards/?arce_append=always_show_zot%20%3D%20true%0Atranslation_language%20=%20ko';
 const PROFILES_URL = 'https://profiles.nemelex.cards';
+const ANNIVERSARY_RESULTS_URL = 'https://refracta.github.io/nemelex.cards/cnc-2nd-anniversary-tournament/results.html';
 
 export default class BannerTemplate {
     constructor(donations) {
@@ -49,7 +50,7 @@ export default class BannerTemplate {
         return `
         ${this.getHeaderLink('ko')}
         ${this.getNethackLink('ko', currentUser)}
-        🏆 <a href="https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html"> CNC 1st Anniversary Tournament 결과 보기</a>
+        🏆 <a href="${ANNIVERSARY_RESULTS_URL}"> CNC 2nd Anniversary Tournament 결과 보기</a>
         <br>
         ${this.getInfoPanel('ko', '20px 0 10px 0')}
         ${this.donations.getSummaryHTML('ko')}
@@ -69,7 +70,7 @@ export default class BannerTemplate {
             <div style="margin-left: 15px">
                 ${this.getHeaderLink('ko')}
                 ${this.getNethackLink('ko', currentUser)}
-                🏆 <a href="https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html"> CNC 1st Anniversary Tournament 결과 보기</a>
+                🏆 <a href="${ANNIVERSARY_RESULTS_URL}"> CNC 2nd Anniversary Tournament 결과 보기</a>
                 <br>
                 ${this.getInfoPanel('ko', '0 0 10px 0', true)}
                 ${this.donations.getSummaryHTML('ko')}
@@ -88,7 +89,7 @@ export default class BannerTemplate {
 
         return `${this.getHeaderLink('en')}
                     ${this.getNethackLink('en', currentUser)}
-                    🏆 <a href="https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html"> CNC 1st Anniversary Tournament Results</a>
+                    🏆 <a href="${ANNIVERSARY_RESULTS_URL}"> CNC 2nd Anniversary Tournament Results</a>
                     <br>
                     ${this.getInfoPanel('en', '20px 0 10px 0')}
                     ${this.donations.getSummaryHTML('en')}
@@ -108,7 +109,7 @@ export default class BannerTemplate {
             <div style="margin-left: 15px">
         ${this.getHeaderLink('en')}
         ${this.getNethackLink('en', currentUser)}
-        🏆 <a href="https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html"> CNC 1st Anniversary Tournament Results</a>
+        🏆 <a href="${ANNIVERSARY_RESULTS_URL}"> CNC 2nd Anniversary Tournament Results</a>
         <br>
         ${this.getInfoPanel('en', '0 0 10px 0', true)}
         ${this.donations.getSummaryHTML('en')}
