@@ -18,6 +18,7 @@ import {
     scoreGoonkemon
 } from './goonkemon.js';
 import {renderScoreHtml, scoreAnalysis} from './score-rules.js';
+import {selectBestCapturePerSubmitter} from './server.js';
 
 test('gotcha trigger is exact and case-insensitive', () => {
     assert.equal(isGotchaTrigger('gotcha!'), true);
@@ -41,6 +42,22 @@ test('formats public capture announcement with detail url', () => {
     assert.equal(
         formatSuccessMessage({title: 'Dionkal.', total: 68}, url),
         'Dionkal (68 pts) - https://goonkemon.nemelex.cards/20260614T021841Z-wizardmodephilia-Dionkal'
+    );
+});
+
+test('selects the first ranked capture for each submitter', () => {
+    const ranked = [
+        {capture: {id: 'alice-high', username: 'Alice'}},
+        {capture: {id: 'bob-high', username: 'Bob'}},
+        {capture: {id: 'alice-tied-later', username: 'alice'}},
+        {capture: {id: 'alice-low', username: 'ALICE'}},
+        {capture: {id: 'anonymous-one', username: ''}},
+        {capture: {id: 'anonymous-two'}}
+    ];
+
+    assert.deepEqual(
+        selectBestCapturePerSubmitter(ranked).map(item => item.capture.id),
+        ['alice-high', 'bob-high', 'anonymous-one', 'anonymous-two']
     );
 });
 

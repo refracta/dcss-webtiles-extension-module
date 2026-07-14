@@ -54,7 +54,7 @@ async function handleRequest(context) {
     }
 
     if (request.method === 'GET' && pathname === '/ranking') {
-        await serveRanking(context);
+        await serveRanking(context, url);
         return;
     }
 
@@ -152,8 +152,9 @@ ${renderSearchForm(filters)}
 </table>`), allowedOrigins);
 }
 
-async function serveRanking({bot, request, response, allowedOrigins}) {
-    const ranked = listCaptures(bot.storageDir)
+async function serveRanking({bot, request, response, allowedOrigins}, url) {
+    const bestPerSubmitter = url.searchParams.get('best') === '1';
+    const allRanked = listCaptures(bot.storageDir)
         .map(item => ({...item, score: safeScore(item.capture)}))
         .filter(item => item.score)
         .sort((a, b) => {
@@ -162,11 +163,16 @@ async function serveRanking({bot, request, response, allowedOrigins}) {
             }
             return compareCaptureDateAsc(a.capture, b.capture);
         });
+    const ranked = bestPerSubmitter
+        ? selectBestCapturePerSubmitter(allRanked)
+        : allRanked;
 
     const rows = ranked.map((item, index) => renderRankingRow(item, index)).join('');
     sendHtml(response, request, 200, htmlPage('Goonkemon ranking', `
 <h1>Goonkemon ranking</h1>
 <nav><a href="/list">Search captures</a></nav>
+${renderRankingOptions(bestPerSubmitter)}
+<div class="summary">${ranked.length} / ${allRanked.length} ranked captures</div>
 <table>
 <thead><tr><th>#</th><th>Lord</th><th>Score</th><th>Submitter</th><th>Captured</th><th>Status</th></tr></thead>
 <tbody>${rows || '<tr><td colspan="6" class="empty">No ranked captures.</td></tr>'}</tbody>
@@ -305,6 +311,26 @@ function renderSearchForm(filters) {
 <label>Stat <input name="stat" value="${escapeAttribute(filters.stat)}"></label>
 <button type="submit">Filter</button>
 </form>`;
+}
+
+function renderRankingOptions(bestPerSubmitter) {
+    return `<form method="get" action="/ranking" class="ranking-options">
+<label><input type="checkbox" name="best" value="1"${bestPerSubmitter ? ' checked' : ''}> Best submission per participant only</label>
+<button type="submit">Apply</button>
+</form>`;
+}
+
+export function selectBestCapturePerSubmitter(ranked) {
+    const seen = new Set();
+    return ranked.filter(item => {
+        const username = String(item.capture?.username || '').trim().toLowerCase();
+        const key = username || `\u0000${item.capture?.id || ''}`;
+        if (seen.has(key)) {
+            return false;
+        }
+        seen.add(key);
+        return true;
+    });
 }
 
 function renderListRow(capture) {
@@ -478,6 +504,25 @@ th {
     display: grid;
     gap: 2px;
     color: #aaa;
+}
+.ranking-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.ranking-options label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.ranking-options input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    padding: 0;
+    accent-color: #55ffff;
 }
 input, button {
     color: #fff;
