@@ -1483,7 +1483,7 @@ function captureVersionText(capture) {
     ).trim();
 }
 
-export function renderMonsterHtml(capture, jsonFilename = '', imagesFilename = '') {
+export function renderMonsterHtml(capture, jsonFilename = '', imagesFilename = '', options = {}) {
     const analysis = capture.analysis || capture.score || analyzeGoonkemonMonster(capture.monster);
     const {monster, username, capturedAt} = capture;
     const title = analysis.title || cleanText(monster?.title || 'Unknown');
@@ -1500,6 +1500,8 @@ export function renderMonsterHtml(capture, jsonFilename = '', imagesFilename = '
         : '';
     const sourceJson = jsonFilename || `${capture.id || 'capture'}.json`;
     const sourceImages = imagesFilename || sourceJson.replace(/\.json$/i, '.images.json');
+    const scoreRulesPath = String(options.scoreRulesPath || './score-rules.js');
+    const rankingPath = String(options.rankingPath || '/ranking');
     const versionText = captureVersionText(capture);
 
     return `<!doctype html>
@@ -1829,13 +1831,13 @@ ${status}
 		<div class="source">Captured for ${escapeHtml(username)} at <span data-captured-at="${escapeAttribute(capturedAt)}">${escapeHtml(capturedAt)}</span>${versionText ? ` (${escapeHtml(versionText)})` : ''}.</div>
 		</section>
 		<nav class="page-actions" aria-label="Page actions">
-		<a class="crawl-button" href="/ranking">View ranking</a>
+			<a class="crawl-button" href="${escapeAttribute(rankingPath)}">View ranking</a>
 		</nav>
 	</div>
 </section>
 </main>
 <script type="module">
-import {renderScoreHtml, scoreAnalysis} from './score-rules.js';
+import {renderScoreHtml, scoreAnalysis} from ${JSON.stringify(scoreRulesPath)};
 
 const scoreRoot = document.getElementById('goonkemon-score');
 const statusRoot = document.getElementById('goonkemon-status-indicators');
@@ -1981,9 +1983,12 @@ renderDynamicScore();
 
     function loadImage(name, imageData) {
         return new Promise((resolve, reject) => {
-            const source = imageData?.dataUrl || (imageData?.data
-                ? 'data:' + (imageData.mime || 'image/png') + ';base64,' + imageData.data
-                : '');
+            const manifestUrl = new URL(imagePath, window.location.href);
+            const source = imageData?.url
+                ? new URL(imageData.url, manifestUrl).href
+                : imageData?.dataUrl || (imageData?.data
+                    ? 'data:' + (imageData.mime || 'image/png') + ';base64,' + imageData.data
+                    : '');
             if (!source) {
                 reject(new Error('Missing image data for ' + name));
                 return;

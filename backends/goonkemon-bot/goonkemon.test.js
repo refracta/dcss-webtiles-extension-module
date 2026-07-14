@@ -19,6 +19,7 @@ import {
 } from './goonkemon.js';
 import {renderScoreHtml, scoreAnalysis} from './score-rules.js';
 import {selectBestCapturePerSubmitter} from './server.js';
+import {exportStaticSite} from './export-static.js';
 
 test('gotcha trigger is exact and case-insensitive', () => {
     assert.equal(isGotchaTrigger('gotcha!'), true);
@@ -290,7 +291,7 @@ Hit     50
     }, 'capture-id.json', 'capture-id.images.json');
 
     assert.match(html, /fetchJson\(jsonPath\)/);
-    assert.match(html, /import \{renderScoreHtml, scoreAnalysis\} from '\.\/score-rules\.js'/);
+    assert.match(html, /import \{renderScoreHtml, scoreAnalysis\} from ["']\.\/score-rules\.js["']/);
     assert.match(html, /data-json="capture-id\.json"/);
     assert.match(html, /data-images="capture-id\.images\.json"/);
     assert.match(html, /data-score-badge/);
@@ -306,6 +307,80 @@ Hit     50
     assert.doesNotMatch(html, /Tile id:/);
     assert.doesNotMatch(html, /id="goonkemon-capture"/);
     assert.doesNotMatch(html, /<div class="score-subtitle">Base stats<\/div>/);
+});
+
+test('exports a static site with deduplicated image assets and no stored scores', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'goonkemon-static-'));
+    const storageDir = path.join(root, 'captures');
+    const outputDir = path.join(root, 'site');
+    const imageData = Buffer.from('shared-image-data').toString('base64');
+    fs.mkdirSync(path.join(storageDir, 'players'), {recursive: true});
+
+    for (const [index, username] of ['Alice', 'Bob'].entries()) {
+        const id = `20260620T00000${index}Z-${username}-Testlord${index}`;
+        const capture = {
+            id,
+            username,
+            capturedAt: `2026-06-20T00:00:0${index}.000Z`,
+            monster: {
+                title: `Testlord${index}.`,
+                body: '',
+                fg_idx: 1,
+                icons: []
+            },
+            analysis: {
+                eligible: true,
+                title: `Testlord${index}.`,
+                stats: {},
+                spells: [],
+                statuses: {}
+            }
+        };
+        fs.writeFileSync(
+            path.join(storageDir, 'players', `${id}.json`),
+            JSON.stringify(capture)
+        );
+        fs.writeFileSync(
+            path.join(storageDir, 'players', `${id}.images.json`),
+            JSON.stringify({
+                id,
+                images: {
+                    main: {
+                        mime: 'image/png',
+                        byteLength: 17,
+                        data: imageData
+                    }
+                }
+            })
+        );
+    }
+
+    const build = exportStaticSite({
+        storageDir,
+        outputDir,
+        generatedAt: '2026-07-14T00:00:00.000Z',
+        expectedCaptureCount: 2
+    });
+    const index = JSON.parse(fs.readFileSync(path.join(outputDir, 'data', 'captures.json'), 'utf8'));
+    const first = index.captures[0];
+    const imageManifest = JSON.parse(fs.readFileSync(
+        path.join(outputDir, 'data', `${first.id}.images.json`),
+        'utf8'
+    ));
+    const detailHtml = fs.readFileSync(path.join(outputDir, first.id, 'index.html'), 'utf8');
+
+    assert.equal(build.captureCount, 2);
+    assert.equal(build.imageAssetCount, 1);
+    assert.match(build.sourceSha256, /^[a-f0-9]{64}$/);
+    assert.equal(index.captures.length, 2);
+    assert.equal(first.score, undefined);
+    assert.ok(first.analysis.stats);
+    assert.match(imageManifest.images.main.url, /^\.\.\/assets\/images\/[a-f0-9]{64}\.png$/);
+    assert.equal(imageManifest.images.main.data, undefined);
+    assert.match(detailHtml, /from "\.\.\/score-rules\.js"/);
+    assert.match(detailHtml, /href="\.\.\/ranking\/"/);
+    assert.match(detailHtml, /new URL\(imageData\.url, manifestUrl\)\.href/);
+    assert.equal(fs.readdirSync(path.join(outputDir, 'assets', 'images')).length, 1);
 });
 
 test('score rules render detailed score breakdown from analysis', () => {

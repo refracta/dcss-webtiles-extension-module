@@ -5,7 +5,8 @@
     "main": "index.js",
     "scripts": {
         "test": "node --test goonkemon.test.js",
-        "check": "node --check index.js && node --check goonkemon.js && node --check score-rules.js && node --check server.js && node --check stress-test.js"
+        "check": "node --check index.js && node --check goonkemon.js && node --check score-rules.js && node --check server.js && node --check stress-test.js && node --check export-static.js && node --check static/app.js",
+        "export-static": "node export-static.js"
     },
     "repository": {
         "type": "git",
