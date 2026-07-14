@@ -278,6 +278,9 @@ Hit     50
     assert.match(html, /data-images="capture-id\.images\.json"/);
     assert.match(html, /data-score-badge/);
     assert.match(html, /class="monster-tile" width="48" height="72"/);
+    assert.equal((html.match(/class="monster-tile"/g) || []).length, 2);
+    assert.match(html, /data-monster-tile="true"/);
+    assert.match(html, /data-clean-monster-tile="true"/);
     assert.match(html, /fetchJson\(imagePath\)/);
     assert.match(html, /data-captured-at="2026-06-13T00:00:00.000Z"/);
     assert.match(html, /Dungeon Crawl Stone Soup 0.35-a0-test/);

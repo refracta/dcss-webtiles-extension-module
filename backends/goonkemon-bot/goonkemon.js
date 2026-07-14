@@ -1540,13 +1540,19 @@ main {
 }
 .menu-titlebar {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
     min-height: 44px;
     padding: 6px 10px;
     border-bottom: 1px solid var(--crawl-border-dim);
     background: #101010;
+}
+.monster-tiles {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    line-height: 0;
 }
 .monster-tile {
     width: 48px;
@@ -1558,6 +1564,7 @@ h1 {
     color: #fff;
     font-size: 18px;
     font-weight: 700;
+    overflow-wrap: anywhere;
 }
 .score-badge {
     color: var(--crawl-yellow);
@@ -1798,7 +1805,10 @@ h1 {
 <main>
 <section class="ui-window" role="document" aria-label="Goonkemon monster capture">
 <div class="menu-titlebar">
+<div class="monster-tiles">
 ${renderTileCanvas(tileId, titleInitials(title), tileTexture, 'monster-tile', title, tileParts, monsterTileStatusAttributes(monster), 48, tileCanvasHeight)}
+${renderTileCanvas(tileId, titleInitials(title), tileTexture, 'monster-tile', `${title} without status overlays`, tileParts, 'data-clean-monster-tile="true"', 48, tileCanvasHeight)}
+</div>
 <h1>${escapeHtml(title)}</h1>
 <div class="score-badge" data-score-badge>...</div>
 </div>
