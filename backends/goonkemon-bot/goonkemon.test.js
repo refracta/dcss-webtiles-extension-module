@@ -251,7 +251,8 @@ Hit     50
                 {title: 'Fire Storm', level: 9},
                 {title: 'Blinkbolt', level: 5}
             ]
-        }]
+        }],
+        mcache: [[100, 0, 0]]
     };
     const html = renderMonsterHtml({
         id: 'capture-id',
@@ -261,6 +262,13 @@ Hit     50
         capturedAt: '2026-06-13T00:00:00.000Z',
         webtiles: {
             versionText: 'Dungeon Crawl Stone Soup 0.35-a0-test'
+        },
+        tileRendering: {
+            sprites: {
+                player: {
+                    100: {w: 32, h: 48}
+                }
+            }
         }
     }, 'capture-id.json', 'capture-id.images.json');
 
@@ -269,6 +277,7 @@ Hit     50
     assert.match(html, /data-json="capture-id\.json"/);
     assert.match(html, /data-images="capture-id\.images\.json"/);
     assert.match(html, /data-score-badge/);
+    assert.match(html, /class="monster-tile" width="48" height="72"/);
     assert.match(html, /fetchJson\(imagePath\)/);
     assert.match(html, /data-captured-at="2026-06-13T00:00:00.000Z"/);
     assert.match(html, /Dungeon Crawl Stone Soup 0.35-a0-test/);

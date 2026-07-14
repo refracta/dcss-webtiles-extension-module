@@ -1490,6 +1490,7 @@ export function renderMonsterHtml(capture, jsonFilename = '', imagesFilename = '
     const tileId = monsterTileId(monster);
     const tileTexture = monsterTileTexture(monster);
     const tileParts = monsterTileParts(monster);
+    const tileCanvasHeight = monsterTileCanvasHeight(monster, capture.tileRendering);
     const body = renderMonsterBody(monster);
     const status = monster.status
         ? `<section class="menu-section status-section">
@@ -1549,7 +1550,7 @@ main {
 }
 .monster-tile {
     width: 48px;
-    height: 48px;
+    height: auto;
     image-rendering: pixelated;
 }
 h1 {
@@ -1797,7 +1798,7 @@ h1 {
 <main>
 <section class="ui-window" role="document" aria-label="Goonkemon monster capture">
 <div class="menu-titlebar">
-${renderTileCanvas(tileId, titleInitials(title), tileTexture, 'monster-tile', title, tileParts, monsterTileStatusAttributes(monster))}
+${renderTileCanvas(tileId, titleInitials(title), tileTexture, 'monster-tile', title, tileParts, monsterTileStatusAttributes(monster), 48, tileCanvasHeight)}
 <h1>${escapeHtml(title)}</h1>
 <div class="score-badge" data-score-badge>...</div>
 </div>
@@ -1993,7 +1994,8 @@ renderDynamicScore();
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.imageSmoothingEnabled = false;
-            return parts.map(part => drawSpritePart(canvas, part, false)).every(Boolean);
+            const layout = spriteLayout(canvas, parts);
+            return parts.map(part => drawSpritePart(canvas, part, false, layout)).every(Boolean);
         }
 
         return drawSpritePart(canvas, {
@@ -2017,7 +2019,26 @@ renderDynamicScore();
         }
     }
 
-    function drawSpritePart(canvas, part, clear) {
+    function spriteLayout(canvas, parts) {
+        const infos = parts.map(part => {
+            const texture = part.texture || 'main';
+            const tile = Number(part.tile || 0);
+            return tileRendering?.sprites?.[texture]?.[tile];
+        }).filter(Boolean);
+        const frameWidth = Math.max(32, ...infos.map(info => Number(info.w || 0)));
+        const frameHeight = Math.max(32, ...infos.map(info => Number(info.h || 0)));
+        const scale = Math.min(canvas.width / frameWidth, canvas.height / frameHeight);
+
+        return {
+            frameWidth,
+            frameHeight,
+            scale,
+            originX: (canvas.width - frameWidth * scale) / 2,
+            originY: canvas.height - frameHeight * scale
+        };
+    }
+
+    function drawSpritePart(canvas, part, clear, sharedLayout = null) {
         const texture = part.texture || 'main';
         const tile = Number(part.tile || 0);
         const image = images[texture];
@@ -2029,20 +2050,19 @@ renderDynamicScore();
         const ctx = canvas.getContext('2d');
         const sw = Math.max(1, info.ex - info.sx);
         const sh = Math.max(1, info.ey - info.sy);
-        const scale = Math.min(canvas.width, canvas.height) / 32;
-        const sizeOx = 16 - Number(info.w || 0) / 2;
-        const sizeOy = 32 - Number(info.h || 0);
+        const layout = sharedLayout || spriteLayout(canvas, [part]);
+        const sizeOx = layout.frameWidth / 2 - Number(info.w || 0) / 2;
+        const sizeOy = layout.frameHeight - Number(info.h || 0);
         const xofs = Number(part.xofs || 0);
-        const yAdjust = part.adjustY ? Math.max(0, Number(info.h || 0) - 32) : 0;
-        const yofs = Number(part.yofs || 0) + yAdjust;
-        const dx = Math.round((canvas.width - 32 * scale) / 2 + (xofs + Number(info.ox || 0) + sizeOx) * scale);
-        const dy = Math.round((canvas.height - 32 * scale) / 2 + (yofs + Number(info.oy || 0) + sizeOy) * scale);
+        const yofs = Number(part.yofs || 0);
+        const dx = Math.round(layout.originX + (xofs + Number(info.ox || 0) + sizeOx) * layout.scale);
+        const dy = Math.round(layout.originY + (yofs + Number(info.oy || 0) + sizeOy) * layout.scale);
         if (clear) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(image, info.sx, info.sy, sw, sh, dx, dy,
-            Math.ceil(sw * scale), Math.ceil(sh * scale));
+            Math.ceil(sw * layout.scale), Math.ceil(sh * layout.scale));
         return true;
     }
 
@@ -2059,8 +2079,10 @@ renderDynamicScore();
         const scale = Math.min(canvas.width, canvas.height) / 32;
         const sizeOx = 16 - Number(info.w || 0) / 2;
         const sizeOy = 32 - Number(info.h || 0);
-        const dx = Math.round((canvas.width - 32 * scale) / 2 + ((xofs || 0) + Number(info.ox || 0) + sizeOx) * scale);
-        const dy = Math.round((canvas.height - 32 * scale) / 2 + ((yofs || 0) + Number(info.oy || 0) + sizeOy) * scale);
+        const originX = (canvas.width - 32 * scale) / 2;
+        const originY = canvas.height - 32 * scale;
+        const dx = Math.round(originX + ((xofs || 0) + Number(info.ox || 0) + sizeOx) * scale);
+        const dy = Math.round(originY + ((yofs || 0) + Number(info.oy || 0) + sizeOy) * scale);
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(image, info.sx, info.sy, sw, sh, dx, dy,
             Math.ceil(sw * scale), Math.ceil(sh * scale));
@@ -2236,16 +2258,16 @@ ${label ? `<div class="spell-label">${renderCrawlMarkup(label)}</div>` : ''}
     return groups.trim();
 }
 
-function renderTileCanvas(tileId, label, texture, className, title, parts = [], extraAttributes = '') {
+function renderTileCanvas(tileId, label, texture, className, title, parts = [], extraAttributes = '', width = 48, height = 48) {
     const partsAttribute = parts.length
         ? ` data-parts="${escapeAttribute(JSON.stringify(parts))}"`
         : '';
     const attributes = extraAttributes ? ` ${extraAttributes.trim()}` : '';
     if (!Number.isFinite(Number(tileId))) {
-        return `<canvas class="${escapeAttribute(className)}" width="48" height="48" data-tile="0" data-texture="${escapeAttribute(texture)}" data-label="${escapeAttribute(label)}" title="${escapeAttribute(title || '')}"${partsAttribute}${attributes}></canvas>`;
+        return `<canvas class="${escapeAttribute(className)}" width="${escapeAttribute(width)}" height="${escapeAttribute(height)}" data-tile="0" data-texture="${escapeAttribute(texture)}" data-label="${escapeAttribute(label)}" title="${escapeAttribute(title || '')}"${partsAttribute}${attributes}></canvas>`;
     }
 
-    return `<canvas class="${escapeAttribute(className)}" width="48" height="48" data-tile="${escapeAttribute(tileId)}" data-texture="${escapeAttribute(texture)}" data-label="${escapeAttribute(label)}" title="${escapeAttribute(title || '')}"${partsAttribute}${attributes}></canvas>`;
+    return `<canvas class="${escapeAttribute(className)}" width="${escapeAttribute(width)}" height="${escapeAttribute(height)}" data-tile="${escapeAttribute(tileId)}" data-texture="${escapeAttribute(texture)}" data-label="${escapeAttribute(label)}" title="${escapeAttribute(title || '')}"${partsAttribute}${attributes}></canvas>`;
 }
 
 function monsterTileStatusAttributes(monster) {
@@ -2286,6 +2308,21 @@ function monsterTileTexture(monster) {
     return 'main';
 }
 
+function monsterTileCanvasHeight(monster, tileRendering = {}) {
+    const parts = monsterTileParts(monster);
+    const requests = parts.length
+        ? parts
+        : [{texture: monsterTileTexture(monster), tile: monsterTileId(monster)}];
+    const frameHeights = requests.map(part =>
+        Number(tileRendering?.sprites?.[part.texture || 'main']?.[Number(part.tile)]?.h)
+    ).filter(value => Number.isFinite(value) && value > 0);
+    const frameHeight = frameHeights.length
+        ? Math.max(32, ...frameHeights)
+        : (parts.length ? 48 : 32);
+
+    return Math.ceil(frameHeight * 1.5);
+}
+
 function monsterTileParts(monster) {
     const mcacheMap = new Map();
     if (Array.isArray(monster?.mcache)) {
@@ -2309,8 +2346,7 @@ function monsterTileParts(monster) {
                     texture: 'player',
                     tile,
                     xofs: mcache.xofs,
-                    yofs: mcache.yofs,
-                    adjustY: true
+                    yofs: mcache.yofs
                 };
             });
     }
@@ -2322,8 +2358,7 @@ function monsterTileParts(monster) {
                 texture: 'player',
                 tile: Number(part[0]),
                 xofs: Number(part[1]) || 0,
-                yofs: Number(part[2]) || 0,
-                adjustY: true
+                yofs: Number(part[2]) || 0
             }));
     }
 
