@@ -1200,7 +1200,7 @@ function renderStyledUsername(username, usernameStyle) {
   }
 
   if (usernameStyle.id === "donor-this-month") {
-    return wrapStyledUsername(`${createUsernameImagePrefixSpan(usernameStyle.data?.iconUrl)}<span style="${styleToText(getDonorStyle(usernameStyle.data?.donation))}">${escapeHtml(username)}</span>`);
+    return wrapStyledUsername(`${createUsernameImagePrefixSpan(usernameStyle.data?.iconUrl)}${escapeHtml(username)}`);
   }
 
   if (usernameStyle.id === "translator") {
