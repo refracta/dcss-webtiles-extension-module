@@ -19,7 +19,7 @@ export const BANNER_URLS = {
 
 export const BANNER_ASSETS = {
   donorRecentIcon: `${CNC_USERINFO_ASSET_BASE}/gozag.webp`,
-  secondAnniversaryGold: `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/five-pip-card-small-gold-champion.svg`,
+  secondAnniversaryGold: `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/five-pip-card-small-gold-champion-fill.svg`,
   secondAnniversarySilver: `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/five-pip-card-small-silver.svg`,
   secondAnniversaryBronze: `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/five-pip-card-small-bronze.svg`,
   secondAnniversarySpecial: `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/five-pip-card-small-special.svg`,
