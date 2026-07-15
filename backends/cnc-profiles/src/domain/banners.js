@@ -2,6 +2,7 @@ export const PROFILE_SCHEMA_VERSION = 1;
 
 const CNC_USERINFO_ASSET_BASE = "https://raw.githubusercontent.com/refracta/dcss-webtiles-extension-module/main/modules/cnc-userinfo/images";
 const CNC_SECOND_ANNIVERSARY_ASSET_BASE = `${CNC_USERINFO_ASSET_BASE}/cnc-2nd-anniversary`;
+const GOONKEMON_HUNTER_ASSET_VERSION = "native-32";
 
 export const BANNER_URLS = {
   tournamentResults: "https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html",
@@ -386,7 +387,7 @@ export function createGoonkemonHunterBanner({ captureId, title, score }) {
       value: `${safeTitle} (${safeScore} pts)`
     },
     usernameStyle: createImagePrefixUsernameStyle(
-      `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/goonkemon/${encodedCaptureId}-upper.png`,
+      `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/goonkemon/${encodedCaptureId}-upper.png?v=${GOONKEMON_HUNTER_ASSET_VERSION}`,
       { pixelated: true }
     )
   };

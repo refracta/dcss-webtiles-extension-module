@@ -326,7 +326,7 @@ test("seeds precomputed CNC 2nd anniversary and Goonkemon banners", async () => 
     assert.deepEqual(banner.usernameStyle, {
       id: "image-prefix",
       data: {
-        iconUrl: `https://raw.githubusercontent.com/refracta/dcss-webtiles-extension-module/main/modules/cnc-userinfo/images/cnc-2nd-anniversary/goonkemon/${hunter.captureId}-upper.png`,
+        iconUrl: `https://raw.githubusercontent.com/refracta/dcss-webtiles-extension-module/main/modules/cnc-userinfo/images/cnc-2nd-anniversary/goonkemon/${hunter.captureId}-upper.png?v=native-32`,
         pixelated: true
       }
     });
