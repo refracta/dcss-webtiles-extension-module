@@ -287,6 +287,19 @@ test("seeds initial profiles preserving username casing", async () => {
   );
 });
 
+test("keeps Goonkemon upper crops at native tile resolution", async () => {
+  for (const hunter of GOONKEMON_HUNTERS) {
+    const image = await readFile(new URL(
+      `../../../modules/cnc-userinfo/images/cnc-2nd-anniversary/goonkemon/${hunter.captureId}-upper.png`,
+      import.meta.url
+    ));
+
+    assert.equal(image.subarray(1, 4).toString("ascii"), "PNG");
+    assert.equal(image.readUInt32BE(16), 32, `${hunter.captureId} width`);
+    assert.equal(image.readUInt32BE(20), 32, `${hunter.captureId} height`);
+  }
+});
+
 test("seeds precomputed CNC 2nd anniversary and Goonkemon banners", async () => {
   const database = await createDatabase();
 
