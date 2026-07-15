@@ -410,7 +410,11 @@ export default class CNCUserinfo {
             })
             .join('');
 
-        return `<div style="font-style: italic; font-size: ${fontSize}; line-height: ${lineHeight}; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank"${titleStyle}>${title}</a>${detail}</div>`;
+        if (banner.id === 'goonkemon-hunter' && banner.url) {
+            return `<div style="font-style: italic; font-size: ${fontSize}; line-height: ${lineHeight}; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank" rel="noopener noreferrer" style="display: block; text-decoration: none; white-space: pre-line;">${title}${detail}</a></div>`;
+        }
+
+        return `<div style="font-style: italic; font-size: ${fontSize}; line-height: ${lineHeight}; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank" rel="noopener noreferrer"${titleStyle}>${title}</a>${detail}</div>`;
     }
 
     getBannerDetailLines(detail) {

@@ -210,6 +210,21 @@ select:focus {
   cursor: default;
 }
 
+.banner-card[href] {
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.banner-card[href]:hover {
+  border-color: var(--accent);
+}
+
+.banner-card[href]:focus-visible {
+  outline: 2px solid rgba(35, 97, 77, 0.32);
+  outline-offset: 2px;
+}
+
 .banner-button[data-active="true"],
 .banner-card[data-active="true"] {
   border-color: var(--accent);

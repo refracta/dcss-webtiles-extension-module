@@ -1115,11 +1115,17 @@ function createBannerButton(profile, banner) {
 }
 
 function createPublicBannerCard(profile, banner) {
-  const card = document.createElement("article");
+  const linksToGoonkemon = banner.id === "goonkemon-hunter" && Boolean(banner.url);
+  const card = document.createElement(linksToGoonkemon ? "a" : "article");
   card.className = "banner-card";
   card.dataset.active = String(profile.currentBannerId === banner.id);
+  if (linksToGoonkemon) {
+    card.href = banner.url;
+    card.target = "_blank";
+    card.rel = "noopener noreferrer";
+  }
 
-  const titleRow = createBannerTitleRow(banner, { linkTitle: true });
+  const titleRow = createBannerTitleRow(banner, { linkTitle: !linksToGoonkemon });
 
   const preview = document.createElement("span");
   preview.className = "banner-preview";
