@@ -104,6 +104,7 @@ test("seeds initial profiles preserving username casing", async () => {
     assert.equal(banner.usernameStyle.data.split, rank);
     assert.deepEqual(banner.usernameStyle.data.colors, NEMELEX_COLORS);
   }
+  assert.deepEqual(PSEUDO_DONOR_AMOUNTS, [20000, 40000, 60000, 80000, 100000, 250000, 500000]);
   for (const [index, amount] of PSEUDO_DONOR_AMOUNTS.entries()) {
     const banner = exampleProfile.banners[`pseudo-donor-${index + 1}`];
     assert.equal(banner.title, `Donor ${index + 1}`);

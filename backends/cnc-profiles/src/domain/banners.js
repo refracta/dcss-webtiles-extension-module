@@ -28,7 +28,7 @@ export const BANNER_ASSETS = {
 
 export const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
 export const PSEUDO_CNC_RANKS = [1, 2, 3];
-export const PSEUDO_DONOR_AMOUNTS = [20000, 40000, 60000, 80000, 100000];
+export const PSEUDO_DONOR_AMOUNTS = [20000, 40000, 60000, 80000, 100000, 250000, 500000];
 export const PSEUDO_TRANSLATOR_SCORES = [500, 2750, 5000];
 const RANKING_EXAMPLES = [
   { id: "rank-1", serverRankLabel: "#1", rank: 1, serverRank: 1, score: 50000000 },
