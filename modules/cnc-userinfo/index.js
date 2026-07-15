@@ -63,6 +63,11 @@ class UserDropdown extends HTMLDivElement {
                 text-decoration: none;
                 color: #a2a2a2;
             }
+            .dropdown-content > div > a[data-cnc-goonkemon-link]:hover,
+            .dropdown-content > div > a[data-cnc-goonkemon-link]:focus-visible {
+                color: #fff;
+                text-decoration: underline;
+            }
             .dropdown-content > div:last-child {
                 border-bottom: none;
             }
@@ -411,7 +416,7 @@ export default class CNCUserinfo {
             .join('');
 
         if (banner.id === 'goonkemon-hunter' && banner.url) {
-            return `<div style="font-style: italic; font-size: ${fontSize}; line-height: ${lineHeight}; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank" rel="noopener noreferrer" style="display: block; text-decoration: none; white-space: pre-line;">${title}${detail}</a></div>`;
+            return `<div style="font-style: italic; font-size: ${fontSize}; line-height: ${lineHeight}; margin-top: -4px; margin-bottom: 4px;"><a data-cnc-goonkemon-link="true" href="${url}" target="_blank" rel="noopener noreferrer" style="display: block; white-space: pre-line;">${title}${detail}</a></div>`;
         }
 
         return `<div style="font-style: italic; font-size: ${fontSize}; line-height: ${lineHeight}; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank" rel="noopener noreferrer"${titleStyle}>${title}</a>${detail}</div>`;
