@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" role="img" aria-label="Special award five-pip card">
+  <g transform="translate(15 14) scale(0.9) translate(-14 -14)">
+    <path d="M7 2H21Q23 2 23 4V24Q23 26 21 26H7Q5 26 5 24V4Q5 2 7 2Z" fill="#171a1d" stroke="#101214" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M7 2H21Q23 2 23 4V24Q23 26 21 26H7Q5 26 5 24V4Q5 2 7 2Z" fill="none" stroke="#73777a" stroke-width="1.8" stroke-linejoin="round"/>
+    <circle cx="10" cy="8" r="1.65" fill="#008cc0"/>
+    <circle cx="18" cy="8" r="1.65" fill="#009800"/>
+    <circle cx="14" cy="14" r="1.65" fill="#8000ff"/>
+    <circle cx="10" cy="20" r="1.65" fill="#cad700"/>
+    <circle cx="18" cy="20" r="1.65" fill="#ff4000"/>
+  </g>
+</svg>
