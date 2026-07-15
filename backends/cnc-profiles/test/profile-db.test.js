@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -56,7 +56,7 @@ test("seeds initial profiles preserving username casing", async () => {
     const banner = exampleProfile.banners[bannerId];
     assert.equal(banner.url, BANNER_URLS.secondTournamentResults);
     assert.equal(banner.usernameStyle.id, "image-prefix");
-    assert.match(banner.usernameStyle.data.iconUrl, /five-pip-card-small-(?:gold-champion-fill|silver-fill-bold|bronze-fill-bold|special-bold)\.svg$/);
+    assert.match(banner.usernameStyle.data.iconUrl, /five-pip-card-small-(?:gold-champion-fill|silver-fill-bold|bronze-fill-bold|special-bold)-animated\.svg$/);
   }
   assert.equal(exampleProfile.banners["cnc-2nd-tournament-proposer"].title, "CNC 2rd Tournament Proposer");
   assert.equal(
@@ -299,7 +299,7 @@ test("seeds precomputed CNC 2nd anniversary and Goonkemon banners", async () => 
     assert.ok(banner, `${username} owns ${bannerId}`);
     assert.equal(banner.url, BANNER_URLS.secondTournamentResults);
     assert.equal(banner.usernameStyle.id, "image-prefix");
-    assert.match(banner.usernameStyle.data.iconUrl, /five-pip-card-small-(?:gold-champion-fill|silver-fill-bold|bronze-fill-bold|special-bold)\.svg$/);
+    assert.match(banner.usernameStyle.data.iconUrl, /five-pip-card-small-(?:gold-champion-fill|silver-fill-bold|bronze-fill-bold|special-bold)-animated\.svg$/);
   }
 
   for (const hunter of GOONKEMON_HUNTERS) {
@@ -332,6 +332,44 @@ test("seeds precomputed CNC 2nd anniversary and Goonkemon banners", async () => 
   assert.equal(opking.banners["cnc-2nd-tournament-proposer"].title, "CNC 2rd Tournament Proposer");
   assert.equal(opking.banners["cnc-2nd-tournament-proposer"].usernameStyle.data.iconUrl, BANNER_ASSETS.secondTournamentProposer);
   assert.ok(opking.banners["goonkemon-hunter"]);
+});
+
+test("animates every CNC 2nd anniversary award card through the Nemelex colors", async () => {
+  const assetUrls = [
+    BANNER_ASSETS.secondAnniversaryGold,
+    BANNER_ASSETS.secondAnniversarySilver,
+    BANNER_ASSETS.secondAnniversaryBronze,
+    BANNER_ASSETS.secondAnniversarySpecial
+  ];
+  const expectedSecondPhase = [
+    NEMELEX_COLORS[4],
+    NEMELEX_COLORS[0],
+    NEMELEX_COLORS[1],
+    NEMELEX_COLORS[2],
+    NEMELEX_COLORS[3]
+  ];
+
+  for (const assetUrl of assetUrls) {
+    const filename = new URL(assetUrl).pathname.split("/").pop();
+    const fileUrl = new URL(`../../../modules/cnc-userinfo/images/cnc-2nd-anniversary/${filename}`, import.meta.url);
+    const svg = await readFile(fileUrl, "utf8");
+    const animations = svg.match(/<animate\b[^>]*>/g) ?? [];
+
+    assert.equal(animations.length, 5, `${filename} animates all five pips`);
+    const sequences = animations.map((animation) => {
+      assert.match(animation, /dur="300s"/);
+      assert.match(animation, /keyTimes="0;0\.2;0\.4;0\.6;0\.8"/);
+      assert.match(animation, /calcMode="discrete"/);
+      assert.match(animation, /repeatCount="indefinite"/);
+      return animation.match(/values="([^"]+)"/)?.[1].split(";") ?? [];
+    });
+
+    assert.deepEqual(sequences.map(([first]) => first), NEMELEX_COLORS);
+    assert.deepEqual(sequences.map((sequence) => sequence[1]), expectedSecondPhase);
+    for (const sequence of sequences) {
+      assert.deepEqual([...sequence].sort(), [...NEMELEX_COLORS].sort());
+    }
+  }
 });
 
 test("adds CNC 2nd anniversary banners without replacing a persisted manual selection", async () => {
