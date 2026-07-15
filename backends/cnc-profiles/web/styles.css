@@ -214,13 +214,10 @@ select:focus {
   color: inherit;
   cursor: pointer;
   text-decoration: none;
-  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 
 .banner-card[href]:hover {
-  background: #f2f7f4;
   border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(35, 97, 77, 0.14);
 }
 
 .banner-card[href]:focus-visible {
@@ -253,7 +250,8 @@ select:focus {
   white-space: pre-line;
 }
 
-.banner-title[href]:hover {
+.banner-title[href]:hover,
+.banner-card[href] .banner-title:hover {
   text-decoration: underline;
 }
 
