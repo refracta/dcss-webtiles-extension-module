@@ -83,16 +83,16 @@ test("seeds initial profiles preserving username casing", async () => {
     assert.equal(banner.usernameStyle.id, "donor");
     assert.equal(banner.usernameStyle.data.donation, amount);
   }
-  assert.equal(exampleProfile.banners["example-donor-this-month"].title, "Donor (This Month)");
-  assert.deepEqual(exampleProfile.banners["example-donor-this-month"].detail, {
+  assert.equal(exampleProfile.banners["example-donor-recent"].title, "Donor");
+  assert.deepEqual(exampleProfile.banners["example-donor-recent"].detail, {
     label: "Recent 45 days",
     value: "5,000 KRW"
   });
-  assert.deepEqual(exampleProfile.banners["example-donor-this-month"].usernameStyle, {
-    id: "donor-this-month",
+  assert.deepEqual(exampleProfile.banners["example-donor-recent"].usernameStyle, {
+    id: "donor-recent",
     data: {
       donation: 5000,
-      iconUrl: BANNER_ASSETS.donorThisMonthIcon
+      iconUrl: BANNER_ASSETS.donorRecentIcon
     }
   });
   assert.equal(exampleProfile.banners.translator, undefined);

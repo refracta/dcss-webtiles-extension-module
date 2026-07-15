@@ -1199,7 +1199,7 @@ function renderStyledUsername(username, usernameStyle) {
     return wrapStyledUsername(`<span style="${styleToText(getDonorStyle(usernameStyle.data?.donation))}">${escapeHtml(username)}</span>`);
   }
 
-  if (usernameStyle.id === "donor-this-month") {
+  if (usernameStyle.id === "donor-recent") {
     return wrapStyledUsername(`${createUsernameImagePrefixSpan(usernameStyle.data?.iconUrl)}${escapeHtml(username)}`);
   }
 

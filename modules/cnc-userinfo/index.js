@@ -335,7 +335,7 @@ export default class CNCUserinfo {
             return `<span style="${this.styleObjectToString(this.getDonorStyle(usernameStyle.data?.donation))}">${this.escapeHtml(username)}</span>`;
         }
 
-        if (usernameStyle.id === 'donor-this-month') {
+        if (usernameStyle.id === 'donor-recent') {
             return `${this.createUsernameImagePrefixSpan(usernameStyle.data?.iconUrl)}${this.escapeHtml(username)}`;
         }
 

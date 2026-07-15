@@ -13,7 +13,7 @@ export const BANNER_URLS = {
 };
 
 export const BANNER_ASSETS = {
-  donorThisMonthIcon: "https://raw.githubusercontent.com/refracta/dcss-webtiles-extension-module/main/modules/cnc-userinfo/images/gozag.webp"
+  donorRecentIcon: "https://raw.githubusercontent.com/refracta/dcss-webtiles-extension-module/main/modules/cnc-userinfo/images/gozag.webp"
 };
 
 export const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
@@ -91,15 +91,15 @@ export const BANNER_DEFINITIONS = [
     usernameStyle: { id: "donor", data: { donation: 0 } }
   },
   {
-    id: "donor-this-month",
-    title: "Donor (This Month)",
+    id: "donor-recent",
+    title: "Donor",
     url: BANNER_URLS.donation,
     detail: createDonationDetail(0, "Recent 45 days"),
     usernameStyle: {
-      id: "donor-this-month",
+      id: "donor-recent",
       data: {
         donation: 0,
-        iconUrl: BANNER_ASSETS.donorThisMonthIcon
+        iconUrl: BANNER_ASSETS.donorRecentIcon
       }
     }
   },
@@ -173,7 +173,7 @@ const BANNER_EXAMPLE_BANNER_IDS = [
 
 const BANNER_EXAMPLE_BANNERS = [
   ...BANNER_EXAMPLE_BANNER_IDS.map((id) => getBannerDefinition(id)),
-  createThisMonthDonorExampleBanner(5000),
+  createRecentDonorExampleBanner(5000),
   ...PSEUDO_TRANSLATOR_SCORES.map((score) => createPseudoTranslatorBanner(score)),
   createOspContributorExampleBanner(10),
   ...LATEST_TOURNAMENT_EXAMPLES.map((example) => createLatestTournamentExampleBanner(example)),
@@ -299,19 +299,19 @@ export function createDonorBanner(amount) {
   };
 }
 
-export function createThisMonthDonorBanner(amount, { lookbackDays = 45 } = {}) {
+export function createRecentDonorBanner(amount, { lookbackDays = 45 } = {}) {
   const donation = Math.max(0, Math.floor(Number(amount) || 0));
   const safeLookbackDays = Math.max(1, Math.floor(Number(lookbackDays) || 45));
   return {
-    id: "donor-this-month",
-    title: "Donor (This Month)",
+    id: "donor-recent",
+    title: "Donor",
     url: BANNER_URLS.donation,
     detail: createDonationDetail(donation, `Recent ${safeLookbackDays} days`),
     usernameStyle: {
-      id: "donor-this-month",
+      id: "donor-recent",
       data: {
         donation,
-        iconUrl: BANNER_ASSETS.donorThisMonthIcon
+        iconUrl: BANNER_ASSETS.donorRecentIcon
       }
     }
   };
@@ -496,10 +496,10 @@ function createOspContributorExampleBanner(count) {
   };
 }
 
-function createThisMonthDonorExampleBanner(amount) {
+function createRecentDonorExampleBanner(amount) {
   return {
-    ...createThisMonthDonorBanner(amount),
-    id: "example-donor-this-month"
+    ...createRecentDonorBanner(amount),
+    id: "example-donor-recent"
   };
 }
 

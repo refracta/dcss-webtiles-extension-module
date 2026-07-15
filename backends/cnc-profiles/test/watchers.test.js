@@ -15,6 +15,15 @@ import {
 
 test("donation watcher creates cumulative and recent donor banners", async () => {
   const database = await createDatabase();
+  database.upsertBanner("DonorUser", {
+    id: "donor-this-month",
+    title: "Donor (This Month)",
+    url: "https://example.test/donation",
+    usernameStyle: { id: "donor-this-month", data: { donation: 10000 } }
+  }, {
+    source: "watcher:donation",
+    autoEquip: false
+  });
   const recentDate = new Date().toISOString();
   const oldDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
   const watcher = new WatcherService({
@@ -39,18 +48,19 @@ test("donation watcher creates cumulative and recent donor banners", async () =>
     value: "30,000 KRW"
   });
   assert.equal(donorBanner.usernameStyle.data.donation, 30000);
-  const recentBanner = database.getProfile("donoruser").banners["donor-this-month"];
-  assert.equal(recentBanner.title, "Donor (This Month)");
+  const recentBanner = database.getProfile("donoruser").banners["donor-recent"];
+  assert.equal(recentBanner.title, "Donor");
   assert.deepEqual(recentBanner.detail, {
     label: "Recent 45 days",
     value: "30,000 KRW"
   });
-  assert.equal(recentBanner.usernameStyle.id, "donor-this-month");
+  assert.equal(recentBanner.usernameStyle.id, "donor-recent");
   assert.equal(recentBanner.usernameStyle.data.donation, 30000);
   assert.match(recentBanner.usernameStyle.data.iconUrl, /gozag\.webp$/);
+  assert.equal(database.getProfile("DonorUser").banners["donor-this-month"], undefined);
   assert.equal(database.getProfile("DonorUser").currentBannerId, "donor");
   assert.ok(database.getProfile("OldDonor").banners.donor);
-  assert.equal(database.getProfile("OldDonor").banners["donor-this-month"], undefined);
+  assert.equal(database.getProfile("OldDonor").banners["donor-recent"], undefined);
 
   const staleRecentWatcher = new WatcherService({
     database,
@@ -63,7 +73,7 @@ test("donation watcher creates cumulative and recent donor banners", async () =>
   });
   assert.equal(await staleRecentWatcher.syncDonation(), true);
   assert.ok(database.getProfile("DonorUser").banners.donor);
-  assert.equal(database.getProfile("DonorUser").banners["donor-this-month"], undefined);
+  assert.equal(database.getProfile("DonorUser").banners["donor-recent"], undefined);
   assert.equal(database.getProfile("DonorUser").currentBannerId, "donor");
 });
 

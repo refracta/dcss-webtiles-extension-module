@@ -6,7 +6,7 @@ import {
   createLatestTournamentBanner,
   createOspContributorBanner,
   createRankingBanner,
-  createThisMonthDonorBanner,
+  createRecentDonorBanner,
   createTranslatorBanner,
   createWinStreakBanner
 } from "../domain/banners.js";
@@ -127,6 +127,10 @@ export class WatcherService {
       source: WATCHER_SOURCES.donation,
       bannerId: "donator"
     });
+    const legacyRecentChanged = this.#removeManagedBanners({
+      source: WATCHER_SOURCES.donation,
+      bannerId: "donor-this-month"
+    });
     const cumulativeChanged = this.#upsertManagedBanners({
       source: WATCHER_SOURCES.donation,
       activeEntries: [...cumulativeTotals.values()].filter((entry) => entry.amount > 0),
@@ -134,12 +138,12 @@ export class WatcherService {
     });
     const recentChanged = this.#replaceManagedBanners({
       source: WATCHER_SOURCES.donation,
-      bannerId: "donor-this-month",
+      bannerId: "donor-recent",
       activeEntries: [...recentTotals.values()].filter((entry) => entry.amount > 0),
-      createBanner: (entry) => createThisMonthDonorBanner(entry.amount, { lookbackDays })
+      createBanner: (entry) => createRecentDonorBanner(entry.amount, { lookbackDays })
     });
 
-    return legacyChanged || cumulativeChanged || recentChanged;
+    return legacyChanged || legacyRecentChanged || cumulativeChanged || recentChanged;
   }
 
   async syncCredits() {
