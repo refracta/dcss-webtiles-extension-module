@@ -56,7 +56,7 @@ test("seeds initial profiles preserving username casing", async () => {
     const banner = exampleProfile.banners[bannerId];
     assert.equal(banner.url, BANNER_URLS.secondTournamentResults);
     assert.equal(banner.usernameStyle.id, "image-prefix");
-    assert.match(banner.usernameStyle.data.iconUrl, /five-pip-card-small-(?:gold|silver|bronze|special)\.svg$/);
+    assert.match(banner.usernameStyle.data.iconUrl, /five-pip-card-small-(?:gold-champion|silver|bronze|special)\.svg$/);
   }
   assert.equal(exampleProfile.banners["cnc-2nd-tournament-proposer"].title, "CNC 2rd Tournament Proposer");
   assert.equal(
@@ -299,7 +299,7 @@ test("seeds precomputed CNC 2nd anniversary and Goonkemon banners", async () => 
     assert.ok(banner, `${username} owns ${bannerId}`);
     assert.equal(banner.url, BANNER_URLS.secondTournamentResults);
     assert.equal(banner.usernameStyle.id, "image-prefix");
-    assert.match(banner.usernameStyle.data.iconUrl, /five-pip-card-small-(?:gold|silver|bronze|special)\.svg$/);
+    assert.match(banner.usernameStyle.data.iconUrl, /five-pip-card-small-(?:gold-champion|silver|bronze|special)\.svg$/);
   }
 
   for (const hunter of GOONKEMON_HUNTERS) {
