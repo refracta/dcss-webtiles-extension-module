@@ -331,6 +331,11 @@ export default class CNCUserinfo {
             );
         }
 
+        if (usernameStyle.id === 'image-prefix') {
+            const data = usernameStyle.data || {};
+            return `${this.createUsernameImagePrefixSpan(data.iconUrl, {pixelated: data.pixelated})}${this.escapeHtml(username)}`;
+        }
+
         if (usernameStyle.id === 'donor') {
             return `<span style="${this.styleObjectToString(this.getDonorStyle(usernameStyle.data?.donation))}">${this.escapeHtml(username)}</span>`;
         }
@@ -382,11 +387,13 @@ export default class CNCUserinfo {
         return `<span style="display: inline-block; text-decoration: none;">${this.escapeHtml(prefix)}</span>`;
     }
 
-    createUsernameImagePrefixSpan(url) {
+    createUsernameImagePrefixSpan(url, {pixelated = false} = {}) {
         const safeUrl = String(url || '').trim();
         if (!/^https:\/\//i.test(safeUrl)) return '';
 
-        return `<span style="display: inline-flex; align-items: center; width: 1.16em; height: 1.16em; margin-right: 0.16em; vertical-align: -0.18em; text-decoration: none;"><img src="${this.escapeHtml(safeUrl)}" alt="" style="display: block; width: 100%; height: 100%; object-fit: contain; border-radius: 3px;"></span>`;
+        const imageRendering = pixelated ? ' image-rendering: pixelated;' : '';
+        const borderRadius = pixelated ? '0' : '3px';
+        return `<span style="display: inline-flex; align-items: center; width: 1.16em; height: 1.16em; margin-right: 0.16em; vertical-align: -0.18em; text-decoration: none;"><img src="${this.escapeHtml(safeUrl)}" alt="" style="display: block; width: 100%; height: 100%; object-fit: contain; border-radius: ${borderRadius};${imageRendering}"></span>`;
     }
 
     createBannerTitleDiv(banner) {

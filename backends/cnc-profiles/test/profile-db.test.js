@@ -6,10 +6,13 @@ import test from "node:test";
 import { ProfileDatabase } from "../src/db/profile-db.js";
 import {
   BANNER_ASSETS,
+  BANNER_URLS,
+  GOONKEMON_HUNTERS,
   NEMELEX_COLORS,
   PSEUDO_CNC_RANKS,
   PSEUDO_DONOR_AMOUNTS,
   PSEUDO_TRANSLATOR_SCORES,
+  SECOND_ANNIVERSARY_AWARD_RECIPIENTS,
   compareBannerByTitle,
   createDonorBanner,
   getBannerDefinition
@@ -41,6 +44,34 @@ test("seeds initial profiles preserving username casing", async () => {
   assert.equal(exampleProfile.banners["dcss-contributor"].url, "https://github.com/crawl/crawl/blob/master/crawl-ref/CREDITS.txt");
   assert.equal(exampleProfile.banners["dcss-contributor"].usernameStyle.id, "dcss-contributor");
   assert.equal(exampleProfile.banners["dcss-contributor"].usernameStyle.data.badge, "🛠️");
+  for (const bannerId of [
+    "cnc-2nd-anniversary-skill-champion",
+    "cnc-2nd-anniversary-skill-2",
+    "cnc-2nd-anniversary-skill-3",
+    "cnc-2nd-anniversary-ent-champion",
+    "cnc-2nd-anniversary-ent-2",
+    "cnc-2nd-anniversary-ent-3",
+    "cnc-2nd-anniversary-ent-special"
+  ]) {
+    const banner = exampleProfile.banners[bannerId];
+    assert.equal(banner.url, BANNER_URLS.secondTournamentResults);
+    assert.equal(banner.usernameStyle.id, "image-prefix");
+    assert.match(banner.usernameStyle.data.iconUrl, /five-pip-card-small-(?:gold|silver|bronze|special)\.svg$/);
+  }
+  assert.equal(exampleProfile.banners["cnc-2nd-tournament-proposer"].title, "CNC 2rd Tournament Proposer");
+  assert.equal(
+    exampleProfile.banners["cnc-2nd-tournament-proposer"].usernameStyle.data.iconUrl,
+    BANNER_ASSETS.secondTournamentProposer
+  );
+  assert.equal(exampleProfile.banners["goonkemon-hunter"].title, "Goonkemon Hunter");
+  assert.equal(
+    exampleProfile.banners["goonkemon-hunter"].url,
+    `${BANNER_URLS.goonkemon}/20260630T174537Z-Rutnb-Luedatz`
+  );
+  assert.deepEqual(exampleProfile.banners["goonkemon-hunter"].detail, {
+    value: "Luedatz. (266 pts)"
+  });
+  assert.equal(exampleProfile.banners["goonkemon-hunter"].usernameStyle.data.pixelated, true);
   assert.equal(exampleProfile.banners["example-osp-contributor-10"].title, "OSP Contributor (10)");
   assert.equal(exampleProfile.banners["example-osp-contributor-10"].url, "https://github.com/refracta/dcss-webtiles-extension-module/blob/main/modules/sound-support/README.md");
   assert.deepEqual(exampleProfile.banners["example-osp-contributor-10"].usernameStyle, {
@@ -253,6 +284,92 @@ test("seeds initial profiles preserving username casing", async () => {
     publicExampleProfile.banners.map((banner) => banner.id),
     [...publicExampleProfile.banners].sort(compareBannerByTitle).map((banner) => banner.id)
   );
+});
+
+test("seeds precomputed CNC 2nd anniversary and Goonkemon banners", async () => {
+  const database = await createDatabase();
+
+  assert.equal(SECOND_ANNIVERSARY_AWARD_RECIPIENTS.length, 7);
+  assert.equal(GOONKEMON_HUNTERS.length, 17);
+  assert.equal(new Set(GOONKEMON_HUNTERS.map(({ username }) => username.toLowerCase())).size, 17);
+
+  for (const { username, bannerId } of SECOND_ANNIVERSARY_AWARD_RECIPIENTS) {
+    const banner = database.getProfile(username).banners[bannerId];
+    assert.ok(banner, `${username} owns ${bannerId}`);
+    assert.equal(banner.url, BANNER_URLS.secondTournamentResults);
+    assert.equal(banner.usernameStyle.id, "image-prefix");
+    assert.match(banner.usernameStyle.data.iconUrl, /five-pip-card-small-(?:gold|silver|bronze|special)\.svg$/);
+  }
+
+  for (const hunter of GOONKEMON_HUNTERS) {
+    const banner = database.getProfile(hunter.username).banners["goonkemon-hunter"];
+    assert.ok(banner, `${hunter.username} owns Goonkemon Hunter`);
+    assert.equal(banner.title, "Goonkemon Hunter");
+    assert.equal(banner.url, `${BANNER_URLS.goonkemon}/${hunter.captureId}`);
+    assert.deepEqual(banner.detail, {
+      value: `${hunter.title} (${hunter.score} pts)`
+    });
+    assert.deepEqual(banner.usernameStyle, {
+      id: "image-prefix",
+      data: {
+        iconUrl: `https://raw.githubusercontent.com/refracta/dcss-webtiles-extension-module/main/modules/cnc-userinfo/images/cnc-2nd-anniversary/goonkemon/${hunter.captureId}-upper.png`,
+        pixelated: true
+      }
+    });
+  }
+
+  const wong = database.getProfile("Wong");
+  assert.ok(wong.banners["cnc-2nd-anniversary-skill-2"]);
+  assert.ok(wong.banners["cnc-2nd-anniversary-ent-3"]);
+  assert.ok(wong.banners["goonkemon-hunter"]);
+
+  const vayu = database.getProfile("vayu");
+  assert.ok(vayu.banners["cnc-2nd-anniversary-ent-special"]);
+  assert.equal(vayu.banners["goonkemon-hunter"].url, `${BANNER_URLS.goonkemon}/20260619T014959Z-vayu-Yxexats`);
+
+  const opking = database.getProfile("opking");
+  assert.equal(opking.banners["cnc-2nd-tournament-proposer"].title, "CNC 2rd Tournament Proposer");
+  assert.equal(opking.banners["cnc-2nd-tournament-proposer"].usernameStyle.data.iconUrl, BANNER_ASSETS.secondTournamentProposer);
+  assert.ok(opking.banners["goonkemon-hunter"]);
+});
+
+test("adds CNC 2nd anniversary banners without replacing a persisted manual selection", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "cnc-profiles-"));
+  const filePath = path.join(dir, "profiles.json");
+  const manualBanner = getBannerDefinition("bot");
+
+  await writeFile(filePath, JSON.stringify({
+    schemaVersion: 1,
+    profiles: {
+      Wong: {
+        username: "Wong",
+        banners: {
+          [manualBanner.id]: manualBanner
+        },
+        currentBannerId: manualBanner.id,
+        selectionMode: "manual",
+        sources: {
+          [manualBanner.id]: {
+            source: "manual",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        },
+        createdAt: "2026-01-01T00:00:00.000Z",
+        lastUpdatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    }
+  }));
+
+  const database = new ProfileDatabase(filePath);
+  await database.init();
+
+  const profile = database.getProfile("Wong");
+  assert.equal(profile.currentBannerId, "bot");
+  assert.equal(profile.selectionMode, "manual");
+  assert.ok(profile.banners.bot);
+  assert.ok(profile.banners["cnc-2nd-anniversary-skill-2"]);
+  assert.ok(profile.banners["cnc-2nd-anniversary-ent-3"]);
+  assert.ok(profile.banners["goonkemon-hunter"]);
 });
 
 test("manual none selection blocks auto equip", async () => {

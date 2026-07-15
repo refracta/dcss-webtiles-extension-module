@@ -1,7 +1,12 @@
 export const PROFILE_SCHEMA_VERSION = 1;
 
+const CNC_USERINFO_ASSET_BASE = "https://raw.githubusercontent.com/refracta/dcss-webtiles-extension-module/main/modules/cnc-userinfo/images";
+const CNC_SECOND_ANNIVERSARY_ASSET_BASE = `${CNC_USERINFO_ASSET_BASE}/cnc-2nd-anniversary`;
+
 export const BANNER_URLS = {
   tournamentResults: "https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html",
+  secondTournamentResults: "https://refracta.github.io/nemelex.cards/cnc-2nd-anniversary-tournament/results.html",
+  goonkemon: "https://refracta.github.io/nemelex.cards/goonkemon",
   donation: "https://donation.abstr.net/list",
   logfile: "https://archive.nemelex.cards/meta/crawl-git/logfile",
   logfileViewer: "https://archive.nemelex.cards/meta/crawl-git?file=logfile",
@@ -13,7 +18,12 @@ export const BANNER_URLS = {
 };
 
 export const BANNER_ASSETS = {
-  donorRecentIcon: "https://raw.githubusercontent.com/refracta/dcss-webtiles-extension-module/main/modules/cnc-userinfo/images/gozag.webp"
+  donorRecentIcon: `${CNC_USERINFO_ASSET_BASE}/gozag.webp`,
+  secondAnniversaryGold: `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/five-pip-card-small-gold.svg`,
+  secondAnniversarySilver: `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/five-pip-card-small-silver.svg`,
+  secondAnniversaryBronze: `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/five-pip-card-small-bronze.svg`,
+  secondAnniversarySpecial: `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/five-pip-card-small-special.svg`,
+  secondTournamentProposer: `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/tournament-proposer-lightbulb.svg`
 };
 
 export const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
@@ -82,6 +92,54 @@ export const BANNER_DEFINITIONS = [
     title: "CNC 1st Anniversary Tournament\n3rd Place (Ent Category)",
     url: BANNER_URLS.tournamentResults,
     usernameStyle: createNemelexUsernameStyle(3)
+  },
+  {
+    id: "cnc-2nd-anniversary-skill-champion",
+    title: "CNC 2nd Anniversary Tournament\nChampion (Skill Category)",
+    url: BANNER_URLS.secondTournamentResults,
+    usernameStyle: createImagePrefixUsernameStyle(BANNER_ASSETS.secondAnniversaryGold)
+  },
+  {
+    id: "cnc-2nd-anniversary-skill-2",
+    title: "CNC 2nd Anniversary Tournament\n2nd Place (Skill Category)",
+    url: BANNER_URLS.secondTournamentResults,
+    usernameStyle: createImagePrefixUsernameStyle(BANNER_ASSETS.secondAnniversarySilver)
+  },
+  {
+    id: "cnc-2nd-anniversary-skill-3",
+    title: "CNC 2nd Anniversary Tournament\n3rd Place (Skill Category)",
+    url: BANNER_URLS.secondTournamentResults,
+    usernameStyle: createImagePrefixUsernameStyle(BANNER_ASSETS.secondAnniversaryBronze)
+  },
+  {
+    id: "cnc-2nd-anniversary-ent-champion",
+    title: "CNC 2nd Anniversary Tournament\nChampion (Ent Category)",
+    url: BANNER_URLS.secondTournamentResults,
+    usernameStyle: createImagePrefixUsernameStyle(BANNER_ASSETS.secondAnniversaryGold)
+  },
+  {
+    id: "cnc-2nd-anniversary-ent-2",
+    title: "CNC 2nd Anniversary Tournament\n2nd Place (Ent Category)",
+    url: BANNER_URLS.secondTournamentResults,
+    usernameStyle: createImagePrefixUsernameStyle(BANNER_ASSETS.secondAnniversarySilver)
+  },
+  {
+    id: "cnc-2nd-anniversary-ent-3",
+    title: "CNC 2nd Anniversary Tournament\n3rd Place (Ent Category)",
+    url: BANNER_URLS.secondTournamentResults,
+    usernameStyle: createImagePrefixUsernameStyle(BANNER_ASSETS.secondAnniversaryBronze)
+  },
+  {
+    id: "cnc-2nd-anniversary-ent-special",
+    title: "CNC 2nd Anniversary Tournament\nSpecial Award (Ent Category)",
+    url: BANNER_URLS.secondTournamentResults,
+    usernameStyle: createImagePrefixUsernameStyle(BANNER_ASSETS.secondAnniversarySpecial)
+  },
+  {
+    id: "cnc-2nd-tournament-proposer",
+    title: "CNC 2rd Tournament Proposer",
+    url: BANNER_URLS.secondTournamentResults,
+    usernameStyle: createImagePrefixUsernameStyle(BANNER_ASSETS.secondTournamentProposer)
   },
   {
     id: "donor",
@@ -164,15 +222,31 @@ export const BANNER_DEFINITIONS = [
   ...PSEUDO_DONOR_AMOUNTS.map((amount, index) => createPseudoDonorBanner(index + 1, amount))
 ];
 
+const GOONKEMON_HUNTER_EXAMPLE = {
+  username: "Rutnb",
+  captureId: "20260630T174537Z-Rutnb-Luedatz",
+  title: "Luedatz.",
+  score: 266
+};
+
 const BANNER_EXAMPLE_BANNER_IDS = [
   "bot",
   "dcss-contributor",
+  "cnc-2nd-anniversary-skill-champion",
+  "cnc-2nd-anniversary-skill-2",
+  "cnc-2nd-anniversary-skill-3",
+  "cnc-2nd-anniversary-ent-champion",
+  "cnc-2nd-anniversary-ent-2",
+  "cnc-2nd-anniversary-ent-3",
+  "cnc-2nd-anniversary-ent-special",
+  "cnc-2nd-tournament-proposer",
   ...PSEUDO_CNC_RANKS.map((rank) => `pseudo-cnc-${rank}`),
   ...PSEUDO_DONOR_AMOUNTS.map((_, index) => `pseudo-donor-${index + 1}`)
 ];
 
 const BANNER_EXAMPLE_BANNERS = [
   ...BANNER_EXAMPLE_BANNER_IDS.map((id) => getBannerDefinition(id)),
+  createGoonkemonHunterBanner(GOONKEMON_HUNTER_EXAMPLE),
   createRecentDonorExampleBanner(5000),
   ...PSEUDO_TRANSLATOR_SCORES.map((score) => createPseudoTranslatorBanner(score)),
   createOspContributorExampleBanner(10),
@@ -182,6 +256,36 @@ const BANNER_EXAMPLE_BANNERS = [
   ...WIN_STREAK_EXAMPLES.map((streak) => createWinStreakExampleBanner(streak)),
   ...CURRENT_WIN_STREAK_EXAMPLES.map((streak) => createCurrentWinStreakExampleBanner(streak))
 ].filter(Boolean).sort(compareBannerByTitle);
+
+export const SECOND_ANNIVERSARY_AWARD_RECIPIENTS = [
+  { username: "Sapher", bannerId: "cnc-2nd-anniversary-skill-champion" },
+  { username: "Wong", bannerId: "cnc-2nd-anniversary-skill-2" },
+  { username: "Tanach", bannerId: "cnc-2nd-anniversary-skill-3" },
+  { username: "Rutnb", bannerId: "cnc-2nd-anniversary-ent-champion" },
+  { username: "sekai", bannerId: "cnc-2nd-anniversary-ent-2" },
+  { username: "Wong", bannerId: "cnc-2nd-anniversary-ent-3" },
+  { username: "vayu", bannerId: "cnc-2nd-anniversary-ent-special" }
+];
+
+export const GOONKEMON_HUNTERS = [
+  GOONKEMON_HUNTER_EXAMPLE,
+  { username: "sekai", captureId: "20260622T153834Z-sekai-Diosoekej", title: "Diosoekej.", score: 258 },
+  { username: "Wong", captureId: "20260627T145501Z-Wong-Aptuad", title: "Aptuad.", score: 206 },
+  { username: "sasameki", captureId: "20260628T021220Z-sasameki-Vejouc", title: "Vejouc.", score: 184 },
+  { username: "fbynet", captureId: "20260627T095723Z-fbynet-Bebos", title: "Bebos.", score: 178 },
+  { username: "Tanach", captureId: "20260620T113133Z-Tanach-Hud_Mal", title: "Hud Mal.", score: 174 },
+  { username: "eachpiece", captureId: "20260621T044638Z-eachpiece-Iquerahe", title: "Iquerahe.", score: 156 },
+  { username: "vayu", captureId: "20260619T014959Z-vayu-Yxexats", title: "Yxexats.", score: 35 },
+  { username: "malfuriongg", captureId: "20260620T060625Z-malfuriongg-Acax", title: "Acax.", score: 149 },
+  { username: "zonber", captureId: "20260620T124649Z-zonber-Qarcho", title: "Qarcho.", score: 126 },
+  { username: "bizarrehands", captureId: "20260620T144139Z-bizarrehands-Lablunt", title: "Lablunt.", score: 124 },
+  { username: "jk645200", captureId: "20260620T232125Z-jk645200-Ceukk", title: "Ceukk.", score: 120 },
+  { username: "dilly", captureId: "20260620T073116Z-dilly-Faneots", title: "Faneots.", score: 118 },
+  { username: "Asidra", captureId: "20260625T165518Z-Asidra-Josche_Jyif", title: "Josche Jyif.", score: 111 },
+  { username: "opking", captureId: "20260619T042055Z-opking-Qieg", title: "Qieg.", score: 108 },
+  { username: "Dogchiho", captureId: "20260619T142159Z-Dogchiho-Zixa", title: "Zixa.", score: 103 },
+  { username: "De02", captureId: "20260619T130809Z-De02-Utzead", title: "Utzead.", score: 102 }
+];
 
 export const INITIAL_PROFILES = [
   {
@@ -211,6 +315,18 @@ export const INITIAL_PROFILES = [
   {
     username: "Dogchiho",
     banner: getBannerDefinition("cnc-1st-anniversary-ent-3")
+  },
+  ...SECOND_ANNIVERSARY_AWARD_RECIPIENTS.map(({ username, bannerId }) => ({
+    username,
+    banner: getBannerDefinition(bannerId)
+  })),
+  ...GOONKEMON_HUNTERS.map((hunter) => ({
+    username: hunter.username,
+    banner: createGoonkemonHunterBanner(hunter)
+  })),
+  {
+    username: "opking",
+    banner: getBannerDefinition("cnc-2nd-tournament-proposer")
   },
   {
     username: "beem",
@@ -243,6 +359,36 @@ function createNemelexUsernameStyle(split, time = 60) {
       time,
       colors: [...NEMELEX_COLORS]
     }
+  };
+}
+
+function createImagePrefixUsernameStyle(iconUrl, { pixelated = false } = {}) {
+  return {
+    id: "image-prefix",
+    data: {
+      iconUrl,
+      ...(pixelated ? { pixelated: true } : {})
+    }
+  };
+}
+
+export function createGoonkemonHunterBanner({ captureId, title, score }) {
+  const safeCaptureId = String(captureId ?? "").trim();
+  const safeTitle = String(title ?? "Goonkemon").trim() || "Goonkemon";
+  const safeScore = Math.max(0, Math.floor(Number(score) || 0));
+  const encodedCaptureId = encodeURIComponent(safeCaptureId);
+
+  return {
+    id: "goonkemon-hunter",
+    title: "Goonkemon Hunter",
+    url: `${BANNER_URLS.goonkemon}/${encodedCaptureId}`,
+    detail: {
+      value: `${safeTitle} (${safeScore} pts)`
+    },
+    usernameStyle: createImagePrefixUsernameStyle(
+      `${CNC_SECOND_ANNIVERSARY_ASSET_BASE}/goonkemon/${encodedCaptureId}-upper.png`,
+      { pixelated: true }
+    )
   };
 }
 
