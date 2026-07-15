@@ -12,6 +12,10 @@ export const BANNER_URLS = {
   profiles: "https://profiles.nemelex.cards"
 };
 
+export const BANNER_ASSETS = {
+  donorThisMonthIcon: "https://raw.githubusercontent.com/refracta/dcss-webtiles-extension-module/main/modules/cnc-userinfo/images/gozag.webp"
+};
+
 export const NEMELEX_COLORS = ["#008cc0", "#009800", "#8000ff", "#cad700", "#ff4000"];
 export const PSEUDO_CNC_RANKS = [1, 2, 3];
 export const PSEUDO_DONOR_AMOUNTS = [20000, 40000, 60000, 80000, 100000];
@@ -81,10 +85,23 @@ export const BANNER_DEFINITIONS = [
   },
   {
     id: "donor",
-    title: "Donor",
+    title: "Donor (Cumulative)",
     url: BANNER_URLS.donation,
-    detail: createDonationDetail(0),
+    detail: createDonationDetail(0, "Cumulative"),
     usernameStyle: { id: "donor", data: { donation: 0 } }
+  },
+  {
+    id: "donor-this-month",
+    title: "Donor (This Month)",
+    url: BANNER_URLS.donation,
+    detail: createDonationDetail(0, "Recent 45 days"),
+    usernameStyle: {
+      id: "donor-this-month",
+      data: {
+        donation: 0,
+        iconUrl: BANNER_ASSETS.donorThisMonthIcon
+      }
+    }
   },
   {
     id: "translator",
@@ -156,6 +173,7 @@ const BANNER_EXAMPLE_BANNER_IDS = [
 
 const BANNER_EXAMPLE_BANNERS = [
   ...BANNER_EXAMPLE_BANNER_IDS.map((id) => getBannerDefinition(id)),
+  createThisMonthDonorExampleBanner(5000),
   ...PSEUDO_TRANSLATOR_SCORES.map((score) => createPseudoTranslatorBanner(score)),
   createOspContributorExampleBanner(10),
   ...LATEST_TOURNAMENT_EXAMPLES.map((example) => createLatestTournamentExampleBanner(example)),
@@ -250,7 +268,7 @@ function createPseudoDonorBanner(index, amount) {
     id: `pseudo-donor-${index}`,
     title: `Donor ${index}`,
     url: BANNER_URLS.donation,
-    detail: createDonationDetail(donation),
+    detail: createDonationDetail(donation, "Cumulative"),
     usernameStyle: {
       id: "donor",
       data: { donation }
@@ -271,12 +289,30 @@ export function createDonorBanner(amount) {
   const donation = Math.max(0, Math.floor(Number(amount) || 0));
   return {
     id: "donor",
-    title: "Donor",
+    title: "Donor (Cumulative)",
     url: BANNER_URLS.donation,
-    detail: createDonationDetail(donation),
+    detail: createDonationDetail(donation, "Cumulative"),
     usernameStyle: {
       id: "donor",
       data: { donation }
+    }
+  };
+}
+
+export function createThisMonthDonorBanner(amount, { lookbackDays = 45 } = {}) {
+  const donation = Math.max(0, Math.floor(Number(amount) || 0));
+  const safeLookbackDays = Math.max(1, Math.floor(Number(lookbackDays) || 45));
+  return {
+    id: "donor-this-month",
+    title: "Donor (This Month)",
+    url: BANNER_URLS.donation,
+    detail: createDonationDetail(donation, `Recent ${safeLookbackDays} days`),
+    usernameStyle: {
+      id: "donor-this-month",
+      data: {
+        donation,
+        iconUrl: BANNER_ASSETS.donorThisMonthIcon
+      }
     }
   };
 }
@@ -460,6 +496,13 @@ function createOspContributorExampleBanner(count) {
   };
 }
 
+function createThisMonthDonorExampleBanner(amount) {
+  return {
+    ...createThisMonthDonorBanner(amount),
+    id: "example-donor-this-month"
+  };
+}
+
 function createLatestTournamentExampleBanner({ id, version, rank, score, clan }) {
   return {
     ...createLatestTournamentBanner({
@@ -502,9 +545,9 @@ export function formatDurationSeconds(value) {
   return `${hours}:${pad(minutes)}:${pad(seconds)}`;
 }
 
-function createDonationDetail(donation) {
+function createDonationDetail(donation, label) {
   return {
-    label: "This month",
+    label,
     value: `${donation.toLocaleString("en-US")} KRW`
   };
 }

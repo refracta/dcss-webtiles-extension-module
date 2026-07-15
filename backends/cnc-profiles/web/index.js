@@ -1199,6 +1199,10 @@ function renderStyledUsername(username, usernameStyle) {
     return wrapStyledUsername(`<span style="${styleToText(getDonorStyle(usernameStyle.data?.donation))}">${escapeHtml(username)}</span>`);
   }
 
+  if (usernameStyle.id === "donor-this-month") {
+    return wrapStyledUsername(`${createUsernameImagePrefixSpan(usernameStyle.data?.iconUrl)}<span style="${styleToText(getDonorStyle(usernameStyle.data?.donation))}">${escapeHtml(username)}</span>`);
+  }
+
   if (usernameStyle.id === "translator") {
     return wrapStyledUsername(`<span style="${styleToText(getTranslatorStyle(usernameStyle.data?.intensity))}">${escapeHtml(username)}</span>`);
   }
@@ -1244,6 +1248,13 @@ function wrapStyledUsername(content) {
 
 function createUsernamePrefixSpan(prefix) {
   return `<span style="display: inline-block; text-decoration: none;">${escapeHtml(prefix)}</span>`;
+}
+
+function createUsernameImagePrefixSpan(url) {
+  const safeUrl = String(url || "").trim();
+  if (!/^https:\/\//i.test(safeUrl)) return "";
+
+  return `<span style="display: inline-flex; align-items: center; width: 1.16em; height: 1.16em; margin-right: 0.16em; vertical-align: -0.18em; text-decoration: none;"><img src="${escapeHtml(safeUrl)}" alt="" style="display: block; width: 100%; height: 100%; object-fit: contain; border-radius: 3px;"></span>`;
 }
 
 function getRankingBadge(rank) {

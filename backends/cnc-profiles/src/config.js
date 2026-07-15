@@ -27,7 +27,8 @@ const DEFAULT_CONFIG = {
     pullPeriod: 30,
     donation: {
       enabled: true,
-      url: "https://donation.abstr.net/api/donation"
+      url: "https://donation.abstr.net/api/donation",
+      lookbackDays: 45
     },
     translation: {
       enabled: true,

@@ -6,6 +6,7 @@ import {
   createLatestTournamentBanner,
   createOspContributorBanner,
   createRankingBanner,
+  createThisMonthDonorBanner,
   createTranslatorBanner,
   createWinStreakBanner
 } from "../domain/banners.js";
@@ -96,40 +97,49 @@ export class WatcherService {
   }
 
   async syncDonation() {
-    const url = this.config.watchers.donation.url;
+    const watcherConfig = this.config.watchers.donation;
+    const url = watcherConfig.url;
+    const lookbackDays = Math.max(1, Math.floor(Number(watcherConfig.lookbackDays) || 45));
+    const cutoffMs = Date.now() - lookbackDays * 24 * 60 * 60 * 1000;
     const response = await this.fetch(url, { headers: { Accept: "application/json" } });
     if (!response.ok) {
       throw new Error(`Donation watcher failed: ${response.status}`);
     }
 
     const payload = await response.json();
-    const totals = new Map();
+    const cumulativeTotals = new Map();
+    const recentTotals = new Map();
     const resolveUsername = createExistingUsernameResolver(this.database);
 
-    for (const donation of payload.currentMonth?.donations ?? []) {
-      if (donation.type !== "CNC" || !donation.username) continue;
+    for (const donation of collectDonationRows(payload)) {
+      if (!isCncDonation(donation) || !donation.username) continue;
 
-      const key = normalizeUsernameKey(donation.username);
-      const current = totals.get(key) ?? {
-        username: donation.username,
-        amount: 0
-      };
-      current.amount += Number(donation.amount) || 0;
-      current.username = resolveUsername(donation.username) ?? current.username;
-      totals.set(key, current);
+      const amount = Number(donation.amount) || 0;
+      if (amount <= 0) continue;
+
+      addDonationTotal(cumulativeTotals, donation.username, amount, resolveUsername);
+      if (getDonationTimeMs(donation) >= cutoffMs) {
+        addDonationTotal(recentTotals, donation.username, amount, resolveUsername);
+      }
     }
 
     const legacyChanged = this.#removeManagedBanners({
       source: WATCHER_SOURCES.donation,
       bannerId: "donator"
     });
-
-    return this.#replaceManagedBanners({
+    const cumulativeChanged = this.#upsertManagedBanners({
       source: WATCHER_SOURCES.donation,
-      bannerId: "donor",
-      activeEntries: [...totals.values()].filter((entry) => entry.amount > 0),
+      activeEntries: [...cumulativeTotals.values()].filter((entry) => entry.amount > 0),
       createBanner: (entry) => createDonorBanner(entry.amount)
-    }) || legacyChanged;
+    });
+    const recentChanged = this.#replaceManagedBanners({
+      source: WATCHER_SOURCES.donation,
+      bannerId: "donor-this-month",
+      activeEntries: [...recentTotals.values()].filter((entry) => entry.amount > 0),
+      createBanner: (entry) => createThisMonthDonorBanner(entry.amount, { lookbackDays })
+    });
+
+    return legacyChanged || cumulativeChanged || recentChanged;
   }
 
   async syncCredits() {
@@ -296,6 +306,20 @@ export class WatcherService {
         changed = this.database.removeManagedBanner(profile.username, bannerId, source).changed || changed;
       }
     }
+
+    for (const entry of activeEntries) {
+      const banner = createBanner(entry);
+      changed = this.database.upsertBanner(entry.username, banner, {
+        source,
+        autoEquip: true
+      }).changed || changed;
+    }
+
+    return changed;
+  }
+
+  #upsertManagedBanners({ source, activeEntries, createBanner }) {
+    let changed = false;
 
     for (const entry of activeEntries) {
       const banner = createBanner(entry);
@@ -629,6 +653,49 @@ function createExistingUsernameResolver(database) {
   }
 
   return (username) => usernames.get(normalizeUsernameKey(username)) ?? null;
+}
+
+function collectDonationRows(payload) {
+  const rows = [];
+  const seen = new Set();
+
+  for (const donation of [
+    ...(payload?.overall?.donations ?? []),
+    ...(payload?.currentMonth?.donations ?? []),
+    ...(payload?.donations ?? [])
+  ]) {
+    const key = donation?.transactionId || JSON.stringify(donation);
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    rows.push(donation);
+  }
+
+  return rows;
+}
+
+function isCncDonation(donation) {
+  return String(donation?.type || "").toUpperCase() === "CNC" ||
+    String(donation?.code || "").toUpperCase().startsWith("CNC");
+}
+
+function getDonationTimeMs(donation) {
+  const value = donation?.datetimeISO || donation?.date || donation?.matchedAt;
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? time : 0;
+}
+
+function addDonationTotal(totals, username, amount, resolveUsername) {
+  const key = normalizeUsernameKey(username);
+  if (!key) return;
+
+  const current = totals.get(key) ?? {
+    username,
+    amount: 0
+  };
+  current.amount += amount;
+  current.username = resolveUsername(username) ?? current.username;
+  totals.set(key, current);
 }
 
 function yieldToEventLoop() {

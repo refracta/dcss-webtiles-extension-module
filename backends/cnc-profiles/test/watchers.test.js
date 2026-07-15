@@ -13,16 +13,19 @@ import {
   parseTournamentRankingEntries
 } from "../src/services/watchers.js";
 
-test("donation watcher creates and removes conditional donor banners", async () => {
+test("donation watcher creates cumulative and recent donor banners", async () => {
   const database = await createDatabase();
+  const recentDate = new Date().toISOString();
+  const oldDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
   const watcher = new WatcherService({
     database,
-    config: createConfig(),
+    config: createConfig({ donation: { url: "https://example.test/donation", lookbackDays: 45 } }),
     fetchImpl: async () => okJson({
-      currentMonth: {
+      overall: {
         donations: [
-          { type: "CNC", username: "DonorUser", amount: 10000 },
-          { type: "CNC", username: "DonorUser", amount: 20000 }
+          { transactionId: "recent-1", type: "CNC", username: "DonorUser", amount: 10000, datetimeISO: recentDate },
+          { transactionId: "recent-2", type: "CNC", username: "DonorUser", amount: 20000, datetimeISO: recentDate },
+          { transactionId: "old-1", type: "CNC", username: "OldDonor", amount: 60000, datetimeISO: oldDate }
         ]
       }
     })
@@ -30,22 +33,38 @@ test("donation watcher creates and removes conditional donor banners", async () 
 
   assert.equal(await watcher.syncDonation(), true);
   const donorBanner = database.getProfile("donoruser").banners.donor;
-  assert.equal(donorBanner.title, "Donor");
+  assert.equal(donorBanner.title, "Donor (Cumulative)");
   assert.deepEqual(donorBanner.detail, {
-    label: "This month",
+    label: "Cumulative",
     value: "30,000 KRW"
   });
   assert.equal(donorBanner.usernameStyle.data.donation, 30000);
-  assert.equal(database.getProfile("DonorUser").currentBannerId, "donor");
-
-  const emptyWatcher = new WatcherService({
-    database,
-    config: createConfig(),
-    fetchImpl: async () => okJson({ currentMonth: { donations: [] } })
+  const recentBanner = database.getProfile("donoruser").banners["donor-this-month"];
+  assert.equal(recentBanner.title, "Donor (This Month)");
+  assert.deepEqual(recentBanner.detail, {
+    label: "Recent 45 days",
+    value: "30,000 KRW"
   });
-  assert.equal(await emptyWatcher.syncDonation(), true);
-  assert.equal(database.getProfile("DonorUser").banners.donor, undefined);
-  assert.equal(database.getProfile("DonorUser").currentBannerId, null);
+  assert.equal(recentBanner.usernameStyle.id, "donor-this-month");
+  assert.equal(recentBanner.usernameStyle.data.donation, 30000);
+  assert.match(recentBanner.usernameStyle.data.iconUrl, /gozag\.webp$/);
+  assert.equal(database.getProfile("DonorUser").currentBannerId, "donor");
+  assert.ok(database.getProfile("OldDonor").banners.donor);
+  assert.equal(database.getProfile("OldDonor").banners["donor-this-month"], undefined);
+
+  const staleRecentWatcher = new WatcherService({
+    database,
+    config: createConfig({ donation: { url: "https://example.test/donation", lookbackDays: 45 } }),
+    fetchImpl: async () => okJson({
+      overall: {
+        donations: []
+      }
+    })
+  });
+  assert.equal(await staleRecentWatcher.syncDonation(), true);
+  assert.ok(database.getProfile("DonorUser").banners.donor);
+  assert.equal(database.getProfile("DonorUser").banners["donor-this-month"], undefined);
+  assert.equal(database.getProfile("DonorUser").currentBannerId, "donor");
 });
 
 test("translation watcher grants threshold banner", async () => {

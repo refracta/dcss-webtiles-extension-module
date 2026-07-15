@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { ProfileDatabase } from "../src/db/profile-db.js";
 import {
+  BANNER_ASSETS,
   NEMELEX_COLORS,
   PSEUDO_CNC_RANKS,
   PSEUDO_DONOR_AMOUNTS,
@@ -76,12 +77,24 @@ test("seeds initial profiles preserving username casing", async () => {
     const banner = exampleProfile.banners[`pseudo-donor-${index + 1}`];
     assert.equal(banner.title, `Donor ${index + 1}`);
     assert.deepEqual(banner.detail, {
-      label: "This month",
+      label: "Cumulative",
       value: `${amount.toLocaleString("en-US")} KRW`
     });
     assert.equal(banner.usernameStyle.id, "donor");
     assert.equal(banner.usernameStyle.data.donation, amount);
   }
+  assert.equal(exampleProfile.banners["example-donor-this-month"].title, "Donor (This Month)");
+  assert.deepEqual(exampleProfile.banners["example-donor-this-month"].detail, {
+    label: "Recent 45 days",
+    value: "5,000 KRW"
+  });
+  assert.deepEqual(exampleProfile.banners["example-donor-this-month"].usernameStyle, {
+    id: "donor-this-month",
+    data: {
+      donation: 5000,
+      iconUrl: BANNER_ASSETS.donorThisMonthIcon
+    }
+  });
   assert.equal(exampleProfile.banners.translator, undefined);
   for (const score of PSEUDO_TRANSLATOR_SCORES) {
     const banner = exampleProfile.banners[`pseudo-translator-${score}`];
@@ -385,7 +398,11 @@ test("migrates legacy donator banners to donor preserving manual selection", asy
   assert.equal(profile.sources.donator, undefined);
   assert.equal(profile.currentBannerId, "donor");
   assert.equal(profile.selectionMode, "manual");
-  assert.equal(profile.banners.donor.title, "Donor");
+  assert.equal(profile.banners.donor.title, "Donor (Cumulative)");
+  assert.deepEqual(profile.banners.donor.detail, {
+    label: "Cumulative",
+    value: "30,000 KRW"
+  });
   assert.equal(profile.banners.donor.usernameStyle.id, "donor");
   assert.equal(profile.banners.donor.usernameStyle.data.donation, 30000);
   assert.equal(profile.sources.donor.source, "watcher:donation");

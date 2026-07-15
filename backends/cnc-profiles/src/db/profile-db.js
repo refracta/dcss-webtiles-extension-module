@@ -388,6 +388,15 @@ function migrateLegacyDonorBannerFields(banner) {
   if (typeof next.title === "string") {
     next.title = next.title.replaceAll("Donator", "Donor");
   }
+  if (next.id === "donor" && next.title === "Donor") {
+    next.title = "Donor (Cumulative)";
+  }
+  if (next.id === "donor" && next.detail?.label === "This month") {
+    next.detail = {
+      ...next.detail,
+      label: "Cumulative"
+    };
+  }
   if (next.usernameStyle?.id === "donator") {
     next.usernameStyle = {
       ...next.usernameStyle,
