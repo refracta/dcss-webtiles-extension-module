@@ -328,10 +328,10 @@ export default class TranslationModule {
                                 }
                             }
                         });
+                        this.sendMessage(`<cyan>[TranslationModule]</cyan> ${matchers.length} matcher data loaded successfully. (${new Date(time).toLocaleString()}) / Thanks to ${messages[0]}`)
                         if (this.config.language && this.config.language !== 'en') {
                             this.sendMessage(`<cyan>[TranslationModule]</cyan> <red>Do not use the "language = ${this.config.language}" option together with the translation_language option, as this may result in incorrect translation.</red>`)
                         }
-                        this.sendMessage(`<cyan>[TranslationModule]</cyan> ${matchers.length} matcher data loaded successfully. (${new Date(time).toLocaleString()}) / Thanks to ${messages[0]}`)
 
                         if (this.config.translationDebug) {
                             let stamp = null;
