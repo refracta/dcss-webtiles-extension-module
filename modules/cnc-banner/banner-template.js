@@ -27,6 +27,13 @@ export default class BannerTemplate {
             url: 'https://www.crawlcosplay.org/ccsdt'
         },
         {
+            id: 'ccft-2-tournament',
+            name: 'Crawl Cosplay Forks Tournament (CCFT #2)',
+            startUTC: new Date(Date.UTC(2026, 6, 31, 0, 0, 0)),
+            endUTC: new Date(Date.UTC(2026, 7, 28, 0, 0, 0)),
+            url: 'https://www.crawlcosplay.org/ccft'
+        },
+        {
             id: 'cctt-tournament',
             name: 'Crawl Cosplay Trunk Tournament',
             startUTC: new Date(Date.UTC(2025, 11 - 1, 28, 0, 0, 0)),
