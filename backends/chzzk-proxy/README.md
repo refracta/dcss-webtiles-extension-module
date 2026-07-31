@@ -28,3 +28,6 @@ npm start
 ```sh
 docker-compose up -d
 ```
+
+The production NGINX virtual host is provided in
+`chzzk-api.nemelex.cards.conf` and proxies to the Compose-published port 43041.
