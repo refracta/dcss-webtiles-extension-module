@@ -96,14 +96,13 @@ const LIVE_LIST_STYLE = `
         padding: 7px 8px 8px;
     }
     #banner .cnc-chzzk-live-title {
-        display: -webkit-box;
-        min-height: 2.8em;
+        display: block;
         overflow: hidden;
         color: #ffffff;
         font-weight: 600;
         line-height: 1.4;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
     #banner .cnc-chzzk-live-channel {
         margin-top: 4px;
@@ -115,8 +114,8 @@ const LIVE_LIST_STYLE = `
     }
     #banner .cnc-chzzk-live-meta {
         display: flex;
-        gap: 8px;
-        justify-content: space-between;
+        gap: 5px;
+        justify-content: flex-start;
         margin-top: 4px;
     }
     #banner .cnc-chzzk-live-viewers,
@@ -206,21 +205,21 @@ export function formatStreamDuration(startedAt, locale = 'ko', now = Date.now())
 
     if (locale === 'ko') {
         if (days > 0) {
-            return `${days}일 ${hours}시간째`;
+            return hours > 0 ? `${days}일 ${hours}시간` : `${days}일`;
         }
         if (hours > 0) {
-            return `${hours}시간 ${minutes}분째`;
+            return minutes > 0 ? `${hours}시간 ${minutes}분` : `${hours}시간`;
         }
-        return `${minutes}분째`;
+        return `${minutes}분`;
     }
 
     if (days > 0) {
-        return `${days}d ${hours}h live`;
+        return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
     }
     if (hours > 0) {
-        return `${hours}h ${minutes}m live`;
+        return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
     }
-    return `${minutes}m live`;
+    return `${minutes}m`;
 }
 
 export default class ChzzkLiveList {
@@ -375,12 +374,12 @@ export default class ChzzkLiveList {
             const viewers = document.createElement('span');
             viewers.className = 'cnc-chzzk-live-viewers';
             viewers.textContent = isKorean
-                ? `${numberFormat.format(live.viewerCount)}명 시청 중`
-                : `${numberFormat.format(live.viewerCount)} watching`;
+                ? `${numberFormat.format(live.viewerCount)}명`
+                : `${numberFormat.format(live.viewerCount)} viewers`;
 
             const duration = document.createElement('span');
             duration.className = 'cnc-chzzk-live-duration';
-            duration.textContent = formatStreamDuration(live.startedAt, locale);
+            duration.textContent = `· ${formatStreamDuration(live.startedAt, locale)}`;
 
             meta.append(viewers, duration);
             details.append(title, channel, meta);
@@ -398,7 +397,7 @@ export default class ChzzkLiveList {
 
         const donationSummary = banner.querySelector('#cnc-donation-summary');
         if (donationSummary?.parentNode) {
-            donationSummary.parentNode.insertBefore(container, donationSummary);
+            donationSummary.parentNode.insertBefore(container, donationSummary.nextSibling);
         } else {
             banner.append(container);
         }

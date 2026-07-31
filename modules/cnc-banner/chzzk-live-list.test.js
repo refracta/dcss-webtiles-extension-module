@@ -63,6 +63,10 @@ test('normalizes thumbnail and start time values', () => {
 test('formats stream duration for Korean and English', () => {
     const startedAt = '2026-07-31T00:00:00.000Z';
     const now = Date.parse('2026-07-31T13:25:00.000Z');
-    assert.equal(formatStreamDuration(startedAt, 'ko', now), '13시간 25분째');
-    assert.equal(formatStreamDuration(startedAt, 'en', now), '13h 25m live');
+    assert.equal(formatStreamDuration(startedAt, 'ko', now), '13시간 25분');
+    assert.equal(formatStreamDuration(startedAt, 'en', now), '13h 25m');
+    assert.equal(
+        formatStreamDuration(startedAt, 'ko', Date.parse('2026-07-31T03:00:00.000Z')),
+        '3시간'
+    );
 });
