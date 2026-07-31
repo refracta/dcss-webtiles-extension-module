@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
+import BannerTemplate from './banner-template.js';
+import ChzzkLiveList, {
     formatStreamDuration,
     normalizeChzzkLives,
     normalizeStartedAt,
-    normalizeThumbnailUrl
+    normalizeThumbnailUrl,
+    renderChzzkLiveListHTML
 } from './chzzk-live-list.js';
 
 function live(overrides = {}) {
@@ -70,3 +72,151 @@ test('formats stream duration for Korean and English', () => {
         '3시간'
     );
 });
+
+test('renders compact cards without a visible list heading', () => {
+    const html = renderChzzkLiveListHTML(
+        normalizeChzzkLives({ok: true, lives: [live()]}),
+        'ko',
+        Date.parse('2026-07-31T13:25:06.000Z')
+    );
+
+    assert.match(html, /class="cnc-chzzk-live-list"/);
+    assert.match(html, /class="cnc-chzzk-live-title">돌죽<\/div>/);
+    assert.match(html, />3명<\/span>/);
+    assert.match(html, />· 12시간 30분<\/span>/);
+    assert.doesNotMatch(html, /cnc-chzzk-live-heading/);
+    assert.equal((html.match(/>LIVE<\/span>/g) || []).length, 1);
+    assert.equal(renderChzzkLiveListHTML([], 'ko'), '');
+});
+
+test('escapes all API-provided strings in cached banner HTML', () => {
+    const html = renderChzzkLiveListHTML([live({
+        channelId: 'safe-channel',
+        channelName: '\"><img src=x onerror=alert(1)>',
+        title: 'DCSS <script>alert(2)</script> & "quoted"',
+        thumbnailUrl: 'https://evil.example/image.jpg'
+    })], 'en');
+
+    assert.doesNotMatch(html, /<script>alert/);
+    assert.doesNotMatch(html, /<img src=x/);
+    assert.doesNotMatch(html, /evil\.example/);
+    assert.match(html, /&lt;script&gt;alert\(2\)&lt;\/script&gt; &amp; &quot;quoted&quot;/);
+    assert.match(html, /&quot;&gt;&lt;img src=x onerror=alert\(1\)&gt;/);
+});
+
+test('caches successful lives and clears them for empty or failed responses', async () => {
+    const list = new ChzzkLiveList({
+        fetchImpl: async () => response({ok: true, lives: [live()]})
+    });
+    let renderCount = 0;
+    let removeCount = 0;
+    list.render = () => renderCount++;
+    list.remove = () => removeCount++;
+
+    await list.update();
+    assert.equal(renderCount, 1);
+    assert.equal(list.cachedLives.length, 1);
+    assert.match(list.getHTML('ko'), /cnc-chzzk-live-list/);
+
+    list.fetchImpl = async () => response({ok: true, lives: []});
+    await list.update();
+    assert.deepEqual(list.cachedLives, []);
+    assert.equal(list.getHTML('ko'), '');
+    assert.equal(removeCount, 1);
+
+    list.cachedLives = normalizeChzzkLives({ok: true, lives: [live()]});
+    list.fetchImpl = async () => response({}, false, 503);
+    await list.update();
+    assert.deepEqual(list.cachedLives, []);
+    assert.equal(removeCount, 2);
+});
+
+test('ignores a superseded request after a redraw starts a new refresh', async () => {
+    let resolveFirst;
+    let requestCount = 0;
+    const list = new ChzzkLiveList({
+        fetchImpl: () => {
+            requestCount++;
+            if (requestCount === 1) {
+                return new Promise(resolve => {
+                    resolveFirst = resolve;
+                });
+            }
+            return Promise.resolve(response({
+                ok: true,
+                lives: [live({channelId: 'new-channel', title: 'DCSS new'})]
+            }));
+        }
+    });
+    list.render = () => {};
+    list.remove = () => {};
+
+    const firstUpdate = list.update();
+    const firstSignal = list.abortController.signal;
+    const secondUpdate = list.update();
+    assert.equal(firstSignal.aborted, true);
+    await secondUpdate;
+
+    resolveFirst(response({
+        ok: true,
+        lives: [live({channelId: 'old-channel', title: 'DCSS old'})]
+    }));
+    await firstUpdate;
+
+    assert.equal(list.cachedLives.length, 1);
+    assert.equal(list.cachedLives[0].title, 'DCSS new');
+});
+
+test('places cached lives immediately after donations in every banner variant', () => {
+    const originalWindow = globalThis.window;
+    const originalLocalStorage = globalThis.localStorage;
+    globalThis.localStorage = {getItem: () => null};
+
+    try {
+        const donations = {
+            getSummaryHTML: locale => `<div id="donations-${locale}"></div>`
+        };
+        const chzzkLives = {
+            getHTML: locale => `<section id="chzzk-${locale}"></section>`
+        };
+        const template = new BannerTemplate(donations, chzzkLives);
+
+        for (const [locale, method] of [
+            ['ko', 'getKoreanBanner'],
+            ['en', 'getEnglishBanner']
+        ]) {
+            for (const aprilFools of [false, true]) {
+                globalThis.window = {
+                    location: {
+                        search: `?forceLang=${locale}${aprilFools ? '&aprilFools=true' : ''}`
+                    }
+                };
+                const html = template[method](null);
+                const donationIndex = html.indexOf(`id="donations-${locale}"`);
+                const chzzkIndex = html.indexOf(`id="chzzk-${locale}"`);
+                assert.ok(donationIndex >= 0);
+                assert.ok(chzzkIndex > donationIndex);
+                assert.equal((html.match(new RegExp(`id="chzzk-${locale}"`, 'g')) || []).length, 1);
+            }
+        }
+    } finally {
+        if (originalWindow === undefined) {
+            delete globalThis.window;
+        } else {
+            globalThis.window = originalWindow;
+        }
+        if (originalLocalStorage === undefined) {
+            delete globalThis.localStorage;
+        } else {
+            globalThis.localStorage = originalLocalStorage;
+        }
+    }
+});
+
+function response(payload, ok = true, status = 200) {
+    return {
+        ok,
+        status,
+        json: async () => payload
+    };
+}

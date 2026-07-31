@@ -37,7 +37,7 @@ const TEST_SOCKET_SERVER = 'wss://test.nemelex.cards:443/socket';
 
 export default class CNCBanner {
     static name = 'CNCBanner';
-    static version = '1.2';
+    static version = '1.3';
     static dependencies = ['IOHook', 'SiteInformation', 'ModuleManager', 'WebSocketFactory', 'WTRec', 'CNCUserinfo'];
     static description = 'This module sets the banner for the CNC server.';
 
@@ -45,7 +45,7 @@ export default class CNCBanner {
         this.chzzkLives = new ChzzkLiveList();
         this.donations = new DonationSummary();
         this.actions = new LobbyActions();
-        this.banner = new BannerTemplate(this.donations);
+        this.banner = new BannerTemplate(this.donations, this.chzzkLives);
         this.testLobby = {};
         this.testLobbySocket = null;
     }
@@ -483,10 +483,10 @@ export default class CNCBanner {
 
         IOHook.handle_message.after.addHandler('cnc-banner-wtrec-enhancer', (data) => {
             if (data.msg === 'html' && data.id === 'banner') {
+                this.chzzkLives.start();
                 setTimeout(() => {
                     this.enhanceWTRecLinks();
                     refreshDonationSummary();
-                    this.chzzkLives.start();
                 }, 0);
             }
         });

@@ -7,8 +7,9 @@ const PROFILES_URL = 'https://profiles.nemelex.cards';
 const ANNIVERSARY_RESULTS_URL = 'https://refracta.github.io/nemelex.cards/cnc-2nd-anniversary-tournament/results.html';
 
 export default class BannerTemplate {
-    constructor(donations) {
+    constructor(donations, chzzkLives) {
         this.donations = donations;
+        this.chzzkLives = chzzkLives;
     }
 
     tournaments = [
@@ -61,6 +62,7 @@ export default class BannerTemplate {
         <br>
         ${this.getInfoPanel('ko', '20px 0 10px 0')}
         ${this.donations.getSummaryHTML('ko')}
+        ${this.chzzkLives.getHTML('ko')}
         ${this.getStartupScripts(currentUser)}
         ${currentUser ? this.getUserLinks('ko', currentUser) : ''}
     `;
@@ -81,6 +83,7 @@ export default class BannerTemplate {
                 <br>
                 ${this.getInfoPanel('ko', '0 0 10px 0', true)}
                 ${this.donations.getSummaryHTML('ko')}
+                ${this.chzzkLives.getHTML('ko')}
             </div>
         </details>
         <br>
@@ -100,6 +103,7 @@ export default class BannerTemplate {
                     <br>
                     ${this.getInfoPanel('en', '20px 0 10px 0')}
                     ${this.donations.getSummaryHTML('en')}
+                    ${this.chzzkLives.getHTML('en')}
                     ${this.getStartupScripts(currentUser)}
                     ${currentUser ? this.getUserLinks('en', currentUser) : ''}
                 `;
@@ -120,6 +124,7 @@ export default class BannerTemplate {
         <br>
         ${this.getInfoPanel('en', '0 0 10px 0', true)}
         ${this.donations.getSummaryHTML('en')}
+        ${this.chzzkLives.getHTML('en')}
             </div>
         </details>
         <br>

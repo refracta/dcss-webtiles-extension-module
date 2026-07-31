@@ -1,4 +1,4 @@
-import {getLocale} from './utils.js';
+import {escapeHtml, getLocale} from './utils.js';
 
 const DEFAULT_API_URL = 'https://chzzk-api.nemelex.cards/';
 const DEFAULT_TIMEOUT_MS = 7_000;
@@ -21,11 +21,6 @@ const LIVE_LIST_STYLE = `
         font-size: 13px;
         line-height: 1.45;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    }
-    #banner .cnc-chzzk-live-heading {
-        margin-bottom: 4px;
-        color: #ffffff;
-        font-weight: 600;
     }
     #banner .cnc-chzzk-live-badge {
         display: inline-block;
@@ -222,6 +217,67 @@ export function formatStreamDuration(startedAt, locale = 'ko', now = Date.now())
     return `${minutes}m`;
 }
 
+export function renderChzzkLiveListHTML(lives, locale = 'ko', now = Date.now()) {
+    if (!Array.isArray(lives) || lives.length === 0) {
+        return '';
+    }
+
+    const normalizedLocale = locale === 'ko' ? 'ko' : 'en';
+    const isKorean = normalizedLocale === 'ko';
+    const numberFormat = new Intl.NumberFormat(normalizedLocale);
+    const items = lives.map(live => {
+        const channelId = String(live?.channelId || '');
+        const channelName = String(live?.channelName || '');
+        const title = String(live?.title || '');
+        const thumbnailUrl = normalizeThumbnailUrl(live?.thumbnailUrl);
+        const viewerCount = Math.max(0, Math.floor(Number(live?.viewerCount) || 0));
+        const cardTitle = escapeHtml(`${channelName} — ${title}`);
+        const thumbnail = thumbnailUrl
+            ? `<img src="${escapeHtml(thumbnailUrl)}" alt="${escapeHtml(
+                isKorean
+                    ? `${channelName} 방송 썸네일`
+                    : `${channelName} stream thumbnail`
+            )}" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
+            : '';
+        const viewers = isKorean
+            ? `${numberFormat.format(viewerCount)}명`
+            : `${numberFormat.format(viewerCount)} viewers`;
+        const duration = formatStreamDuration(live?.startedAt, normalizedLocale, now);
+
+        return `
+            <li class="cnc-chzzk-live-item">
+                <a class="cnc-chzzk-live-card"
+                   href="https://chzzk.naver.com/live/${encodeURIComponent(channelId)}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   title="${cardTitle}">
+                    <div class="cnc-chzzk-live-thumbnail">
+                        ${thumbnail}
+                        <span class="cnc-chzzk-live-badge">LIVE</span>
+                    </div>
+                    <div class="cnc-chzzk-live-details">
+                        <div class="cnc-chzzk-live-title">${escapeHtml(title)}</div>
+                        <div class="cnc-chzzk-live-channel">${escapeHtml(channelName)}</div>
+                        <div class="cnc-chzzk-live-meta">
+                            <span class="cnc-chzzk-live-viewers">${viewers}</span>
+                            <span class="cnc-chzzk-live-duration">· ${duration}</span>
+                        </div>
+                    </div>
+                </a>
+            </li>
+        `;
+    }).join('');
+
+    return `
+        <section class="cnc-chzzk-live-list"
+                 aria-live="polite"
+                 aria-label="${isKorean ? '치지직 돌죽 방송 목록' : 'CHZZK DCSS live streams'}">
+            <style>${LIVE_LIST_STYLE}</style>
+            <ul class="cnc-chzzk-live-items">${items}</ul>
+        </section>
+    `;
+}
+
 export default class ChzzkLiveList {
     constructor({
         apiUrl = DEFAULT_API_URL,
@@ -236,10 +292,12 @@ export default class ChzzkLiveList {
         this.requestGeneration = 0;
         this.abortController = null;
         this.refreshKey = null;
+        this.cachedLives = [];
     }
 
     start() {
         clearInterval(this.refreshKey);
+        this.bindThumbnailErrorHandlers();
         this.update();
         this.refreshKey = setInterval(() => this.update(), this.refreshIntervalMs);
     }
@@ -250,7 +308,7 @@ export default class ChzzkLiveList {
         this.requestGeneration++;
         this.abortController?.abort();
         this.abortController = null;
-        this.remove();
+        this.clear();
     }
 
     async update() {
@@ -276,14 +334,15 @@ export default class ChzzkLiveList {
                 return;
             }
             if (lives.length === 0) {
-                this.remove();
+                this.clear();
                 return;
             }
 
-            this.render(lives);
+            this.cachedLives = lives;
+            this.render();
         } catch (_error) {
             if (generation === this.requestGeneration) {
-                this.remove();
+                this.clear();
             }
         } finally {
             clearTimeout(timeout);
@@ -293,114 +352,58 @@ export default class ChzzkLiveList {
         }
     }
 
-    render(lives) {
+    getHTML(locale = getLocale(), now = Date.now()) {
+        return renderChzzkLiveListHTML(this.cachedLives, locale, now);
+    }
+
+    render() {
         const banner = document.getElementById('banner');
         if (!banner) {
             this.remove();
             return;
         }
 
-        const locale = getLocale();
-        const isKorean = locale === 'ko';
-        const numberFormat = new Intl.NumberFormat(locale);
-        const container = document.createElement('section');
-        container.className = 'cnc-chzzk-live-list';
-        container.setAttribute('aria-live', 'polite');
-        container.setAttribute(
-            'aria-label',
-            isKorean ? '치지직 돌죽 방송 목록' : 'CHZZK DCSS live streams'
-        );
-
-        const style = document.createElement('style');
-        style.textContent = LIVE_LIST_STYLE;
-        container.append(style);
-
-        const heading = document.createElement('div');
-        heading.className = 'cnc-chzzk-live-heading';
-        const badge = document.createElement('span');
-        badge.className = 'cnc-chzzk-live-badge';
-        badge.textContent = 'LIVE';
-        heading.append(
-            badge,
-            document.createTextNode(isKorean ? '치지직 돌죽 방송' : 'CHZZK DCSS streams')
-        );
-        container.append(heading);
-
-        const list = document.createElement('ul');
-        list.className = 'cnc-chzzk-live-items';
-        for (const live of lives) {
-            const item = document.createElement('li');
-            item.className = 'cnc-chzzk-live-item';
-
-            const link = document.createElement('a');
-            link.className = 'cnc-chzzk-live-card';
-            link.href = `https://chzzk.naver.com/live/${encodeURIComponent(live.channelId)}`;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.title = `${live.channelName} — ${live.title}`;
-
-            const thumbnail = document.createElement('div');
-            thumbnail.className = 'cnc-chzzk-live-thumbnail';
-            if (live.thumbnailUrl) {
-                const image = document.createElement('img');
-                image.src = live.thumbnailUrl;
-                image.alt = isKorean
-                    ? `${live.channelName} 방송 썸네일`
-                    : `${live.channelName} stream thumbnail`;
-                image.loading = 'lazy';
-                image.decoding = 'async';
-                image.referrerPolicy = 'no-referrer';
-                image.addEventListener('error', () => image.remove(), {once: true});
-                thumbnail.append(image);
-            }
-            const cardBadge = document.createElement('span');
-            cardBadge.className = 'cnc-chzzk-live-badge';
-            cardBadge.textContent = 'LIVE';
-            thumbnail.append(cardBadge);
-
-            const details = document.createElement('div');
-            details.className = 'cnc-chzzk-live-details';
-            const title = document.createElement('div');
-            title.className = 'cnc-chzzk-live-title';
-            title.textContent = live.title;
-
-            const channel = document.createElement('div');
-            channel.className = 'cnc-chzzk-live-channel';
-            channel.textContent = live.channelName;
-
-            const meta = document.createElement('div');
-            meta.className = 'cnc-chzzk-live-meta';
-
-            const viewers = document.createElement('span');
-            viewers.className = 'cnc-chzzk-live-viewers';
-            viewers.textContent = isKorean
-                ? `${numberFormat.format(live.viewerCount)}명`
-                : `${numberFormat.format(live.viewerCount)} viewers`;
-
-            const duration = document.createElement('span');
-            duration.className = 'cnc-chzzk-live-duration';
-            duration.textContent = `· ${formatStreamDuration(live.startedAt, locale)}`;
-
-            meta.append(viewers, duration);
-            details.append(title, channel, meta);
-            link.append(thumbnail, details);
-            item.append(link);
-            list.append(item);
-        }
-        container.append(list);
-
-        const existing = document.querySelector('#banner .cnc-chzzk-live-list');
-        if (existing) {
-            existing.replaceWith(container);
+        const template = document.createElement('template');
+        template.innerHTML = this.getHTML();
+        const container = template.content.firstElementChild;
+        if (!container) {
+            this.remove();
             return;
         }
-
-        const donationSummary = banner.querySelector('#cnc-donation-summary');
-        if (donationSummary?.parentNode) {
-            donationSummary.parentNode.insertBefore(container, donationSummary.nextSibling);
+        const existing = [...document.querySelectorAll('#banner .cnc-chzzk-live-list')];
+        if (existing.length > 0) {
+            existing[0].replaceWith(container);
+            for (const duplicate of existing.slice(1)) {
+                duplicate.remove();
+            }
         } else {
-            banner.append(container);
+            const donationSummary = banner.querySelector('#cnc-donation-summary');
+            if (donationSummary?.parentNode) {
+                donationSummary.parentNode.insertBefore(container, donationSummary.nextSibling);
+            } else {
+                banner.append(container);
+            }
         }
+        this.bindThumbnailErrorHandlers(container);
+    }
+
+    bindThumbnailErrorHandlers(root = document) {
+        for (const image of root.querySelectorAll('.cnc-chzzk-live-thumbnail img')) {
+            if (image.dataset.cncChzzkErrorBound) {
+                continue;
+            }
+            image.dataset.cncChzzkErrorBound = 'true';
+            if (image.complete && image.naturalWidth === 0) {
+                image.remove();
+                continue;
+            }
+            image.addEventListener('error', () => image.remove(), {once: true});
+        }
+    }
+
+    clear() {
+        this.cachedLives = [];
+        this.remove();
     }
 
     remove() {
