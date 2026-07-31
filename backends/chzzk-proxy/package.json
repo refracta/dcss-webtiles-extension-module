@@ -1,0 +1,11 @@
+{
+  "name": "cnc-chzzk-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check index.js && node --check index.test.js",
+    "start": "node index.js",
+    "test": "node --test index.test.js"
+  }
+}

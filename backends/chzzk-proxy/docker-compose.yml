@@ -1,0 +1,22 @@
+services:
+    node:
+        image: node:22.4.0
+        volumes:
+            - .:/usr/src:ro
+        working_dir: /usr/src
+        command: node index.js
+        environment:
+            PORT: 3000
+            CACHE_TTL_MS: 60000
+            FAILURE_CACHE_TTL_MS: 15000
+            UPSTREAM_TIMEOUT_MS: 5000
+            ALLOWED_ORIGINS: https://crawl.nemelex.cards,https://test.nemelex.cards,http://localhost:6060,http://127.0.0.1:6060
+        ports:
+            - "43041:3000"
+        healthcheck:
+            test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r => { if (!r.ok) process.exit(1); }).catch(() => process.exit(1))"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 5s
+        restart: unless-stopped

@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check chzzk-live-list.js && node --check index.js",
+    "test": "node --test chzzk-live-list.test.js"
+  }
+}

@@ -1,4 +1,5 @@
 import BannerTemplate from './banner-template.js';
+import ChzzkLiveList from './chzzk-live-list.js';
 import DonationSummary from './donation-summary.js';
 import LobbyActions from './lobby-actions.js';
 import {applyXMasTheme} from './seasonal-theme.js';
@@ -36,11 +37,12 @@ const TEST_SOCKET_SERVER = 'wss://test.nemelex.cards:443/socket';
 
 export default class CNCBanner {
     static name = 'CNCBanner';
-    static version = '1.0';
+    static version = '1.1';
     static dependencies = ['IOHook', 'SiteInformation', 'ModuleManager', 'WebSocketFactory', 'WTRec', 'CNCUserinfo'];
     static description = 'This module sets the banner for the CNC server.';
 
     constructor() {
+        this.chzzkLives = new ChzzkLiveList();
         this.donations = new DonationSummary();
         this.actions = new LobbyActions();
         this.banner = new BannerTemplate(this.donations);
@@ -484,6 +486,7 @@ export default class CNCBanner {
                 setTimeout(() => {
                     this.enhanceWTRecLinks();
                     refreshDonationSummary();
+                    this.chzzkLives.start();
                 }, 0);
             }
         });
