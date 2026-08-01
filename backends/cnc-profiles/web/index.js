@@ -1222,6 +1222,10 @@ function renderStyledUsername(username, usernameStyle) {
     return wrapStyledUsername(`${createUsernamePrefixSpan(usernameStyle.data?.prefix || "🤖")}${escapeHtml(username)}`);
   }
 
+  if (usernameStyle.id === "status-help") {
+    return wrapStyledUsername(`${createStatusHelpBadgeSpan(usernameStyle.data?.label)}${escapeHtml(username)}`);
+  }
+
   if (usernameStyle.id === "ranking") {
     return wrapStyledUsername(`${createUsernamePrefixSpan(usernameStyle.data?.badge || getRankingBadge(usernameStyle.data?.rank))}${escapeHtml(username)}`);
   }
@@ -1259,6 +1263,11 @@ function wrapStyledUsername(content) {
 
 function createUsernamePrefixSpan(prefix) {
   return `<span style="display: inline-block; text-decoration: none;">${escapeHtml(prefix)}</span>`;
+}
+
+function createStatusHelpBadgeSpan(label) {
+  const text = String(label || "HELP!").trim() || "HELP!";
+  return `<span style="display: inline-block; margin-right: 0.28em; padding: 0.08em 0.3em; border: 1px solid #ff646b; border-radius: 1px; background: #c91f2c; color: #fff; font-size: 0.72em; font-weight: 800; line-height: 1.15; vertical-align: 0.1em; text-decoration: none;">${escapeHtml(text)}</span>`;
 }
 
 function createUsernameImagePrefixSpan(url, { pixelated = false } = {}) {

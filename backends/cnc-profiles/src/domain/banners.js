@@ -3,6 +3,7 @@ export const PROFILE_SCHEMA_VERSION = 1;
 const CNC_USERINFO_ASSET_BASE = "https://raw.githubusercontent.com/refracta/dcss-webtiles-extension-module/main/modules/cnc-userinfo/images";
 const CNC_SECOND_ANNIVERSARY_ASSET_BASE = `${CNC_USERINFO_ASSET_BASE}/cnc-2nd-anniversary`;
 const GOONKEMON_HUNTER_ASSET_VERSION = "native-32";
+const SELF_SERVICE_STATUS_BANNER_IDS = new Set(["status-help"]);
 
 export const BANNER_URLS = {
   tournamentResults: "https://refracta.github.io/nemelex.cards/cnc-1st-anniversary-tournament/results.html",
@@ -173,6 +174,12 @@ export const BANNER_DEFINITIONS = [
     title: "Bot",
     url: BANNER_URLS.profiles,
     usernameStyle: { id: "bot", data: { prefix: "🤖" } }
+  },
+  {
+    id: "status-help",
+    title: "Please advise me!",
+    url: "",
+    usernameStyle: { id: "status-help", data: { label: "HELP!" } }
   },
   {
     id: "ranking",
@@ -350,6 +357,20 @@ export const INITIAL_PROFILES = [
 export function getBannerDefinition(id) {
   const banner = BANNER_DEFINITIONS.find((item) => item.id === id);
   return banner ? cloneBanner(banner) : null;
+}
+
+export function getSelfServiceStatusBanners() {
+  return [...SELF_SERVICE_STATUS_BANNER_IDS]
+    .map((id) => getBannerDefinition(id))
+    .filter(Boolean);
+}
+
+export function getSelfServiceStatusBanner(id) {
+  return SELF_SERVICE_STATUS_BANNER_IDS.has(id) ? getBannerDefinition(id) : null;
+}
+
+export function isSelfServiceStatusBannerId(id) {
+  return SELF_SERVICE_STATUS_BANNER_IDS.has(id);
 }
 
 function createNemelexUsernameStyle(split, time = 60) {

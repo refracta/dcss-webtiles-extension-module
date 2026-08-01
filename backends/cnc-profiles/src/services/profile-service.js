@@ -1,4 +1,9 @@
-import { BANNER_DEFINITIONS } from "../domain/banners.js";
+import {
+  BANNER_DEFINITIONS,
+  getSelfServiceStatusBanner,
+  getSelfServiceStatusBanners,
+  isSelfServiceStatusBannerId
+} from "../domain/banners.js";
 import { normalizeUsernameKey } from "../db/profile-db.js";
 
 export class ProfileService {
@@ -11,18 +16,26 @@ export class ProfileService {
   }
 
   getPublicProfile(username) {
-    return this.database.toPublicProfile(this.database.getProfile(username));
+    return this.#toPublicProfile(this.database.getProfile(username));
   }
 
   getMe(username) {
     const profile = this.database.ensureProfile(username);
-    return this.database.toPublicProfile(profile);
+    return this.#toOwnerProfile(profile);
   }
 
   async setCurrentBanner(username, bannerId) {
+    const statusBanner = getSelfServiceStatusBanner(bannerId);
+    if (statusBanner) {
+      this.database.upsertBanner(username, statusBanner, {
+        source: "self-service:status",
+        autoEquip: false
+      });
+    }
+
     const profile = this.database.setCurrentBanner(username, bannerId);
     await this.database.write();
-    return this.database.toPublicProfile(profile);
+    return this.#toOwnerProfile(profile);
   }
 
   getBatchProfiles(requestedProfiles) {
@@ -48,7 +61,7 @@ export class ProfileService {
         continue;
       }
 
-      profiles.push(this.database.toPublicProfile(profile));
+      profiles.push(this.#toPublicProfile(profile));
     }
 
     return {
@@ -57,5 +70,31 @@ export class ProfileService {
       missing,
       unchanged
     };
+  }
+
+  #toOwnerProfile(profile) {
+    const result = this.database.toPublicProfile(profile);
+    if (!result) return null;
+
+    const banners = new Map(result.banners.map((banner) => [banner.id, banner]));
+    for (const banner of getSelfServiceStatusBanners()) {
+      banners.set(banner.id, banner);
+    }
+
+    result.banners = [...banners.values()];
+    if (isSelfServiceStatusBannerId(result.currentBannerId)) {
+      result.currentBanner = banners.get(result.currentBannerId) ?? result.currentBanner;
+    }
+    return result;
+  }
+
+  #toPublicProfile(profile) {
+    const result = this.database.toPublicProfile(profile);
+    if (!result) return null;
+
+    result.banners = result.banners.filter((banner) => (
+      !isSelfServiceStatusBannerId(banner.id) || banner.id === result.currentBannerId
+    ));
+    return result;
   }
 }

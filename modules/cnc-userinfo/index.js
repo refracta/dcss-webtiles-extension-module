@@ -352,6 +352,10 @@ export default class CNCUserinfo {
             return `${this.createUsernamePrefixSpan(usernameStyle.data?.prefix || '🤖')}${this.escapeHtml(username)}`;
         }
 
+        if (usernameStyle.id === 'status-help') {
+            return `${this.createStatusHelpBadgeSpan(usernameStyle.data?.label)}${this.escapeHtml(username)}`;
+        }
+
         if (usernameStyle.id === 'ranking') {
             return `${this.createUsernamePrefixSpan(usernameStyle.data?.badge || this.getRankingBadge(usernameStyle.data?.rank))}${this.escapeHtml(username)}`;
         }
@@ -387,6 +391,11 @@ export default class CNCUserinfo {
         return `<span style="display: inline-block; text-decoration: none;">${this.escapeHtml(prefix)}</span>`;
     }
 
+    createStatusHelpBadgeSpan(label) {
+        const text = String(label || 'HELP!').trim() || 'HELP!';
+        return `<span style="display: inline-block; margin-right: 0.28em; padding: 0.08em 0.3em; border: 1px solid #ff646b; border-radius: 1px; background: #c91f2c; color: #fff; font-size: 0.72em; font-weight: 800; line-height: 1.15; vertical-align: 0.1em; text-decoration: none;">${this.escapeHtml(text)}</span>`;
+    }
+
     createUsernameImagePrefixSpan(url, {pixelated = false} = {}) {
         const safeUrl = String(url || '').trim();
         if (!/^https:\/\//i.test(safeUrl)) return '';
@@ -414,7 +423,10 @@ export default class CNCUserinfo {
             return `<div style="font-style: italic; font-size: ${fontSize}; line-height: ${lineHeight}; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank" rel="noopener noreferrer" style="display: block; text-decoration: none; white-space: pre-line;">${title}${detail}</a></div>`;
         }
 
-        return `<div style="font-style: italic; font-size: ${fontSize}; line-height: ${lineHeight}; margin-top: -4px; margin-bottom: 4px;"><a href="${url}" target="_blank" rel="noopener noreferrer"${titleStyle}>${title}</a>${detail}</div>`;
+        const titleElement = banner.url
+            ? `<a href="${url}" target="_blank" rel="noopener noreferrer"${titleStyle}>${title}</a>`
+            : `<span${titleStyle}>${title}</span>`;
+        return `<div style="font-style: italic; font-size: ${fontSize}; line-height: ${lineHeight}; margin-top: -4px; margin-bottom: 4px;">${titleElement}${detail}</div>`;
     }
 
     getBannerDetailLines(detail) {
