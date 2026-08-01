@@ -177,7 +177,7 @@ export const BANNER_DEFINITIONS = [
   },
   {
     id: "status-help",
-    title: "HELP!",
+    title: "HELP! (Status)",
     url: "",
     detail: { value: "Please advice me!" },
     usernameStyle: { id: "status-help", data: { label: "HELP" } }

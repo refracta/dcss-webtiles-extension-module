@@ -14,7 +14,7 @@ test("HELP status banner is owner-only until manually selected", async () => {
 
   assert.deepEqual(statusBanner, {
     id: "status-help",
-    title: "HELP!",
+    title: "HELP! (Status)",
     url: "",
     detail: { value: "Please advice me!" },
     usernameStyle: {
