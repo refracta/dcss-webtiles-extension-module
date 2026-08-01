@@ -180,7 +180,7 @@ export const BANNER_DEFINITIONS = [
     title: "HELP!",
     url: "",
     detail: { value: "Please advice me!" },
-    usernameStyle: { id: "status-help", data: { label: "HELP!" } }
+    usernameStyle: { id: "status-help", data: { label: "HELP" } }
   },
   {
     id: "ranking",

@@ -392,7 +392,7 @@ export default class CNCUserinfo {
     }
 
     createStatusHelpBadgeSpan(label) {
-        const text = String(label || 'HELP!').trim() || 'HELP!';
+        const text = String(label || 'HELP').trim() || 'HELP';
         return `<span style="display: inline-block; margin-right: 0.28em; padding: 0.08em 0.3em; border: 1px solid #ff646b; border-radius: 1px; background: #c91f2c; color: #fff; font-size: 0.72em; font-weight: 800; line-height: 1.15; vertical-align: 0.1em; text-decoration: none;">${this.escapeHtml(text)}</span>`;
     }
 

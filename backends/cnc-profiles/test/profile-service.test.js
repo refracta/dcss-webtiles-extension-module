@@ -19,7 +19,7 @@ test("HELP status banner is owner-only until manually selected", async () => {
     detail: { value: "Please advice me!" },
     usernameStyle: {
       id: "status-help",
-      data: { label: "HELP!" }
+      data: { label: "HELP" }
     }
   });
   assert.equal(ownerBeforeSelection.currentBannerId, null);
