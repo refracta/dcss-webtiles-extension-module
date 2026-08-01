@@ -92,6 +92,14 @@ export class ProfileService {
     const result = this.database.toPublicProfile(profile);
     if (!result) return null;
 
+    const currentStatusBanner = getSelfServiceStatusBanner(result.currentBannerId);
+    if (currentStatusBanner) {
+      result.currentBanner = currentStatusBanner;
+      result.banners = result.banners.map((banner) => (
+        banner.id === result.currentBannerId ? currentStatusBanner : banner
+      ));
+    }
+
     result.banners = result.banners.filter((banner) => (
       !isSelfServiceStatusBannerId(banner.id) || banner.id === result.currentBannerId
     ));

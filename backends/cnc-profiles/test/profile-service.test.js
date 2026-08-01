@@ -14,8 +14,9 @@ test("HELP status banner is owner-only until manually selected", async () => {
 
   assert.deepEqual(statusBanner, {
     id: "status-help",
-    title: "Please advise me!",
+    title: "HELP!",
     url: "",
+    detail: { value: "Please advice me!" },
     usernameStyle: {
       id: "status-help",
       data: { label: "HELP!" }
@@ -34,6 +35,9 @@ test("HELP status banner is owner-only until manually selected", async () => {
   assert.deepEqual(ownerAfterSelection.currentBanner, statusBanner);
   assert.equal(ownerAfterSelection.selectionMode, "manual");
   assert.equal(database.getProfile("NeedsAdvice").sources["status-help"].source, "self-service:status");
+
+  database.getProfile("NeedsAdvice").banners["status-help"].title = "Legacy HELP banner";
+  delete database.getProfile("NeedsAdvice").banners["status-help"].detail;
 
   const publicAfterSelection = service.getPublicProfile("NeedsAdvice");
   assert.equal(publicAfterSelection.currentBannerId, "status-help");
