@@ -16,7 +16,7 @@ test("HELP status banner is owner-only until manually selected", async () => {
     id: "status-help",
     title: "HELP! (Status)",
     url: "",
-    detail: { value: "Please advice me!" },
+    detail: { value: "Please advise me!" },
     usernameStyle: {
       id: "status-help",
       data: { label: "HELP" }
