@@ -6,8 +6,8 @@ JSON. The category endpoint replaces the former three title-keyword searches,
 so correctly categorized broadcasts are included even when their titles do not
 contain `돌죽`, `DCSS`, or `Stone Soup`. Successful responses, including empty
 lists, are cached for one minute. An upstream failure returns HTTP 503, with a
-15-second failure backoff to avoid retry storms. Titles containing `리듬돌죽` or
-`리듬 돌죽` remain excluded as a defensive filter.
+15-second failure backoff to avoid retry storms. No title matching is needed
+because CHZZK provides separate categories for DCSS and Rhythm Stone Soup.
 
 ## Endpoints
 

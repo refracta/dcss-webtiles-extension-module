@@ -9,7 +9,6 @@ export const CHZZK_CATEGORY = Object.freeze({
 });
 
 const CHZZK_CATEGORY_API_URL = 'https://api.chzzk.naver.com/service/v2/categories';
-const EXCLUDED_TITLE_PATTERN = /리듬\s*돌죽/i;
 const CATEGORY_PAGE_SIZE = 50;
 const MAX_CATEGORY_PAGES = 5;
 const DEFAULT_PORT = 3000;
@@ -111,8 +110,7 @@ export function normalizeLiveEntry(entry) {
         !title ||
         !channelId ||
         live.categoryType !== CHZZK_CATEGORY.type ||
-        live.liveCategory !== CHZZK_CATEGORY.id ||
-        EXCLUDED_TITLE_PATTERN.test(title)
+        live.liveCategory !== CHZZK_CATEGORY.id
     ) {
         return null;
     }

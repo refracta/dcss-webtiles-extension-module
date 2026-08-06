@@ -37,7 +37,7 @@ const TEST_SOCKET_SERVER = 'wss://test.nemelex.cards:443/socket';
 
 export default class CNCBanner {
     static name = 'CNCBanner';
-    static version = '1.4';
+    static version = '1.5';
     static dependencies = ['IOHook', 'SiteInformation', 'ModuleManager', 'WebSocketFactory', 'WTRec', 'CNCUserinfo'];
     static description = 'This module sets the banner for the CNC server.';
 

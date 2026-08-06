@@ -7,7 +7,6 @@ const MAX_LIVES = 50;
 const CHZZK_CATEGORY_TYPE = 'GAME';
 const CHZZK_CATEGORY_ID = 'Dungeon_Crawl_Stone_Soup';
 const TITLE_PATTERN = /돌죽|dcss|stone\s+soup/i;
-const EXCLUDED_TITLE_PATTERN = /리듬\s*돌죽/i;
 
 const LIVE_LIST_STYLE = `
     #banner .cnc-chzzk-live-list {
@@ -151,7 +150,6 @@ export function normalizeChzzkLives(payload) {
             !channelName ||
             !title ||
             (!isDcssCategory && !TITLE_PATTERN.test(title)) ||
-            EXCLUDED_TITLE_PATTERN.test(title) ||
             !Number.isFinite(viewerCount) ||
             viewerCount < 0 ||
             seenChannels.has(channelId)

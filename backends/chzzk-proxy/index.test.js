@@ -41,8 +41,6 @@ function entry({
 
 test('normalizeLiveEntry keeps category broadcasts regardless of title keywords', () => {
     assert.equal(normalizeLiveEntry(entry({categoryId: 'Other_Game'})), null);
-    assert.equal(normalizeLiveEntry(entry({title: '리듬돌죽 고득점 도전'})), null);
-    assert.equal(normalizeLiveEntry(entry({title: '오늘은 리듬   돌죽'})), null);
     assert.equal(normalizeLiveEntry(entry({title: ''})), null);
     assert.equal(normalizeLiveEntry(entry({channelId: ''})), null);
 
@@ -51,6 +49,10 @@ test('normalizeLiveEntry keeps category broadcasts regardless of title keywords'
     assert.equal(live.thumbnailUrl, 'https://example.test/image_480.jpg');
     assert.equal(live.url, 'https://chzzk.naver.com/live/channel-id');
     assert.equal(live.categoryName, CHZZK_CATEGORY.name);
+    assert.equal(
+        normalizeLiveEntry(entry({title: '리듬 돌죽'})).title,
+        '리듬 돌죽'
+    );
 });
 
 test('normalizes CHZZK local start times with an explicit timezone', () => {

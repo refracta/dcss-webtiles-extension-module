@@ -57,14 +57,16 @@ test('accepts keyword-free titles only from the expected category payload', () =
         category: {type: 'GAME', id: 'Other_Game'}
     }), []);
     assert.deepEqual(normalizeChzzkLives({ok: true, lives: [keywordFreeLive]}), []);
+    assert.equal(
+        normalizeChzzkLives(categoryPayload([live({title: '리듬 돌죽'})]))[0].title,
+        '리듬 돌죽'
+    );
 });
 
-test('filters unrelated, excluded, duplicate, and unsafe items', () => {
+test('filters unrelated, duplicate, and unsafe legacy items', () => {
     const lives = normalizeChzzkLives({
         ok: true,
         lives: [
-            live({title: '리듬돌죽'}),
-            live({channelId: 'another', title: '리듬 돌죽'}),
             live({channelId: 'third', title: 'unrelated game'}),
             live({channelId: 'fourth', title: 'DCSS'}),
             live({channelId: 'fourth', title: 'Stone Soup'}),
