@@ -4,6 +4,8 @@ const DEFAULT_API_URL = 'https://chzzk-api.nemelex.cards/';
 const DEFAULT_TIMEOUT_MS = 7_000;
 const DEFAULT_REFRESH_INTERVAL_MS = 60_000;
 const MAX_LIVES = 50;
+const CHZZK_CATEGORY_TYPE = 'GAME';
+const CHZZK_CATEGORY_ID = 'Dungeon_Crawl_Stone_Soup';
 const TITLE_PATTERN = /돌죽|dcss|stone\s+soup/i;
 const EXCLUDED_TITLE_PATTERN = /리듬\s*돌죽/i;
 
@@ -126,6 +128,13 @@ export function normalizeChzzkLives(payload) {
         return [];
     }
 
+    const hasCategoryMetadata = payload.category !== undefined;
+    const isDcssCategory = payload.category?.type === CHZZK_CATEGORY_TYPE &&
+        payload.category?.id === CHZZK_CATEGORY_ID;
+    if (hasCategoryMetadata && !isDcssCategory) {
+        return [];
+    }
+
     const seenChannels = new Set();
     const lives = [];
 
@@ -141,7 +150,7 @@ export function normalizeChzzkLives(payload) {
             !/^[A-Za-z0-9_-]{1,64}$/.test(channelId) ||
             !channelName ||
             !title ||
-            !TITLE_PATTERN.test(title) ||
+            (!isDcssCategory && !TITLE_PATTERN.test(title)) ||
             EXCLUDED_TITLE_PATTERN.test(title) ||
             !Number.isFinite(viewerCount) ||
             viewerCount < 0 ||

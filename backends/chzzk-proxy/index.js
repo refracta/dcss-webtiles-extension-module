@@ -2,13 +2,16 @@ import http from 'node:http';
 import process from 'node:process';
 import {pathToFileURL} from 'node:url';
 
-export const SEARCH_KEYWORDS = Object.freeze(['돌죽', 'DCSS', 'Stone Soup']);
+export const CHZZK_CATEGORY = Object.freeze({
+    type: 'GAME',
+    id: 'Dungeon_Crawl_Stone_Soup',
+    name: '던전 크롤 스톤 수프'
+});
 
-const CHZZK_SEARCH_URL = 'https://api.chzzk.naver.com/service/v1/search/lives';
-const TITLE_PATTERN = /돌죽|dcss|stone\s+soup/i;
+const CHZZK_CATEGORY_API_URL = 'https://api.chzzk.naver.com/service/v2/categories';
 const EXCLUDED_TITLE_PATTERN = /리듬\s*돌죽/i;
-const SEARCH_PAGE_SIZE = 50;
-const MAX_SEARCH_PAGES = 5;
+const CATEGORY_PAGE_SIZE = 50;
+const MAX_CATEGORY_PAGES = 5;
 const DEFAULT_PORT = 3000;
 const DEFAULT_CACHE_TTL_MS = 60_000;
 const DEFAULT_FAILURE_TTL_MS = 15_000;
@@ -20,20 +23,31 @@ const DEFAULT_ALLOWED_ORIGINS = Object.freeze([
     'http://127.0.0.1:6060'
 ]);
 
-export async function searchChzzkLives(keyword, {
+export async function fetchChzzkCategoryLives({
+    category = CHZZK_CATEGORY,
     fetchImpl = globalThis.fetch,
     timeoutMs = DEFAULT_UPSTREAM_TIMEOUT_MS,
-    pageSize = SEARCH_PAGE_SIZE,
-    maxPages = MAX_SEARCH_PAGES
+    pageSize = CATEGORY_PAGE_SIZE,
+    maxPages = MAX_CATEGORY_PAGES
 } = {}) {
     const results = [];
-    let offset = 0;
+    let cursor = null;
 
     for (let page = 0; page < maxPages; page++) {
-        const url = new URL(CHZZK_SEARCH_URL);
-        url.searchParams.set('keyword', keyword);
+        const categoryType = encodeURIComponent(category.type);
+        const categoryId = encodeURIComponent(category.id);
+        const url = new URL(
+            `${CHZZK_CATEGORY_API_URL}/${categoryType}/${categoryId}/lives`
+        );
         url.searchParams.set('size', String(pageSize));
-        url.searchParams.set('offset', String(offset));
+        url.searchParams.set('sortType', 'POPULAR');
+        if (cursor) {
+            url.searchParams.set(
+                'concurrentUserCount',
+                String(cursor.concurrentUserCount)
+            );
+            url.searchParams.set('liveId', cursor.liveId);
+        }
 
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -42,19 +56,19 @@ export async function searchChzzkLives(keyword, {
             const response = await fetchImpl(url, {
                 headers: {
                     Accept: 'application/json',
-                    'User-Agent': 'CNC-Chzzk-Live-Aggregator/1.0'
+                    'User-Agent': 'CNC-Chzzk-Category-Proxy/1.1'
                 },
                 signal: controller.signal
             });
 
             if (!response.ok) {
-                throw new Error(`CHZZK search returned ${response.status}`);
+                throw new Error(`CHZZK category API returned ${response.status}`);
             }
 
             const payload = await response.json();
             const data = payload?.content?.data;
             if (!Array.isArray(data)) {
-                throw new Error('CHZZK search returned an invalid payload');
+                throw new Error('CHZZK category API returned an invalid payload');
             }
 
             results.push(...data);
@@ -62,11 +76,20 @@ export async function searchChzzkLives(keyword, {
                 break;
             }
 
-            const nextOffset = Number(payload?.content?.page?.next?.offset);
-            if (!Number.isInteger(nextOffset) || nextOffset <= offset) {
+            const next = payload?.content?.page?.next;
+            const concurrentUserCount = Number(next?.concurrentUserCount);
+            const liveId = String(next?.liveId || '').trim();
+            if (!Number.isFinite(concurrentUserCount) || !liveId) {
                 break;
             }
-            offset = nextOffset;
+            if (
+                cursor &&
+                cursor.concurrentUserCount === concurrentUserCount &&
+                cursor.liveId === liveId
+            ) {
+                break;
+            }
+            cursor = {concurrentUserCount, liveId};
         } finally {
             clearTimeout(timeout);
         }
@@ -76,8 +99,8 @@ export async function searchChzzkLives(keyword, {
 }
 
 export function normalizeLiveEntry(entry) {
-    const live = entry?.live;
-    const channel = entry?.channel;
+    const live = entry?.live || entry;
+    const channel = live?.channel || entry?.channel;
     if (!live || !channel) {
         return null;
     }
@@ -87,7 +110,8 @@ export function normalizeLiveEntry(entry) {
     if (
         !title ||
         !channelId ||
-        !TITLE_PATTERN.test(title) ||
+        live.categoryType !== CHZZK_CATEGORY.type ||
+        live.liveCategory !== CHZZK_CATEGORY.id ||
         EXCLUDED_TITLE_PATTERN.test(title)
     ) {
         return null;
@@ -129,21 +153,19 @@ export function normalizeStartedAt(value) {
     return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : '';
 }
 
-export function mergeSearchResults(searchResults) {
+export function normalizeCategoryLives(entries) {
     const livesById = new Map();
 
-    for (const entries of searchResults) {
-        for (const entry of Array.isArray(entries) ? entries : []) {
-            const live = normalizeLiveEntry(entry);
-            if (!live) {
-                continue;
-            }
+    for (const entry of Array.isArray(entries) ? entries : []) {
+        const live = normalizeLiveEntry(entry);
+        if (!live) {
+            continue;
+        }
 
-            const key = live.liveId || live.channelId;
-            const existing = livesById.get(key);
-            if (!existing || live.viewerCount > existing.viewerCount) {
-                livesById.set(key, live);
-            }
+        const key = live.liveId || live.channelId;
+        const existing = livesById.get(key);
+        if (!existing || live.viewerCount > existing.viewerCount) {
+            livesById.set(key, live);
         }
     }
 
@@ -154,16 +176,15 @@ export function mergeSearchResults(searchResults) {
     ));
 }
 
-export async function fetchCombinedLives({
-    search = searchChzzkLives,
-    keywords = SEARCH_KEYWORDS
+export async function fetchDcssLives({
+    fetchCategory = fetchChzzkCategoryLives,
+    ...categoryOptions
 } = {}) {
-    const searchResults = await Promise.all(keywords.map(keyword => search(keyword)));
-    return mergeSearchResults(searchResults);
+    return normalizeCategoryLives(await fetchCategory(categoryOptions));
 }
 
 export function createCachedLiveSource({
-    fetchLives = fetchCombinedLives,
+    fetchLives = fetchDcssLives,
     cacheTtlMs = DEFAULT_CACHE_TTL_MS,
     failureTtlMs = DEFAULT_FAILURE_TTL_MS,
     now = Date.now
@@ -188,7 +209,7 @@ export function createCachedLiveSource({
                     const updatedAtMs = now();
                     const payload = {
                         ok: true,
-                        keywords: [...SEARCH_KEYWORDS],
+                        category: {...CHZZK_CATEGORY},
                         updatedAt: new Date(updatedAtMs).toISOString(),
                         lives
                     };
@@ -322,9 +343,7 @@ export function startServer({logger = console} = {}) {
     const getLives = createCachedLiveSource({
         cacheTtlMs,
         failureTtlMs,
-        fetchLives: () => fetchCombinedLives({
-            search: keyword => searchChzzkLives(keyword, {timeoutMs: upstreamTimeoutMs})
-        })
+        fetchLives: () => fetchDcssLives({timeoutMs: upstreamTimeoutMs})
     });
     const server = createServer({getLives, logger});
 

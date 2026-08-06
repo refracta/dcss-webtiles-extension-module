@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import test from 'node:test';
 import {
-    SEARCH_KEYWORDS,
+    CHZZK_CATEGORY,
     createCachedLiveSource,
     createServer,
-    fetchCombinedLives,
-    mergeSearchResults,
+    fetchChzzkCategoryLives,
+    fetchDcssLives,
+    normalizeCategoryLives,
     normalizeLiveEntry,
     normalizeStartedAt
 } from './index.js';
@@ -16,16 +17,20 @@ function entry({
     channelId = 'channel-id',
     channelName = 'Crawler',
     title = '돌죽 방송',
-    viewerCount = 7
+    viewerCount = 7,
+    categoryType = CHZZK_CATEGORY.type,
+    categoryId = CHZZK_CATEGORY.id,
+    categoryName = CHZZK_CATEGORY.name
 } = {}) {
     return {
-        live: {
-            liveId,
-            liveTitle: title,
-            concurrentUserCount: viewerCount,
-            liveImageUrl: 'https://example.test/image_{type}.jpg',
-            channelId
-        },
+        liveId,
+        liveTitle: title,
+        concurrentUserCount: viewerCount,
+        liveImageUrl: 'https://example.test/image_{type}.jpg',
+        channelId,
+        categoryType,
+        liveCategory: categoryId,
+        liveCategoryValue: categoryName,
         channel: {
             channelId,
             channelName,
@@ -34,15 +39,18 @@ function entry({
     };
 }
 
-test('normalizeLiveEntry keeps only matching live titles', () => {
-    assert.equal(normalizeLiveEntry(entry({title: 'unrelated game'})), null);
+test('normalizeLiveEntry keeps category broadcasts regardless of title keywords', () => {
+    assert.equal(normalizeLiveEntry(entry({categoryId: 'Other_Game'})), null);
     assert.equal(normalizeLiveEntry(entry({title: '리듬돌죽 고득점 도전'})), null);
     assert.equal(normalizeLiveEntry(entry({title: '오늘은 리듬   돌죽'})), null);
+    assert.equal(normalizeLiveEntry(entry({title: ''})), null);
+    assert.equal(normalizeLiveEntry(entry({channelId: ''})), null);
 
-    const live = normalizeLiveEntry(entry({title: 'Dungeon Crawl: Stone   Soup'}));
-    assert.equal(live.title, 'Dungeon Crawl: Stone   Soup');
+    const live = normalizeLiveEntry(entry({title: '오늘은 15룬 도전'}));
+    assert.equal(live.title, '오늘은 15룬 도전');
     assert.equal(live.thumbnailUrl, 'https://example.test/image_480.jpg');
     assert.equal(live.url, 'https://chzzk.naver.com/live/channel-id');
+    assert.equal(live.categoryName, CHZZK_CATEGORY.name);
 });
 
 test('normalizes CHZZK local start times with an explicit timezone', () => {
@@ -53,39 +61,103 @@ test('normalizes CHZZK local start times with an explicit timezone', () => {
     assert.equal(normalizeStartedAt('not-a-date'), '');
 });
 
-test('mergeSearchResults deduplicates and sorts by viewer count', () => {
-    const lives = mergeSearchResults([
-        [entry({liveId: 1, title: '돌죽', viewerCount: 3})],
-        [entry({liveId: 1, title: 'DCSS', viewerCount: 4})],
-        [entry({liveId: 2, channelId: 'other', title: 'Stone Soup', viewerCount: 20})]
+test('normalizeCategoryLives deduplicates and sorts by viewer count', () => {
+    const lives = normalizeCategoryLives([
+        entry({liveId: 1, title: '첫 방송', viewerCount: 3}),
+        entry({liveId: 1, title: '갱신된 방송', viewerCount: 4}),
+        entry({liveId: 2, channelId: 'other', title: '키워드 없는 방송', viewerCount: 20})
     ]);
 
     assert.deepEqual(lives.map(live => live.liveId), ['2', '1']);
-    assert.equal(lives[1].title, 'DCSS');
+    assert.equal(lives[1].title, '갱신된 방송');
 });
 
-test('fetchCombinedLives searches all three keywords and fails on a partial outage', async () => {
-    const calls = [];
-    const lives = await fetchCombinedLives({
-        search: async keyword => {
-            calls.push(keyword);
-            return keyword === '돌죽' ? [entry()] : [];
+test('fetchChzzkCategoryLives uses the DCSS category endpoint once for a short page', async () => {
+    const urls = [];
+    const lives = await fetchChzzkCategoryLives({
+        fetchImpl: async url => {
+            urls.push(new URL(url));
+            return upstreamResponse({
+                content: {
+                    data: [entry()],
+                    page: {next: {concurrentUserCount: 7, liveId: 1}}
+                }
+            });
         }
     });
 
-    assert.deepEqual(calls.sort(), [...SEARCH_KEYWORDS].sort());
+    assert.equal(lives.length, 1);
+    assert.equal(urls.length, 1);
+    assert.equal(
+        urls[0].pathname,
+        '/service/v2/categories/GAME/Dungeon_Crawl_Stone_Soup/lives'
+    );
+    assert.equal(urls[0].searchParams.get('size'), '50');
+    assert.equal(urls[0].searchParams.get('sortType'), 'POPULAR');
+    assert.equal(urls[0].searchParams.has('keyword'), false);
+});
+
+test('fetchChzzkCategoryLives follows the viewer and live ID cursor', async () => {
+    const urls = [];
+    const lives = await fetchChzzkCategoryLives({
+        pageSize: 2,
+        fetchImpl: async url => {
+            const parsedUrl = new URL(url);
+            urls.push(parsedUrl);
+            if (urls.length === 1) {
+                return upstreamResponse({
+                    content: {
+                        data: [entry({liveId: 1}), entry({liveId: 2})],
+                        page: {next: {concurrentUserCount: 3, liveId: 2}}
+                    }
+                });
+            }
+            return upstreamResponse({
+                content: {data: [entry({liveId: 3})], page: null}
+            });
+        }
+    });
+
+    assert.equal(lives.length, 3);
+    assert.equal(urls.length, 2);
+    assert.equal(urls[1].searchParams.get('concurrentUserCount'), '3');
+    assert.equal(urls[1].searchParams.get('liveId'), '2');
+});
+
+test('fetchDcssLives normalizes one category result and propagates upstream errors', async () => {
+    let calls = 0;
+    const lives = await fetchDcssLives({
+        fetchCategory: async () => {
+            calls++;
+            return [entry()];
+        }
+    });
+
+    assert.equal(calls, 1);
     assert.equal(lives.length, 1);
 
     await assert.rejects(
-        fetchCombinedLives({
-            search: async keyword => {
-                if (keyword === 'DCSS') {
-                    throw new Error('upstream failed');
-                }
-                return [];
+        fetchDcssLives({
+            fetchCategory: async () => {
+                throw new Error('upstream failed');
             }
         }),
         /upstream failed/
+    );
+});
+
+test('fetchChzzkCategoryLives rejects HTTP errors and invalid payloads', async () => {
+    await assert.rejects(
+        fetchChzzkCategoryLives({
+            fetchImpl: async () => upstreamResponse({}, false, 503)
+        }),
+        /returned 503/
+    );
+    await assert.rejects(
+        fetchChzzkCategoryLives({
+            fetchImpl: async () => upstreamResponse({content: {data: null}})
+        }),
+        /invalid payload/
     );
 });
 
@@ -105,6 +177,7 @@ test('createCachedLiveSource caches empty lists and coalesces concurrent refresh
     assert.equal(calls, 1);
     assert.deepEqual(first, second);
     assert.deepEqual(first.lives, []);
+    assert.deepEqual(first.category, CHZZK_CATEGORY);
 
     await source();
     assert.equal(calls, 1);
@@ -170,3 +243,11 @@ test('HTTP server exposes CORS, hides upstream errors behind 503, and has health
     assert.equal(failed.status, 503);
     assert.equal((await failed.json()).ok, false);
 });
+
+function upstreamResponse(payload, ok = true, status = 200) {
+    return {
+        ok,
+        status,
+        json: async () => payload
+    };
+}

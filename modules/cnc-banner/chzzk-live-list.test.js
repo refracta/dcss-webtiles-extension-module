@@ -21,6 +21,18 @@ function live(overrides = {}) {
     };
 }
 
+function categoryPayload(lives) {
+    return {
+        ok: true,
+        category: {
+            type: 'GAME',
+            id: 'Dungeon_Crawl_Stone_Soup',
+            name: '던전 크롤 스톤 수프'
+        },
+        lives
+    };
+}
+
 test('normalizes matching broadcasts', () => {
     assert.deepEqual(normalizeChzzkLives({ok: true, lives: [live()]}), [{
         ...live(),
@@ -32,6 +44,19 @@ test('returns no items for unavailable, invalid, or empty payloads', () => {
     assert.deepEqual(normalizeChzzkLives(null), []);
     assert.deepEqual(normalizeChzzkLives({ok: false, lives: [live()]}), []);
     assert.deepEqual(normalizeChzzkLives({ok: true, lives: []}), []);
+});
+
+test('accepts keyword-free titles only from the expected category payload', () => {
+    const keywordFreeLive = live({title: '오늘은 15룬 도전'});
+    assert.equal(
+        normalizeChzzkLives(categoryPayload([keywordFreeLive]))[0].title,
+        '오늘은 15룬 도전'
+    );
+    assert.deepEqual(normalizeChzzkLives({
+        ...categoryPayload([keywordFreeLive]),
+        category: {type: 'GAME', id: 'Other_Game'}
+    }), []);
+    assert.deepEqual(normalizeChzzkLives({ok: true, lives: [keywordFreeLive]}), []);
 });
 
 test('filters unrelated, excluded, duplicate, and unsafe items', () => {

@@ -1,15 +1,17 @@
 # CHZZK live proxy
 
-This backend searches CHZZK for `돌죽`, `DCSS`, and `Stone Soup`, verifies the
-terms against each live title, merges duplicate broadcasts, and returns the
-result as JSON. Successful responses, including empty lists, are cached for one
-minute. Any partial upstream failure returns HTTP 503 instead of stale or
-partial data, with a 15-second failure backoff to avoid retry storms. Titles
-containing `리듬돌죽` or `리듬 돌죽` are excluded.
+This backend reads live broadcasts from CHZZK's `던전 크롤 스톤 수프`
+category (`GAME/Dungeon_Crawl_Stone_Soup`) and returns the normalized result as
+JSON. The category endpoint replaces the former three title-keyword searches,
+so correctly categorized broadcasts are included even when their titles do not
+contain `돌죽`, `DCSS`, or `Stone Soup`. Successful responses, including empty
+lists, are cached for one minute. An upstream failure returns HTTP 503, with a
+15-second failure backoff to avoid retry storms. Titles containing `리듬돌죽` or
+`리듬 돌죽` remain excluded as a defensive filter.
 
 ## Endpoints
 
-- `GET /` or `GET /lives`: aggregated live list
+- `GET /` or `GET /lives`: DCSS category live list
 - `GET /health` or `GET /healthz`: process health
 
 The API allows browser requests from CNC WebTiles, the test server, and the
