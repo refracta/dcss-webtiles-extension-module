@@ -1,4 +1,8 @@
 const HANDLER_ID = 'map-predictor-webtiles-adapter';
+// TranslationModule mutates incoming packets at the default priority (0).
+// Match SoundSupport's priority so MapPredictor captures the raw wire version
+// and place before any localized text replaces them.
+const RAW_WIRE_CAPTURE_PRIORITY = 1;
 const DUNGEON_OVERLAY_ID = 'map-predictor-dungeon-overlay';
 const MINIMAP_OVERLAY_ID = 'map-predictor-minimap-overlay';
 const DEFAULT_MAX_ABS_COORDINATE = 32767;
@@ -817,7 +821,8 @@ export default class WebtilesAdapter {
 
         ioHook.handle_message.before.addHandler(
             HANDLER_ID,
-            this.handleMessageBefore
+            this.handleMessageBefore,
+            RAW_WIRE_CAPTURE_PRIORITY
         );
         ioHook.handle_message.after.addHandler(
             HANDLER_ID,

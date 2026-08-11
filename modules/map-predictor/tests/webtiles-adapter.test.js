@@ -24,8 +24,11 @@ function mapPredictorBackground(base) {
 function handlerList() {
     return {
         handlers: [],
-        addHandler(identifier, handler) {
-            this.handlers.push({identifier, handler});
+        addHandler(identifier, handler, priority = 0) {
+            this.handlers.push({identifier, handler, priority});
+            this.handlers.sort((first, second) => {
+                return second.priority - first.priority;
+            });
         },
         removeHandler(identifier) {
             this.handlers = this.handlers.filter(entry => {
@@ -815,6 +818,62 @@ test('captures immutable wire packets before handlers and reads merged cells aft
     assert.equal(knowledgeEvents[0].cells[1].removed, false);
     assert.equal(knowledgeEvents[0].binding, adapter.binding);
     assert.equal(adapter.observedCells.size, 2);
+    adapter.destroy();
+});
+
+test('captures raw version and place before default-priority translation', () => {
+    const versionEvents = [];
+    const playerEvents = [];
+    const owner = {
+        onVersion(text, data) {
+            versionEvents.push({text, data});
+        },
+        onPlayer(snapshot, data) {
+            playerEvents.push({snapshot, data});
+        }
+    };
+    const {dwem, before} = fakeDwem(owner);
+    before.addHandler('translation-handler', message => {
+        if (message.msg === 'version') {
+            message.text = '던전 크롤 스톤 수프 0.35-a0';
+        } else if (message.msg === 'player') {
+            message.place = '보물창고';
+        }
+    });
+
+    const adapter = new WebtilesAdapter(owner, {dwem});
+    adapter.install();
+
+    assert.deepEqual(before.handlers.map(handler => ({
+        identifier: handler.identifier,
+        priority: handler.priority
+    })), [{
+        identifier: 'map-predictor-webtiles-adapter',
+        priority: 1
+    }, {
+        identifier: 'translation-handler',
+        priority: 0
+    }]);
+    const version = {
+        msg: 'version',
+        text: 'Dungeon Crawl Stone Soup 0.35-a0-840-g1b83f8deab'
+    };
+    const player = {msg: 'player', place: 'Vaults', depth: 5};
+    dwem.Modules.IOHook.handle_message(version);
+    dwem.Modules.IOHook.handle_message(player);
+
+    assert.equal(
+        versionEvents[0].text,
+        'Dungeon Crawl Stone Soup 0.35-a0-840-g1b83f8deab'
+    );
+    assert.equal(versionEvents[0].data.text, versionEvents[0].text);
+    assert.equal(playerEvents[0].snapshot.place, 'Vaults');
+    assert.equal(playerEvents[0].snapshot.depth, 5);
+    assert.equal(playerEvents[0].data.place, 'Vaults');
+    assert.equal(playerEvents[0].data.depth, 5);
+    assert.equal(version.text, '던전 크롤 스톤 수프 0.35-a0');
+    assert.equal(player.place, '보물창고');
+
     adapter.destroy();
 });
 
