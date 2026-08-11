@@ -226,6 +226,9 @@ async function installRecorder(page, targets) {
                 displayedPredictions: cloneCells(adapter.predictions),
                 safePredictions: cloneCells(result.predictions),
                 provisionalPredictions: cloneCells(result.provisionalPredictions),
+                bestDisplayPredictions: cloneCells(
+                    result.bestDisplayPredictions
+                ),
                 observations: []
             };
         };
@@ -257,6 +260,7 @@ async function installRecorder(page, targets) {
                 native: adapter._nativeCells?.size || 0,
                 safe: debug.safePredictionCount || 0,
                 provisional: debug.provisionalPredictionCount || 0,
+                bestDisplay: debug.bestDisplayPredictionCount || 0,
                 force: debug.forcePredictionCount || 0,
                 plausible: debug.plausibleCandidateCount || 0,
                 predictionMode: debug.predictionMode,
@@ -278,6 +282,7 @@ async function installRecorder(page, targets) {
                 sample.native,
                 sample.safe,
                 sample.provisional,
+                sample.bestDisplay,
                 sample.force,
                 sample.plausible,
                 sample.predictionMode,

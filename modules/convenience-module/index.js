@@ -1,6 +1,10 @@
 const GOLD_STATUS_ID = 'convenience-gold';
 const MAP_PREDICTOR_STATUS_ID = 'map-predictor';
 const MAP_PREDICTOR_READY_EVENT = 'dwem:map-predictor-ready';
+const MAP_PREDICTOR_TOOLTIP_STYLE_ID =
+    'dwem-map-predictor-tooltip-multiline-style';
+const MAP_PREDICTOR_TOOLTIP_STYLE =
+    '#stats_status_lights_tooltip { white-space: pre-line; }';
 
 function finiteNumber(value) {
     const number = Number(value);
@@ -49,16 +53,18 @@ export function createMapPredictorStatus(summary) {
     const provisionalPredictionCount = count(
         summary.provisionalPredictionCount
     );
+    const bestDisplayPredictionCount = count(
+        summary.bestDisplayPredictionCount
+    );
     const forcePredictionCount = count(summary.forcePredictionCount);
     const predictionCount = count(summary.predictionCount);
     const revealEnabled = summary.revealEnabled === true;
-    const accepted = summary.resultReason === 'ready'
-        && safePredictionCount > 0;
+    const accepted = summary.resultReason === 'ready';
     const ambiguous = match?.unique === false
         || count(summary.plausibleCandidateCount) > 1;
     const displayed = revealEnabled && predictionCount > 0;
     const hidden = !revealEnabled && predictionCount > 0;
-    const blocked = Boolean(match) && forcePredictionCount === 0;
+    const blocked = Boolean(match) && bestDisplayPredictionCount === 0;
     let verdict = 'WAITING';
     let display = 'off (waiting for a supported prediction)';
     let colour = 8;
@@ -69,40 +75,21 @@ export function createMapPredictorStatus(summary) {
             ? 'on (explicit unsafe override)'
             : 'off (explicit force has no displayed cells)';
         colour = 14;
-    } else if (displayed && accepted) {
-        verdict = ambiguous
-            ? 'SAFE CONSENSUS (ambiguous identity)'
-            : 'SAFE';
-        display = 'on (automatic)';
-        colour = 10;
     } else if (displayed) {
-        verdict = ambiguous
-            ? 'AUTO CONSENSUS (unconfirmed identity)'
-            : 'AUTO SUPPORTED TERRAIN (unconfirmed)';
-        display = 'on (automatic orange shared terrain)';
+        verdict = `AUTO BEST GUESS (${accepted ? 'accepted match' : 'unaccepted candidate'}${ambiguous ? '; ambiguous' : ''})`;
+        display = 'on (automatic orange best candidate)';
         colour = 14;
     } else if (hidden) {
-        const available = accepted
-            ? ambiguous ? 'safe consensus' : 'safe prediction'
-            : provisionalPredictionCount > 0
-                ? ambiguous ? 'shared candidate terrain' : 'supported terrain'
-                : 'prediction';
-        verdict = `AVAILABLE / HIDDEN (${available})`;
+        verdict = `AVAILABLE / HIDDEN (best guess${ambiguous ? '; ambiguous' : ''})`;
         display = 'off (hidden by /reveal)';
     } else if (summary.error) {
         verdict = 'ERROR';
         display = 'off (runtime error)';
         colour = 12;
     } else if (blocked) {
-        verdict = summary.resultReason === 'policy-disabled'
-            ? 'BLOCKED (detection-only; no supported cells)'
-            : 'BLOCKED (no supported inferred cells)';
+        verdict = 'BLOCKED (best candidate has no constrained unseen cells)';
         display = 'blocked';
         colour = 12;
-    } else if (match && forcePredictionCount > 0) {
-        verdict = `FORCE AVAILABLE (best-only${ambiguous ? '; ambiguous' : ''})`;
-        display = 'off (automatic consensus is unavailable)';
-        colour = 14;
     }
     const coverage = percentage(match?.coverage);
     const templateCount = Array.isArray(summary.templates)
@@ -110,13 +97,13 @@ export function createMapPredictorStatus(summary) {
         : count(summary.templateCount);
     const details = [
         'MapPredictor: enabled (RC enabled; Ctrl-M on)',
-        `Best candidate: ${tooltipValue(match?.name)} (${score || 'n/a'})`,
-        'Match % is terrain similarity, not the probability of a correct prediction',
-        `Verdict: ${verdict}; reason: ${tooltipValue(summary.resultReason, summary.status || 'not evaluated')}`,
+        `Candidate: ${tooltipValue(match?.name)}`,
+        `Similarity: ${score || 'n/a'} terrain match (not correctness probability)`,
+        `Verdict: ${verdict}; reason: ${tooltipValue(summary.resultReason, summary.status || 'not evaluated')}; ambiguity: ${ambiguous ? 'yes' : 'no'}`,
         `Evidence: ${count(match?.evidenceCells)} cells, ${count(match?.distinctKinds)} kinds, ${coverage || 'n/a'} coverage`,
         `Candidates: ${templateCount} loaded, ${count(summary.plausibleCandidateCount)} plausible`,
-        `Predictions: ${safePredictionCount} safe, ${provisionalPredictionCount} provisional consensus, ${forcePredictionCount} best-only force, ${predictionCount} displayed-set`,
-        `Display: ${display}`
+        `Cells: ${predictionCount} selected for display, ${bestDisplayPredictionCount} current-best, ${safePredictionCount} safe diagnostic, ${provisionalPredictionCount} consensus diagnostic, ${forcePredictionCount} explicit-force eligible`,
+        `Controls: display ${display}; /reveal ${hidden ? 'off' : revealEnabled ? 'on' : 'unavailable'}; /force_reveal ${forced ? 'active' : forcePredictionCount > 0 ? 'available' : 'unavailable'}`
     ];
     if (summary.error) {
         details.push(
@@ -128,7 +115,7 @@ export function createMapPredictorStatus(summary) {
     return {
         light: `Map (${score || '--.-%'})`,
         text: 'map predictor',
-        desc: details.join(' | '),
+        desc: details.join('\n'),
         col: colour,
         isCustomStatus: true,
         dwemStatusId: MAP_PREDICTOR_STATUS_ID
@@ -359,6 +346,36 @@ export default class ConvenienceModule {
         }
     }
 
+    installMapPredictorTooltipStyle() {
+        const document = globalThis.document;
+        const existing = document?.getElementById?.(
+            MAP_PREDICTOR_TOOLTIP_STYLE_ID
+        );
+        if (existing) {
+            this.mapPredictorTooltipStyle = existing;
+            return true;
+        }
+        if (typeof document?.createElement !== 'function'
+            || typeof document?.head?.appendChild !== 'function') {
+            return false;
+        }
+        const style = document.createElement('style');
+        style.id = MAP_PREDICTOR_TOOLTIP_STYLE_ID;
+        style.textContent = MAP_PREDICTOR_TOOLTIP_STYLE;
+        document.head.appendChild(style);
+        this.mapPredictorTooltipStyle = style;
+        this.ownsMapPredictorTooltipStyle = true;
+        return true;
+    }
+
+    removeMapPredictorTooltipStyle() {
+        if (this.ownsMapPredictorTooltipStyle) {
+            this.mapPredictorTooltipStyle?.remove?.();
+        }
+        this.mapPredictorTooltipStyle = null;
+        this.ownsMapPredictorTooltipStyle = false;
+    }
+
     bindMapPredictorStatus(mapPredictor) {
         if (typeof mapPredictor?.subscribeStatus !== 'function') {
             return false;
@@ -478,6 +495,11 @@ export default class ConvenienceModule {
             ? JSON.stringify([status.light, status.desc, status.col])
             : null;
         this.mapPredictorSummary = visibleSummary;
+        if (visibleSummary) {
+            this.installMapPredictorTooltipStyle();
+        } else {
+            this.removeMapPredictorTooltipStyle();
+        }
         if (fingerprint === this.mapPredictorStatusFingerprint) {
             return;
         }
@@ -498,6 +520,7 @@ export default class ConvenienceModule {
         this.mapPredictorUnsubscribe = null;
         this.mapPredictorStatusSource = null;
         this.removeMapPredictorReadyListener();
+        this.removeMapPredictorTooltipStyle();
         const {IOHook, RCManager} = DWEM.Modules;
         RCManager?.removeHandlers?.('convenience-module');
         this.removeStatusHooks();

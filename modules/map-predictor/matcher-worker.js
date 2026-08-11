@@ -62,6 +62,13 @@ export function compactMatcherResult(result) {
                 kind: cell.kind
             }))
             : [],
+        bestDisplayPredictions: Array.isArray(result?.bestDisplayPredictions)
+            ? result.bestDisplayPredictions.map(cell => ({
+                x: cell.x,
+                y: cell.y,
+                kind: cell.kind
+            }))
+            : [],
         forcePredictions: Array.isArray(result?.forcePredictions)
             ? result.forcePredictions.map(cell => ({
                 x: cell.x,

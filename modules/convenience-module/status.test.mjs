@@ -18,9 +18,10 @@ function readySummary(overrides = {}) {
         plausibleCandidateCount: 1,
         safePredictionCount: 120,
         provisionalPredictionCount: 120,
+        bestDisplayPredictionCount: 135,
         forcePredictionCount: 135,
-        predictionCount: 120,
-        predictionMode: 'safe',
+        predictionCount: 135,
+        predictionMode: 'best',
         revealEnabled: true,
         forceRevealActive: false,
         match: {
@@ -44,19 +45,22 @@ test('Map status summarizes score and detailed matcher state', () => {
     const status = createMapPredictorStatus(readySummary());
 
     assert.equal(status.light, 'Map (98.8%)');
-    assert.equal(status.col, 10);
+    assert.equal(status.col, 14);
     assert.equal(status.dwemStatusId, 'map-predictor');
     assert.match(status.desc, /MapPredictor: enabled \(RC enabled; Ctrl-M on\)/u);
-    assert.match(status.desc, /Best candidate: alpha_map \(98\.8%\)/u);
-    assert.match(status.desc, /terrain similarity, not the probability/u);
-    assert.match(status.desc, /Verdict: SAFE; reason: ready/u);
+    assert.match(status.desc, /Candidate: alpha_map/u);
+    assert.match(status.desc, /Similarity: 98\.8% terrain match/u);
+    assert.match(status.desc, /not correctness probability/u);
+    assert.match(status.desc, /Verdict: AUTO BEST GUESS \(accepted match\); reason: ready; ambiguity: no/u);
     assert.match(status.desc, /Evidence: 384 cells, 4 kinds, 42\.5% coverage/u);
     assert.match(status.desc, /Candidates: 2 loaded, 1 plausible/u);
-    assert.match(status.desc, /Predictions: 120 safe, 120 provisional consensus, 135 best-only force, 120 displayed-set/u);
-    assert.match(status.desc, /Display: on \(automatic\)/u);
+    assert.match(status.desc, /Cells: 135 selected for display, 135 current-best, 120 safe diagnostic, 120 consensus diagnostic, 135 explicit-force eligible/u);
+    assert.match(status.desc, /Controls: display on \(automatic orange best candidate\); \/reveal on; \/force_reveal available/u);
+    assert.equal(status.desc.split('\n').length, 8);
+    assert.doesNotMatch(status.desc, / \| /u);
 });
 
-test('Map status labels safe consensus without claiming a unique map identity', () => {
+test('Map status labels accepted ambiguous output as a best guess', () => {
     const status = createMapPredictorStatus(readySummary({
         plausibleCandidateCount: 3,
         match: {
@@ -65,13 +69,13 @@ test('Map status labels safe consensus without claiming a unique map identity', 
         }
     }));
 
-    assert.equal(status.col, 10);
-    assert.match(status.desc, /Best candidate: alpha_map/u);
+    assert.equal(status.col, 14);
+    assert.match(status.desc, /Candidate: alpha_map/u);
     assert.match(
         status.desc,
-        /Verdict: SAFE CONSENSUS \(ambiguous identity\); reason: ready/u
+        /Verdict: AUTO BEST GUESS \(accepted match; ambiguous\); reason: ready; ambiguity: yes/u
     );
-    assert.doesNotMatch(status.desc, /Verdict: SAFE;/u);
+    assert.doesNotMatch(status.desc, /Verdict: SAFE/u);
 });
 
 test('Map status is absent while Ctrl-M has paused the runtime', () => {
@@ -83,25 +87,26 @@ test('Map status is absent while Ctrl-M has paused the runtime', () => {
     assert.equal(status, null);
 });
 
-test('Map status distinguishes automatic unconfirmed consensus terrain', () => {
+test('Map status distinguishes an unaccepted automatic best candidate', () => {
     const status = createMapPredictorStatus(readySummary({
         resultReason: 'insufficient-evidence',
         plausibleCandidateCount: 3,
         safePredictionCount: 0,
         provisionalPredictionCount: 135,
+        bestDisplayPredictionCount: 180,
         forcePredictionCount: 180,
-        predictionCount: 135,
-        predictionMode: 'provisional'
+        predictionCount: 180,
+        predictionMode: 'best'
     }));
 
     assert.equal(status.col, 14);
     assert.match(
         status.desc,
-        /Verdict: AUTO CONSENSUS \(unconfirmed identity\)/u
+        /Verdict: AUTO BEST GUESS \(unaccepted candidate; ambiguous\)/u
     );
     assert.match(status.desc, /reason: insufficient-evidence/u);
     assert.match(status.desc, /3 plausible/u);
-    assert.match(status.desc, /Display: on \(automatic orange shared terrain\)/u);
+    assert.match(status.desc, /Controls: display on \(automatic orange best candidate\)/u);
 });
 
 test('Map status distinguishes a prediction hidden with /reveal', () => {
@@ -110,23 +115,25 @@ test('Map status distinguishes a prediction hidden with /reveal', () => {
         plausibleCandidateCount: 3,
         safePredictionCount: 0,
         provisionalPredictionCount: 135,
+        bestDisplayPredictionCount: 180,
         predictionCount: 135,
-        predictionMode: 'provisional',
+        predictionMode: 'best',
         revealEnabled: false
     }));
 
     assert.equal(status.col, 8);
     assert.match(
         status.desc,
-        /Verdict: AVAILABLE \/ HIDDEN \(shared candidate terrain\)/u
+        /Verdict: AVAILABLE \/ HIDDEN \(best guess; ambiguous\)/u
     );
-    assert.match(status.desc, /Display: off \(hidden by \/reveal\)/u);
+    assert.match(status.desc, /Controls: display off \(hidden by \/reveal\)/u);
 });
 
-test('Map status labels a force-disabled detection-only candidate as blocked', () => {
+test('Map status is blocked only when the best has no constrained cells', () => {
     const status = createMapPredictorStatus(readySummary({
         resultReason: 'policy-disabled',
         safePredictionCount: 0,
+        bestDisplayPredictionCount: 0,
         forcePredictionCount: 0,
         predictionCount: 0,
         revealEnabled: false
@@ -135,9 +142,9 @@ test('Map status labels a force-disabled detection-only candidate as blocked', (
     assert.equal(status.col, 12);
     assert.match(
         status.desc,
-        /Verdict: BLOCKED \(detection-only; no supported cells\)/u
+        /Verdict: BLOCKED \(best candidate has no constrained unseen cells\)/u
     );
-    assert.match(status.desc, /Display: blocked/u);
+    assert.match(status.desc, /Controls: display blocked/u);
 });
 
 test('Map status reserves unsafe wording for an explicit force override', () => {
@@ -150,7 +157,7 @@ test('Map status reserves unsafe wording for an explicit force override', () => 
 
     assert.equal(status.col, 14);
     assert.match(status.desc, /Verdict: UNSAFE FORCE \(explicit\)/u);
-    assert.match(status.desc, /Display: on \(explicit unsafe override\)/u);
+    assert.match(status.desc, /Controls: display on \(explicit unsafe override\)/u);
 });
 
 test('Map status exposes runtime failures instead of labelling them waiting', () => {
@@ -159,6 +166,7 @@ test('Map status exposes runtime failures instead of labelling them waiting', ()
         resultReason: null,
         match: null,
         safePredictionCount: 0,
+        bestDisplayPredictionCount: 0,
         forcePredictionCount: 0,
         predictionCount: 0,
         revealEnabled: false,
@@ -167,7 +175,7 @@ test('Map status exposes runtime failures instead of labelling them waiting', ()
 
     assert.equal(status.col, 12);
     assert.match(status.desc, /Verdict: ERROR; reason: source-error/u);
-    assert.match(status.desc, /Display: off \(runtime error\)/u);
+    assert.match(status.desc, /Controls: display off \(runtime error\)/u);
     assert.match(status.desc, /Error: HTTPError — source download failed/u);
 });
 
@@ -271,6 +279,14 @@ class TrackedEventTarget extends EventTarget {
     constructor() {
         super();
         this.listeners = new Map();
+        this.elements = new Map();
+        this.head = {
+            appendChild: element => {
+                element.parentNode = this.head;
+                this.elements.set(element.id, element);
+                return element;
+            }
+        };
     }
 
     addEventListener(type, listener, options) {
@@ -287,6 +303,31 @@ class TrackedEventTarget extends EventTarget {
 
     listenerCount(type) {
         return this.listeners.get(type)?.size || 0;
+    }
+
+    createElement(tagName) {
+        const document = this;
+        return {
+            tagName: String(tagName).toUpperCase(),
+            id: '',
+            textContent: '',
+            parentNode: null,
+            remove() {
+                if (document.elements.get(this.id) === this) {
+                    document.elements.delete(this.id);
+                }
+                this.parentNode = null;
+            }
+        };
+    }
+
+    getElementById(identifier) {
+        return this.elements.get(identifier) || null;
+    }
+
+    styleCount() {
+        return [...this.elements.values()].filter(element =>
+            element.tagName === 'STYLE').length;
     }
 }
 
@@ -397,6 +438,28 @@ test('default order subscribes when Convenience onLoad precedes MapPredictor onL
             ),
             false
         );
+    } finally {
+        harness.restore();
+    }
+});
+
+test('multiline tooltip CSS exists only while MapPredictor status is visible', () => {
+    const harness = statusBridgeHarness();
+    const {convenience, document} = harness;
+    try {
+        convenience.onLoad();
+        // RC-off initialization must not modify the shared WebTiles tooltip.
+        assert.equal(document.styleCount(), 0);
+
+        convenience.handleMapPredictorStatus(readySummary());
+        convenience.handleMapPredictorStatus(readySummary());
+        assert.equal(document.styleCount(), 1);
+        const [style] = document.elements.values();
+        assert.match(style.textContent, /#stats_status_lights_tooltip/u);
+        assert.match(style.textContent, /white-space:\s*pre-line/u);
+
+        convenience.handleMapPredictorStatus({rcEnabled: false});
+        assert.equal(document.styleCount(), 0);
     } finally {
         harness.restore();
     }

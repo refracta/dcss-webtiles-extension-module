@@ -22,6 +22,7 @@ function emptyState(module) {
         predictionMode: 'none',
         safePredictionCount: 0,
         provisionalPredictionCount: 0,
+        bestDisplayPredictionCount: 0,
         forcePredictionCount: 0,
         plausibleCandidateCount: 0,
         revealEnabled: false,

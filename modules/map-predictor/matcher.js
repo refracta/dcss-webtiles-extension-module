@@ -2443,13 +2443,21 @@ function evaluateCompositeCandidates(
     const forceFamilies = bestPredictionFamilies.length
         ? bestPredictionFamilies
         : [compositeShellFamily(best)];
+    // Automatic display follows the current highest-scoring parent even when
+    // acceptance or explicit-force policy rejects it. Composite children can
+    // still vary, so expose only terrain which is singleton-constrained across
+    // every viable assembly belonging to that best parent.
+    const bestDisplayPredictions = compositeConsensusPredictions(
+        forceFamilies,
+        observations,
+        excludedKeys
+    );
+    // `forceRevealDisabled` remains an audit boundary for the explicit unsafe
+    // command. It deliberately does not suppress the separate orange
+    // best-display contract requested by the user.
     const forcePredictions = best.matchPolicy.forceRevealDisabled === true
         ? []
-        : compositeConsensusPredictions(
-            forceFamilies,
-            observations,
-            excludedKeys
-        );
+        : bestDisplayPredictions;
     // Automatic provisional terrain is the intersection of every retained
     // parent placement, regime/prize assignment, and child pool. Keep it
     // independent from the explicit best-placement force path so sparse
@@ -2483,6 +2491,7 @@ function evaluateCompositeCandidates(
         candidates: plausibleParents,
         predictions,
         provisionalPredictions,
+        bestDisplayPredictions,
         forcePredictions,
         structuralSingleton,
         plausibleCandidateCount: resolvedFamilyCount,
@@ -2630,6 +2639,7 @@ export class MapMatcher {
             candidates: [],
             predictions: [],
             provisionalPredictions: [],
+            bestDisplayPredictions: [],
             forcePredictions: [],
             structuralSingleton: false,
             reason: 'not-evaluated'
@@ -2799,9 +2809,13 @@ export class MapMatcher {
             // evidence true placement can be discarded. Partial layouts such
             // as Elf:$ and Zot:5 therefore remain revealDisabled until they
             // have a separate unresolved-placement certificate.
+            const bestDisplayPredictions = consensusPredictions(
+                [best],
+                observations
+            );
             const forcePredictions = best.matchPolicy.forceRevealDisabled
                 ? []
-                : consensusPredictions([best], observations);
+                : bestDisplayPredictions;
             const survivorConsensusPredictions = placementUnverified
                 || consensusOverflow || !survivors.length
                 ? []
@@ -2834,6 +2848,7 @@ export class MapMatcher {
                 candidates: survivors,
                 predictions,
                 provisionalPredictions,
+                bestDisplayPredictions,
                 forcePredictions,
                 structuralSingleton,
                 plausibleCandidateCount: plausible.count,
@@ -2927,14 +2942,17 @@ export class MapMatcher {
             .filter(candidate => plausibleCandidate(candidate, best, this.options));
         const consensusOverflow = plausible.length > this.options.maxConsensusCandidates;
         const survivors = plausible.slice(0, this.options.maxConsensusCandidates);
-        // Expose the singleton terrain cells from the current supported best
-        // placement even when normal score, ambiguity, policy, or exhaustive-
-        // placement gates reject it. This remains an explicit force-only
-        // diagnostic; automatic provisional display uses the all-candidate
-        // intersection below.
+        // Expose singleton-constrained terrain from the current highest-scoring
+        // placement independently of acceptance, ambiguity, placement proof,
+        // and reveal policy. The runtime uses this for the always-on orange
+        // estimate; the explicit force command remains separately audit-gated.
+        const bestDisplayPredictions = consensusPredictions(
+            [best],
+            observations
+        );
         const forcePredictions = best.matchPolicy.forceRevealDisabled
             ? []
-            : consensusPredictions([best], observations);
+            : bestDisplayPredictions;
         const survivorConsensusPredictions = placementUnverified
             || consensusOverflow || !survivors.length
             ? []
@@ -2967,6 +2985,7 @@ export class MapMatcher {
             candidates: survivors,
             predictions,
             provisionalPredictions,
+            bestDisplayPredictions,
             forcePredictions,
             structuralSingleton,
             plausibleCandidateCount: plausible.length,

@@ -100,6 +100,7 @@ function stateKey(sample) {
         sample.native,
         sample.safe,
         sample.provisional,
+        sample.bestDisplay,
         sample.force,
         sample.plausible,
         sample.predictionMode,
@@ -140,6 +141,7 @@ export function compactTimeline(samples = []) {
             native: sample.native ?? 0,
             safe: sample.safe ?? 0,
             provisional: sample.provisional ?? 0,
+            bestDisplay: sample.bestDisplay ?? 0,
             force: sample.force ?? 0,
             predictionMode: sample.predictionMode ?? 'none',
             revealEnabled: Boolean(sample.revealEnabled),
@@ -192,7 +194,8 @@ function automaticDisplaySample(samples) {
     return samples.find(sample => sample.displayed > 0
         && sample.forceRevealActive !== true
         && (sample.predictionMode === 'safe'
-            || sample.predictionMode === 'provisional')) || null;
+            || sample.predictionMode === 'provisional'
+            || sample.predictionMode === 'best')) || null;
 }
 
 function lastNonNullIdentity(samples) {
@@ -234,6 +237,8 @@ export function summarizeTimeline(samples = []) {
             Number(sample.displayed) || 0)),
         maxNative: Math.max(0, ...samples.map(sample =>
             Number(sample.native) || 0)),
+        maxBestDisplay: Math.max(0, ...samples.map(sample =>
+            Number(sample.bestDisplay) || 0)),
         finalIdentity,
         identityFlipCount: flips,
         identityChanges: changes,
@@ -356,6 +361,10 @@ export function buildBenchmarkReport(raw, sidecar, metadata = {}) {
                 ),
                 provisional: comparePredictionTruth(
                     truth.provisionalPredictions,
+                    truth.observations
+                ),
+                bestDisplay: comparePredictionTruth(
+                    truth.bestDisplayPredictions,
                     truth.observations
                 )
             } : null

@@ -585,6 +585,23 @@ function escapeHtml(value) {
         .replaceAll("'", '&#39;');
 }
 
+function crawlFormattedNotice(value) {
+    // MapPredictor notices used to target the HTML chat pane. The in-game
+    // `msgs` formatter supports Crawl colour tags instead, and treats HTML
+    // entities literally. Translate the small markup vocabulary used by this
+    // module while preserving escaped candidate/source text. Crawl uses `<<`
+    // for a literal less-than sign, preventing names from becoming format tags.
+    return String(value ?? '')
+        .replace(/<b>/giu, '<yellow>')
+        .replace(/<\/b>/giu, '</yellow>')
+        .replace(/<br\s*\/?>/giu, '\n')
+        .replaceAll('&lt;', '<<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&amp;', '&');
+}
+
 function numericOption(value, minimum, maximum) {
     return Number.isFinite(value) && value >= minimum && value <= maximum
         ? value
@@ -2740,37 +2757,13 @@ function resultSummary(result) {
 }
 
 function automaticPredictionPlan(result) {
-    const safePredictions = Array.isArray(result?.predictions)
-        ? result.predictions
-        : [];
-    if (result?.ready && safePredictions.length > 0) {
-        return {mode: 'safe', predictions: safePredictions};
-    }
-
-    // Provisional terrain is a separate matcher contract: every still-
-    // plausible identity, transform, placement, and composite assembly agrees
-    // on these cells. Never turn an ambiguous best candidate into an automatic
-    // full-map force reveal.
-    const provisionalPredictions = Array.isArray(
-        result?.provisionalPredictions
+    const bestDisplayPredictions = Array.isArray(
+        result?.bestDisplayPredictions
     )
-        ? result.provisionalPredictions
+        ? result.bestDisplayPredictions
         : [];
-    if (result?.best && provisionalPredictions.length > 0) {
-        return {mode: 'provisional', predictions: provisionalPredictions};
-    }
-
-    // A true structural singleton makes the best-only force intersection
-    // equivalent to all-candidate consensus. Keep this narrow fallback for
-    // older/special matcher results; `/force_reveal` remains available for
-    // every other best-effort placement.
-    const singletonPredictions = result?.structuralSingleton === true
-        && result?.consensusOverflow !== true
-        && Array.isArray(result?.forcePredictions)
-        ? result.forcePredictions
-        : [];
-    if (result?.best && singletonPredictions.length > 0) {
-        return {mode: 'provisional', predictions: singletonPredictions};
+    if (result?.best && bestDisplayPredictions.length > 0) {
+        return {mode: 'best', predictions: bestDisplayPredictions};
     }
     return {mode: 'none', predictions: []};
 }
@@ -3975,25 +3968,28 @@ export default class MapPredictorRuntime {
                 ? result.forcePredictions
                 : [];
             if (!result?.best || !forced.length) {
+                const restoreReveal = this.revealEnabledBeforeForce === true;
                 this.forceRevealActive = false;
                 this.revealEnabledBeforeForce = null;
                 this.webtilesAdapter.clearPredictions();
-                this.webtilesAdapter.setRevealEnabled(false);
-                if (this.templates.length) {
-                    this.status = 'matching';
-                }
+                this.webtilesAdapter.setRevealEnabled(
+                    result?.best ? restoreReveal : false
+                );
+                // The winning candidate may have changed to an audit-disabled
+                // family while force mode was active. Leave force mode, then
+                // continue into the normal current-best plan in this same
+                // evaluation instead of flashing a blank map.
+            } else {
+                const confidence = result.best?.score ?? 0;
+                this.webtilesAdapter.setPredictions(forced.map(cell => ({
+                    ...cell,
+                    confidence
+                })));
+                this.webtilesAdapter.setRevealEnabled(true);
+                this.status = 'map-forced';
                 this.emitStatus();
                 return;
             }
-            const confidence = result.best?.score ?? 0;
-            this.webtilesAdapter.setPredictions(forced.map(cell => ({
-                ...cell,
-                confidence
-            })));
-            this.webtilesAdapter.setRevealEnabled(true);
-            this.status = 'map-forced';
-            this.emitStatus();
-            return;
         }
         const automatic = automaticPredictionPlan(result);
         if (automatic.mode === 'none') {
@@ -4010,7 +4006,7 @@ export default class MapPredictorRuntime {
             ...cell,
             confidence
         })));
-        this.status = automatic.mode === 'safe'
+        this.status = result.ready
             ? 'map-inferred'
             : 'map-provisional';
 
@@ -4025,20 +4021,15 @@ export default class MapPredictorRuntime {
             this.autoRevealApplied = true;
             this.webtilesAdapter.setRevealEnabled(true);
         }
-        const fingerprint = automatic.mode === 'safe'
-            ? [
-                this.levelKey,
-                'safe',
-                best?.template?.path,
-                best?.template?.name,
-                best?.transform,
-                best?.offsetX,
-                best?.offsetY
-            ].join('|')
-            // The retained candidate set can narrow repeatedly while terrain
-            // arrives. Keep displaying its latest shared cells, but notify
-            // only once per level until the matcher promotes it to safe.
-            : [this.levelKey, 'provisional'].join('|');
+        const fingerprint = [
+            this.levelKey,
+            'best',
+            best?.template?.path,
+            best?.template?.name,
+            best?.transform,
+            best?.offsetX,
+            best?.offsetY
+        ].join('|');
         if (fingerprint === this.notificationFingerprint) {
             this.emitStatus();
             return;
@@ -4048,13 +4039,11 @@ export default class MapPredictorRuntime {
         const percentage = Math.round(confidence * 1000) / 10;
         this.sendLocalMessage(
             `<b>[MapPredictor]</b> ${name} `
-            + `${automatic.mode === 'safe' ? 'matched' : 'candidate'} `
+            + `${result.ready ? 'matched' : 'best candidate'} `
             + `(${percentage}%). `
             + (autoAppliedNow
-                ? automatic.mode === 'safe'
-                    ? 'Automatically mapped; type <b>/reveal</b> to hide it.'
-                    : 'Automatically mapped as an uncertain orange estimate; '
-                        + 'type <b>/reveal</b> to hide it.'
+                ? 'Automatically mapped as an uncertain orange best guess; '
+                    + 'type <b>/reveal</b> to hide it.'
                 : 'Type <b>/reveal</b> to magic-map the inferred terrain.')
         );
         this.emitStatus();
@@ -4247,6 +4236,7 @@ export default class MapPredictorRuntime {
             + `${summary.plausibleCandidateCount} plausible, `
             + `${summary.safePredictionCount} safe / `
             + `${summary.provisionalPredictionCount} provisional consensus / `
+            + `${summary.bestDisplayPredictionCount} current-best display / `
             + `${summary.forcePredictionCount} best-only force cells; `
             + `reason ${escapeHtml(summary.resultReason || 'unknown')}, `
             + `forced ${summary.forceRevealActive ? 'on' : 'off'}.`
@@ -4254,7 +4244,15 @@ export default class MapPredictorRuntime {
     }
 
     sendLocalMessage(content) {
-        this.dwem?.Modules?.CommandManager?.sendChatMessage?.(content);
+        const handleMessage = this.dwem?.Modules?.IOHook?.handle_message;
+        if (typeof handleMessage !== 'function') {
+            return false;
+        }
+        handleMessage({
+            msg: 'msgs',
+            messages: [{text: crawlFormattedNotice(content)}]
+        });
+        return true;
     }
 
     fail(status, error) {
@@ -4307,6 +4305,11 @@ export default class MapPredictorRuntime {
                 this.result?.provisionalPredictions
             )
                 ? this.result.provisionalPredictions.length
+                : 0,
+            bestDisplayPredictionCount: Array.isArray(
+                this.result?.bestDisplayPredictions
+            )
+                ? this.result.bestDisplayPredictions.length
                 : 0,
             forcePredictionCount: Array.isArray(this.result?.forcePredictions)
                 ? this.result.forcePredictions.length

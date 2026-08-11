@@ -23,6 +23,7 @@ function sample(overrides = {}) {
         native: 0,
         safe: 0,
         provisional: 0,
+        bestDisplay: 0,
         force: 100,
         plausible: 4,
         predictionMode: 'none',
@@ -77,7 +78,8 @@ test('timeline reports identity flips, stable point, and automatic display', () 
             displayed: 120,
             native: 100,
             provisional: 120,
-            predictionMode: 'provisional',
+            bestDisplay: 140,
+            predictionMode: 'best',
             revealEnabled: true
         })
     ]);
@@ -85,7 +87,9 @@ test('timeline reports identity flips, stable point, and automatic display', () 
     assert.equal(summary.finalIdentity, 'vault_b|rot90|3|4');
     assert.equal(summary.firstStablePoint.eventTime, 20);
     assert.equal(summary.firstAutomaticDisplay.eventTime, 30);
+    assert.equal(summary.firstAutomaticDisplay.mode, 'best');
     assert.equal(summary.automaticDisplaySucceeded, true);
+    assert.equal(summary.maxBestDisplay, 140);
     assert.equal(summary.forcedDisplaySeen, false);
 });
 
@@ -151,5 +155,6 @@ test('synthetic fixture groups resets and attaches truth metrics', async () => {
     });
     assert.equal(report.targets[0].resetSegments.length, 2);
     assert.equal(report.targets[0].truth.displayed.precision, 1);
+    assert.equal(report.targets[0].truth.bestDisplay.precision, 1);
     assert.equal(report.recording.sha256, 'abc');
 });

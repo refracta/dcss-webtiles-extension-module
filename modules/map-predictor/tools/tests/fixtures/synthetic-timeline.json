@@ -25,6 +25,7 @@
         "native": 0,
         "safe": 0,
         "provisional": 0,
+        "bestDisplay": 0,
         "force": 100,
         "plausible": 4,
         "predictionMode": "none",
@@ -44,9 +45,10 @@
         "native": 1,
         "safe": 0,
         "provisional": 1,
+        "bestDisplay": 1,
         "force": 100,
         "plausible": 2,
-        "predictionMode": "provisional",
+        "predictionMode": "best",
         "revealEnabled": true,
         "forceRevealActive": false,
         "match": {
@@ -64,10 +66,11 @@
       "v5": {
         "capturedAt": 15,
         "finalizedAt": 25,
-        "predictionMode": "provisional",
+        "predictionMode": "best",
         "displayedPredictions": [{"x": 1, "y": 1, "kind": "wall"}],
         "safePredictions": [],
         "provisionalPredictions": [{"x": 1, "y": 1, "kind": "wall"}],
+        "bestDisplayPredictions": [{"x": 1, "y": 1, "kind": "wall"}],
         "observations": [{"x": 1, "y": 1, "kind": "wall"}]
       }
     },

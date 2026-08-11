@@ -3,12 +3,16 @@
 This harness replays a fixed WebTiles recording in an anonymous browser
 context. It does not log in, edit RC files, resume a save, or send game input.
 
-It records the candidate identity, score, reason, plausible count, safe and
-provisional predictions, rendered/native counts, identity flips, first stable
-point, first automatic display, server-known/observed counts, and level-reset
-audits. A sidecar can mark the
+It records the candidate identity, score, reason, plausible count, safe,
+provisional-consensus, and current-best prediction counts, rendered/native
+counts, identity flips, first stable point, first automatic display,
+server-known/observed counts, and level-reset audits. A sidecar can mark the
 instant immediately before a final wizard mapping command (`&{`) so predicted
 terrain can be compared with subsequently observed terrain.
+
+Truth reports compare the displayed set, current-best display set, safe set,
+and provisional consensus separately. `predictionMode: "best"` is an automatic
+display; explicit `/force_reveal` samples remain classified as forced display.
 
 ## Run a recording
 

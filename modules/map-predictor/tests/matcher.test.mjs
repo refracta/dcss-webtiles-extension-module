@@ -514,6 +514,7 @@ test('exhaustive placement gate blocks unanchored heuristics without hiding best
     assert.equal(guarded.ready, false);
     assert.equal(guarded.reason, 'placement-unverified');
     assert.deepEqual(guarded.predictions, []);
+    assert.ok(guarded.bestDisplayPredictions.length > 0);
 });
 
 test('disabled partial policy blocks a heuristically unique reflected placement', () => {
@@ -565,13 +566,14 @@ test('disabled partial policy blocks a heuristically unique reflected placement'
     assert.equal(result.ready, false);
     assert.equal(result.reason, 'policy-disabled');
     assert.deepEqual(result.predictions, []);
+    assert.ok(result.bestDisplayPredictions.length > 0);
     assert.ok(result.forcePredictions.length > 0);
     assert.equal(result.forcePredictions.every(cell =>
         Number.isInteger(cell.x) && Number.isInteger(cell.y) && cell.kind
     ), true);
 });
 
-test('a force-disabled plausible survivor vetoes safe and provisional terrain', () => {
+test('a force-disabled survivor vetoes diagnostics but not best display terrain', () => {
     const rows = [
         ['wall', 'wall', 'wall'],
         ['wall', 'floor', 'door'],
@@ -622,11 +624,12 @@ test('a force-disabled plausible survivor vetoes safe and provisional terrain', 
         assert.equal(result.plausibleCandidateCount, 2);
         assert.deepEqual(result.predictions, []);
         assert.deepEqual(result.provisionalPredictions, []);
+        assert.ok(result.bestDisplayPredictions.length > 0);
         assert.ok(result.forcePredictions.length > 0);
     }
 });
 
-test('a non-tied force-disabled survivor still vetoes automatic terrain', () => {
+test('a non-tied force-disabled survivor still vetoes safe diagnostics', () => {
     const supportedRows = Array.from({length: 10}, (_, y) =>
         Array.from({length: 10}, (_, x) =>
             x === 0 || y === 0 || x === 9 || y === 9
@@ -688,6 +691,7 @@ test('a non-tied force-disabled survivor still vetoes automatic terrain', () => 
         assert.equal(result.reason, 'ambiguous');
         assert.deepEqual(result.predictions, []);
         assert.deepEqual(result.provisionalPredictions, []);
+        assert.ok(result.bestDisplayPredictions.length > 0);
     }
 });
 
@@ -886,6 +890,7 @@ test('correlation exhaustive placement is result-equivalent to legacy enumeratio
         })),
         predictions: result.predictions,
         provisionalPredictions: result.provisionalPredictions,
+        bestDisplayPredictions: result.bestDisplayPredictions,
         forcePredictions: result.forcePredictions
     });
 
@@ -1048,6 +1053,10 @@ test('correlation exhaustive placement emits only provisional survivor consensus
         expected.provisionalPredictions
     );
     assert.deepEqual(actual.forcePredictions, expected.forcePredictions);
+    assert.deepEqual(
+        actual.bestDisplayPredictions,
+        expected.bestDisplayPredictions
+    );
     assert.equal(actual.provisionalPredictions.some(cell =>
         cell.x === offset.x + 3 && cell.y === offset.y + 3), false);
 });
@@ -1138,6 +1147,7 @@ test('a non-portal wizard arrival falls back to terrain matching for force only'
     assert.equal(result.ready, false);
     assert.equal(result.reason, 'anchor-unverified');
     assert.deepEqual(result.predictions, []);
+    assert.ok(result.bestDisplayPredictions.length > 0);
     assert.ok(result.forcePredictions.length > 0);
 });
 
@@ -2118,6 +2128,7 @@ test('Vaults composite uses a stair anchor and reveals exact slot consensus', ()
     assert.equal(forceOnly.ready, false);
     assert.equal(forceOnly.reason, 'placement-unverified');
     assert.deepEqual(forceOnly.predictions, []);
+    assert.ok(forceOnly.bestDisplayPredictions.length > 0);
     assert.ok(forceOnly.forcePredictions.length > 0);
 
     const changedSlot = source.metadata.composite.slots[0];
@@ -2141,7 +2152,7 @@ test('Vaults composite uses a stair anchor and reveals exact slot consensus', ()
         matcher.volatileObservations.has(`${prediction.x},${prediction.y}`)), false);
 });
 
-test('a force-disabled singleton composite cannot auto-display best terrain', () => {
+test('a force-disabled singleton composite exposes best display but not force', () => {
     const source = vaultsCompositeMatcherFixture();
     source.metadata.matchPolicy.forceRevealDisabled = true;
     source.metadata.composite.type = 'fixed-subvaults-v1';
@@ -2192,6 +2203,7 @@ test('a force-disabled singleton composite cannot auto-display best terrain', ()
     assert.equal(result.reason, 'ambiguous');
     assert.deepEqual(result.predictions, []);
     assert.deepEqual(result.provisionalPredictions, []);
+    assert.ok(result.bestDisplayPredictions.length > 0);
     assert.deepEqual(result.forcePredictions, []);
 });
 

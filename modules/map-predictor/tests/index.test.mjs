@@ -342,16 +342,31 @@ function vaultsFixtureLos(truth, radius) {
 function createHarness(options = {}) {
     const template = fixtureTemplate();
     const messages = [];
+    const localPackets = [];
+    const chatMessages = [];
     const commands = new Map();
     const commandManager = {
         addCommand(command, argumentTypes, handler) {
             commands.set(command, {argumentTypes, handler});
         },
         sendChatMessage(content) {
-            messages.push(content);
+            chatMessages.push(content);
         }
     };
-    const dwem = {Modules: {CommandManager: commandManager}};
+    const dwem = {
+        Modules: {
+            CommandManager: commandManager,
+            IOHook: {
+                handle_message(packet) {
+                    localPackets.push(structuredClone(packet));
+                    if (packet?.msg === 'msgs') {
+                        messages.push(...(packet.messages || []).map(message =>
+                            message.text));
+                    }
+                }
+            }
+        }
+    };
     const repository = {
         cache: {close() {}},
         async prepare(versionText) {
@@ -387,7 +402,15 @@ function createHarness(options = {}) {
         workerFactory: options.workerFactory,
         workerOptions: options.workerOptions
     });
-    return {module, adapter, commands, messages, template};
+    return {
+        module,
+        adapter,
+        commands,
+        messages,
+        localPackets,
+        chatMessages,
+        template
+    };
 }
 
 function compactReadyResult(template, offsetX = -3, offsetY = -2) {
@@ -409,6 +432,11 @@ function compactReadyResult(template, offsetX = -3, offsetY = -2) {
             offsetY
         },
         predictions: Array.from({length: 5}, (_, index) => ({
+            x: offsetX + index,
+            y: offsetY,
+            kind: index === 0 ? 'wall' : 'floor'
+        })),
+        bestDisplayPredictions: Array.from({length: 5}, (_, index) => ({
             x: offsetX + index,
             y: offsetY,
             kind: index === 0 ? 'wall' : 'floor'
@@ -795,7 +823,7 @@ test('Vaults:5 is one audited shell with four complete quadrant slots', () => {
     assert.deepEqual(parseRuntimeDes(changedQuadrant, {path}), []);
 });
 
-test('Vaults:5 sparse auto terrain is six-landing assembly consensus', () => {
+test('Vaults:5 sparse auto terrain follows the current best assembly estimate', () => {
     const path = 'crawl-ref/source/dat/des/branches/vaults.des';
     const [parsed] = parseRuntimeDes(vaultsCompositeSourceFixture(), {path});
     const [template] = selectSafeTemplates(
@@ -839,10 +867,10 @@ test('Vaults:5 sparse auto terrain is six-landing assembly consensus', () => {
                     ?.kind !== cell.kind);
             assert.deepEqual(provisionalMismatches, [], detail);
 
-            // Runtime must display the cross-placement/assembly intersection,
-            // never the much larger current-best force guess.
+            // Consensus remains available as a diagnostic, while the runtime
+            // follows the current highest-scoring parent/assembly estimate.
             module.handleResult(result);
-            assert.equal(module.getDebugState().predictionMode, 'provisional');
+            assert.equal(module.getDebugState().predictionMode, 'best');
             assert.equal(
                 module.getDebugState().provisionalPredictionCount,
                 result.provisionalPredictions.length,
@@ -850,7 +878,7 @@ test('Vaults:5 sparse auto terrain is six-landing assembly consensus', () => {
             );
             assert.deepEqual(
                 adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
-                result.provisionalPredictions,
+                result.bestDisplayPredictions,
                 detail
             );
 
@@ -871,7 +899,7 @@ test('Vaults:5 sparse auto terrain is six-landing assembly consensus', () => {
     assert.ok(unsafeEntryForceMismatches > 0);
 });
 
-test('Vaults:5 reconnect without an exact entry keeps force terrain manual', () => {
+test('Vaults:5 reconnect automatically displays its unverified best placement', () => {
     const path = 'crawl-ref/source/dat/des/branches/vaults.des';
     const [parsed] = parseRuntimeDes(vaultsCompositeSourceFixture(), {path});
     const entry = {x: 34, y: 28};
@@ -892,15 +920,19 @@ test('Vaults:5 reconnect without an exact entry keeps force terrain manual', () 
     assert.equal(result.reason, 'placement-unverified');
     assert.deepEqual(result.predictions, []);
     assert.deepEqual(result.provisionalPredictions, []);
+    assert.ok(result.bestDisplayPredictions.length > 0);
     assert.ok(result.forcePredictions.length > 0);
 
     const {module, adapter} = createHarness();
     module.onLoad();
     module.templates = [unanchored];
     module.handleResult(result);
-    assert.equal(module.getDebugState().predictionMode, 'none');
-    assert.equal(adapter.revealEnabled, false);
-    assert.deepEqual(adapter.predictions, []);
+    assert.equal(module.getDebugState().predictionMode, 'best');
+    assert.equal(adapter.revealEnabled, true);
+    assert.deepEqual(
+        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+        result.bestDisplayPredictions
+    );
     module.destroy();
 });
 
@@ -1601,8 +1633,9 @@ test('worker result serialization omits transformed grids and candidate payloads
         candidates: [{transformed: {grid: template.grid}}],
         predictions: [{x: 3, y: 4, kind: 'wall'}],
         provisionalPredictions: [{x: 4, y: 5, kind: 'door'}],
+        bestDisplayPredictions: [{x: 5, y: 6, kind: 'floor'}],
         structuralSingleton: true,
-        forcePredictions: [{x: 5, y: 6, kind: 'floor'}]
+        forcePredictions: [{x: 6, y: 7, kind: 'floor'}]
     });
 
     assert.deepEqual(compact.best.template, {
@@ -1617,9 +1650,12 @@ test('worker result serialization omits transformed grids and candidate payloads
     assert.deepEqual(compact.provisionalPredictions, [
         {x: 4, y: 5, kind: 'door'}
     ]);
+    assert.deepEqual(compact.bestDisplayPredictions, [
+        {x: 5, y: 6, kind: 'floor'}
+    ]);
     assert.equal(compact.structuralSingleton, true);
     assert.deepEqual(compact.forcePredictions, [
-        {x: 5, y: 6, kind: 'floor'}
+        {x: 6, y: 7, kind: 'floor'}
     ]);
 });
 
@@ -1738,7 +1774,30 @@ test('module loads exact-version sources, infers a map, and reveals locally', as
     assert.equal(adapter.predictions.length, 0);
 });
 
-test('ambiguous best-only terrain stays hidden until explicit force reveal', () => {
+test('MapPredictor notices use the in-game message pane, never chat', () => {
+    const {
+        module,
+        localPackets,
+        chatMessages,
+        template
+    } = createHarness();
+    module.onLoad();
+    module.templates = [template];
+
+    const result = compactReadyResult(template);
+    result.best.template.name = `tomb_<&"'>`;
+    module.handleResult(result);
+
+    assert.equal(localPackets.at(-1)?.msg, 'msgs');
+    const text = localPackets.at(-1)?.messages?.[0]?.text;
+    assert.match(text, /^<yellow>\[MapPredictor\]<\/yellow>/u);
+    assert.match(text, /tomb_<<&"'> matched/u);
+    assert.doesNotMatch(text, /<\/?b>|&(?:lt|gt|amp|quot);|&#39;/u);
+    assert.deepEqual(chatMessages, []);
+    module.destroy();
+});
+
+test('a 100% policy-disabled best candidate is displayed automatically', () => {
     const {module, adapter, commands, messages, template} = createHarness();
     module.onLoad();
     const forcedCells = Array.from({length: 6}, (_, index) => ({
@@ -1756,7 +1815,7 @@ test('ambiguous best-only terrain stays hidden until explicit force reveal', () 
         consensusOverflow: false,
         best: {
             template: {name: template.name, path: template.path},
-            score: 0.91,
+            score: 1,
             evidenceCells: 14,
             evidenceWeight: 16,
             distinctKinds: 3,
@@ -1766,16 +1825,21 @@ test('ambiguous best-only terrain stays hidden until explicit force reveal', () 
             offsetY: 2
         },
         predictions: [],
+        provisionalPredictions: [],
+        bestDisplayPredictions: forcedCells,
         forcePredictions: forcedCells
     });
 
-    assert.equal(module.getDebugState().status, 'matching');
-    assert.equal(module.getDebugState().predictionMode, 'none');
-    assert.equal(adapter.revealEnabled, false);
-    assert.deepEqual(adapter.predictions, []);
+    assert.equal(module.getDebugState().status, 'map-provisional');
+    assert.equal(module.getDebugState().predictionMode, 'best');
+    assert.equal(adapter.revealEnabled, true);
+    assert.deepEqual(
+        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+        forcedCells
+    );
     commands.get('/reveal_status').handler();
     assert.match(messages.at(-1), /unaccepted candidate/);
-    assert.match(messages.at(-1), /91\.00%/);
+    assert.match(messages.at(-1), /100\.00%/);
     assert.match(messages.at(-1), /3 plausible/);
     assert.match(messages.at(-1), /6 best-only force cells/);
     assert.match(messages.at(-1), /policy-disabled/);
@@ -1789,9 +1853,12 @@ test('ambiguous best-only terrain stays hidden until explicit force reveal', () 
 
     commands.get('/force_reveal').handler();
     assert.equal(module.forceRevealActive, false);
-    // Leaving explicit force restores the hidden automatic state.
-    assert.equal(adapter.revealEnabled, false);
-    assert.deepEqual(adapter.predictions, []);
+    // Leaving explicit force restores the automatically displayed best set.
+    assert.equal(adapter.revealEnabled, true);
+    assert.deepEqual(
+        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+        forcedCells
+    );
     assert.match(messages.at(-1), /Forced terrain cleared/);
 
     module.handleResult({
@@ -1803,7 +1870,7 @@ test('ambiguous best-only terrain stays hidden until explicit force reveal', () 
     assert.doesNotMatch(messages.at(-1), /No candidate placement/);
 });
 
-test('automatic provisional display prefers consensus over best-only force', () => {
+test('automatic display prefers the current best over ambiguous consensus', () => {
     const {module, adapter, commands, template} = createHarness();
     module.onLoad();
     module.templates = [template];
@@ -1832,13 +1899,14 @@ test('automatic provisional display prefers consensus over best-only force', () 
         },
         predictions: [],
         provisionalPredictions: consensus,
+        bestDisplayPredictions: forced,
         forcePredictions: forced
     });
 
-    assert.equal(module.getDebugState().predictionMode, 'provisional');
+    assert.equal(module.getDebugState().predictionMode, 'best');
     assert.deepEqual(
         adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
-        consensus
+        forced
     );
 
     commands.get('/force_reveal').handler();
@@ -1848,16 +1916,47 @@ test('automatic provisional display prefers consensus over best-only force', () 
         forced
     );
     commands.get('/force_reveal').handler();
-    assert.equal(module.getDebugState().predictionMode, 'provisional');
+    assert.equal(module.getDebugState().predictionMode, 'best');
     assert.deepEqual(
         adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
-        consensus
+        forced
     );
     module.destroy();
 });
 
-test('detection-only and force-disabled results stay hidden automatically', () => {
+test('a changed best candidate immediately replaces a visible orange set', () => {
     const {module, adapter, template} = createHarness();
+    module.onLoad();
+    module.templates = [template];
+    const first = {
+        ...compactReadyResult(template),
+        ready: false,
+        reason: 'ambiguous',
+        bestDisplayPredictions: [{x: 1, y: 1, kind: 'wall'}]
+    };
+    module.handleResult(first);
+    assert.equal(adapter.revealEnabled, true);
+
+    module.handleResult({
+        ...first,
+        best: {
+            ...first.best,
+            template: {name: 'new-best', path: 'new-best.des'},
+            score: 0.99,
+            offsetX: 7
+        },
+        bestDisplayPredictions: [{x: 7, y: 8, kind: 'floor'}]
+    });
+
+    assert.equal(adapter.revealEnabled, true);
+    assert.deepEqual(
+        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+        [{x: 7, y: 8, kind: 'floor'}]
+    );
+});
+
+test('detection-only singleton cells display without enabling explicit force', () => {
+    const {module, adapter, commands, messages, template} = createHarness();
     module.onLoad();
     module.templates = [template];
     module.handleResult({
@@ -1872,18 +1971,76 @@ test('detection-only and force-disabled results stay hidden automatically', () =
             offsetY: 0
         },
         predictions: [],
-        // The matcher emits this empty array for forceRevealDisabled and
-        // failed-audit detection-only templates.
+        provisionalPredictions: [],
+        bestDisplayPredictions: [
+            {x: 2, y: 3, kind: 'wall'},
+            {x: 3, y: 3, kind: 'floor'}
+        ],
+        // Explicit force remains disabled by the source audit.
         forcePredictions: []
     });
 
-    assert.equal(module.getDebugState().status, 'matching');
-    assert.equal(module.getDebugState().predictionMode, 'none');
-    assert.equal(adapter.revealEnabled, false);
-    assert.deepEqual(adapter.predictions, []);
+    assert.equal(module.getDebugState().status, 'map-provisional');
+    assert.equal(module.getDebugState().predictionMode, 'best');
+    assert.equal(adapter.revealEnabled, true);
+    assert.deepEqual(
+        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+        [
+            {x: 2, y: 3, kind: 'wall'},
+            {x: 3, y: 3, kind: 'floor'}
+        ]
+    );
+    commands.get('/force_reveal').handler();
+    assert.equal(module.forceRevealActive, false);
+    assert.match(messages.at(-1), /no unrevealed inferred cells left/u);
 });
 
-test('manual reveal OFF latches across later provisional candidate updates', () => {
+test('no best candidate or no constrained best cells still fails closed', () => {
+    const {module, adapter, template} = createHarness();
+    module.onLoad();
+    module.templates = [template];
+
+    module.handleResult({
+        ready: false,
+        best: null,
+        reason: 'no-candidates',
+        bestDisplayPredictions: [{x: 1, y: 1, kind: 'wall'}]
+    });
+    assert.deepEqual(adapter.predictions, []);
+    assert.equal(adapter.revealEnabled, false);
+
+    module.handleResult({
+        ready: false,
+        best: {template: {name: 'empty-best'}, score: 1},
+        reason: 'policy-disabled',
+        bestDisplayPredictions: []
+    });
+    assert.deepEqual(adapter.predictions, []);
+    assert.equal(module.getDebugState().predictionMode, 'none');
+});
+
+test('synthetic or terrain-unreliable display cells never enter matcher evidence', () => {
+    const {module, adapter, template} = createHarness();
+    module.onLoad();
+    module.templates = [template];
+    module.handleResult({
+        ...compactReadyResult(template),
+        bestDisplayPredictions: [{x: 9, y: 4, kind: 'wall'}]
+    });
+
+    module.onKnowledge([{
+        x: 9,
+        y: 4,
+        cell: {f: 1, mf: 2},
+        terrainReliable: false
+    }], {enums: {MF_WALL: 2}});
+
+    assert.equal(module.matcher.observations.size, 0);
+    assert.equal(module.getDebugState().observationCount, 0);
+    assert.equal(adapter.predictions.length, 1);
+});
+
+test('manual reveal OFF latches while a later best candidate replaces cells', () => {
     const {module, adapter, template} = createHarness();
     module.onLoad();
     module.templates = [template];
@@ -1893,6 +2050,7 @@ test('manual reveal OFF latches across later provisional candidate updates', () 
         reason: 'below-threshold',
         predictions: [],
         provisionalPredictions: [{x: 1, y: 2, kind: 'floor'}],
+        bestDisplayPredictions: [{x: 1, y: 2, kind: 'floor'}],
         forcePredictions: [{x: 1, y: 2, kind: 'floor'}]
     };
 
@@ -1904,6 +2062,7 @@ test('manual reveal OFF latches across later provisional candidate updates', () 
         ...provisional,
         best: {...provisional.best, score: 0.94, offsetX: 3},
         provisionalPredictions: [{x: 4, y: 2, kind: 'wall'}],
+        bestDisplayPredictions: [{x: 4, y: 2, kind: 'wall'}],
         forcePredictions: [{x: 4, y: 2, kind: 'wall'}]
     });
     assert.equal(adapter.revealEnabled, false);
@@ -1938,6 +2097,41 @@ test('leaving force reveal restores an accepted safe auto reveal', () => {
     assert.deepEqual(
         adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
         safe.predictions
+    );
+});
+
+test('a force-active switch to an audit-disabled best falls through to auto display', () => {
+    const {module, adapter, template} = createHarness();
+    module.onLoad();
+    module.templates = [template];
+    const first = {
+        ...compactReadyResult(template),
+        forcePredictions: [{x: 1, y: 5, kind: 'wall'}],
+        bestDisplayPredictions: [{x: 1, y: 5, kind: 'wall'}]
+    };
+    module.handleResult(first);
+    module.toggleForceReveal();
+    assert.equal(module.forceRevealActive, true);
+
+    module.handleResult({
+        ...first,
+        ready: false,
+        reason: 'policy-disabled',
+        best: {
+            ...first.best,
+            template: {name: 'detection-best', path: 'detection.des'},
+            score: 1
+        },
+        bestDisplayPredictions: [{x: 8, y: 6, kind: 'floor'}],
+        forcePredictions: []
+    });
+
+    assert.equal(module.forceRevealActive, false);
+    assert.equal(adapter.revealEnabled, true);
+    assert.equal(module.getDebugState().predictionMode, 'best');
+    assert.deepEqual(
+        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+        [{x: 8, y: 6, kind: 'floor'}]
     );
 });
 
@@ -2144,7 +2338,7 @@ test('the Slime wall-collapse message invalidates inferred end terrain', async (
     module.destroy();
 });
 
-test('later contradictory terrain withdraws a map when no consensus remains', async () => {
+test('later contradictory terrain replaces safe terrain with the current best guess', async () => {
     const {module, adapter, template} = createHarness();
     module.onLoad();
     transitionToWizlab(module);
@@ -2168,11 +2362,11 @@ test('later contradictory terrain withdraws a map when no consensus remains', as
     module.onKnowledge(contradictory, observed.binding);
     await new Promise(resolve => setTimeout(resolve, 20));
 
-    assert.equal(module.getDebugState().status, 'matching');
+    assert.equal(module.getDebugState().status, 'map-provisional');
     assert.notEqual(module.getDebugState().resultReason, 'ready');
-    assert.equal(module.getDebugState().predictionMode, 'none');
+    assert.equal(module.getDebugState().predictionMode, 'best');
     assert.equal(module.getDebugState().provisionalPredictionCount, 0);
-    assert.deepEqual(adapter.predictions, []);
+    assert.ok(adapter.predictions.length > 0);
 });
 
 test('unsupported places fail closed without source requests or predictions', async () => {
@@ -2300,9 +2494,10 @@ test('the first version packet preserves map evidence received during reconnect'
     assert.equal(module.getDebugState().observationCount, before);
     assert.equal(module.getDebugState().levelSignals.levelEntry, undefined);
     assert.equal(module.templates[0].metadata.matchAnchor, undefined);
-    assert.equal(module.getDebugState().predictionCount, 0);
-    assert.equal(module.getDebugState().predictionMode, 'none');
+    assert.ok(module.getDebugState().predictionCount > 0);
+    assert.equal(module.getDebugState().predictionMode, 'best');
     assert.equal(module.getDebugState().provisionalPredictionCount, 0);
+    assert.ok(module.getDebugState().bestDisplayPredictionCount > 0);
     assert.ok(module.getDebugState().forcePredictionCount > 0);
     assert.equal(module.getDebugState().resultReason, 'placement-unverified');
     module.destroy();

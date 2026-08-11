@@ -84,17 +84,26 @@ function fakeWindow(hash = '') {
 
 function harness({hash = ''} = {}) {
     const messages = [];
+    const chatMessages = [];
     const commands = new Map();
     const sendBefore = hookPoint();
     const dwem = {
         Modules: {
-            IOHook: {send_message: {before: sendBefore}},
+            IOHook: {
+                send_message: {before: sendBefore},
+                handle_message(packet) {
+                    if (packet?.msg === 'msgs') {
+                        messages.push(...(packet.messages || []).map(message =>
+                            message.text));
+                    }
+                }
+            },
             CommandManager: {
                 addCommand(name, args, handler) {
                     commands.set(name, {args, handler});
                 },
                 sendChatMessage(message) {
-                    messages.push(message);
+                    chatMessages.push(message);
                 }
             }
         }
@@ -119,6 +128,7 @@ function harness({hash = ''} = {}) {
         adapter,
         commands,
         messages,
+        chatMessages,
         sendBefore,
         window
     };
@@ -174,6 +184,7 @@ function readyResult(template, offset = 0) {
             offsetY: 0
         },
         predictions: [{x: offset + 4, y: 5, kind: 'wall'}],
+        bestDisplayPredictions: [{x: offset + 4, y: 5, kind: 'wall'}],
         forcePredictions: []
     };
 }
@@ -399,7 +410,7 @@ test('Sprint auto reveal is once per session and manual OFF survives reload', as
     assert.equal(adapter.revealEnabled, true);
 });
 
-test('safe results are preferred and supported rejected candidates auto reveal provisionally', () => {
+test('accepted and rejected results both display their current best cells', () => {
     const {module, adapter} = harness();
     const ordinary = sprintTemplate('ordinary');
     ordinary.metadata.sprint = false;
@@ -417,12 +428,13 @@ test('safe results are preferred and supported rejected candidates auto reveal p
         reason: 'below-threshold',
         predictions: [],
         provisionalPredictions: [{x: 7, y: 8, kind: 'floor'}],
+        bestDisplayPredictions: [{x: 7, y: 8, kind: 'floor'}],
         forcePredictions: [{x: 7, y: 8, kind: 'floor'}]
     });
     assert.equal(adapter.revealEnabled, true);
     assert.equal(module.autoRevealApplied, true);
     assert.equal(module.getDebugState().status, 'map-provisional');
-    assert.equal(module.getDebugState().predictionMode, 'provisional');
+    assert.equal(module.getDebugState().predictionMode, 'best');
     assert.deepEqual(adapter.predictions.map(({x, y, kind}) => ({x, y, kind})), [
         {x: 7, y: 8, kind: 'floor'}
     ]);

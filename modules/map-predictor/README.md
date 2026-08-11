@@ -16,9 +16,20 @@ map_predictor = true
 - `/map_predictor reload`: reload map sources for the current game version
 
 `Map (NN.N%)` is terrain similarity, not the probability that a prediction is
-correct. Orange terrain is unconfirmed and may be wrong. When several maps
-match, the module shows only their shared terrain. A best candidate is shown
-automatically only when it is the sole retained placement.
+correct. Whenever matching has a best candidate with constrained unseen cells,
+that candidate's current best terrain estimate is shown automatically in
+orange—even at 100% similarity when acceptance, ambiguity, placement, or source
+policy checks are unresolved. A later winner replaces the orange estimate.
+Orange terrain is always unconfirmed and may be wrong; safe and multi-candidate
+consensus counts remain diagnostic information rather than the automatic
+display source.
+
+`/reveal` deliberately hides or restores the current estimate and stays hidden
+as later winners arrive. `/force_reveal` is a separate explicit override and
+remains unavailable for source families whose audit disables force reveal. If
+there is no loaded source, no best candidate, or no constrained unseen cell,
+nothing is displayed. Map Predictor notices appear in the in-game message log,
+not chat.
 
 Spectators follow the watched player's `map_predictor` RC setting. When the
 option is absent or `false`, map sources, the matcher, and the worker are not
