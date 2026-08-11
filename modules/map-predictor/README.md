@@ -17,7 +17,8 @@ map_predictor = true
 
 `Map (NN.N%)` is terrain similarity, not the probability that a prediction is
 correct. Orange terrain is unconfirmed and may be wrong. When several maps
-match, the module shows shared terrain or the current best candidate.
+match, the module shows only their shared terrain. A best candidate is shown
+automatically only when it is the sole retained placement.
 
 Spectators follow the watched player's `map_predictor` RC setting. When the
 option is absent or `false`, map sources, the matcher, and the worker are not

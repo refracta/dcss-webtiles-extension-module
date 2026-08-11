@@ -416,6 +416,7 @@ test('safe results are preferred and supported rejected candidates auto reveal p
         ready: false,
         reason: 'below-threshold',
         predictions: [],
+        provisionalPredictions: [{x: 7, y: 8, kind: 'floor'}],
         forcePredictions: [{x: 7, y: 8, kind: 'floor'}]
     });
     assert.equal(adapter.revealEnabled, true);

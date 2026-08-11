@@ -46,6 +46,9 @@ export function createMapPredictorStatus(summary) {
     const score = percentage(match?.score);
     const forced = summary.forceRevealActive === true;
     const safePredictionCount = count(summary.safePredictionCount);
+    const provisionalPredictionCount = count(
+        summary.provisionalPredictionCount
+    );
     const forcePredictionCount = count(summary.forcePredictionCount);
     const predictionCount = count(summary.predictionCount);
     const revealEnabled = summary.revealEnabled === true;
@@ -73,13 +76,17 @@ export function createMapPredictorStatus(summary) {
         display = 'on (automatic)';
         colour = 10;
     } else if (displayed) {
-        verdict = `AUTO BEST GUESS (unconfirmed${ambiguous ? '; ambiguous' : ''})`;
-        display = 'on (automatic orange prediction)';
+        verdict = ambiguous
+            ? 'AUTO CONSENSUS (unconfirmed identity)'
+            : 'AUTO SUPPORTED TERRAIN (unconfirmed)';
+        display = 'on (automatic orange shared terrain)';
         colour = 14;
     } else if (hidden) {
         const available = accepted
             ? ambiguous ? 'safe consensus' : 'safe prediction'
-            : ambiguous ? 'ambiguous best guess' : 'best guess';
+            : provisionalPredictionCount > 0
+                ? ambiguous ? 'shared candidate terrain' : 'supported terrain'
+                : 'prediction';
         verdict = `AVAILABLE / HIDDEN (${available})`;
         display = 'off (hidden by /reveal)';
     } else if (summary.error) {
@@ -93,8 +100,8 @@ export function createMapPredictorStatus(summary) {
         display = 'blocked';
         colour = 12;
     } else if (match && forcePredictionCount > 0) {
-        verdict = `AVAILABLE (best guess${ambiguous ? '; ambiguous' : ''})`;
-        display = 'off (supported cells are available)';
+        verdict = `FORCE AVAILABLE (best-only${ambiguous ? '; ambiguous' : ''})`;
+        display = 'off (automatic consensus is unavailable)';
         colour = 14;
     }
     const coverage = percentage(match?.coverage);
@@ -108,7 +115,7 @@ export function createMapPredictorStatus(summary) {
         `Verdict: ${verdict}; reason: ${tooltipValue(summary.resultReason, summary.status || 'not evaluated')}`,
         `Evidence: ${count(match?.evidenceCells)} cells, ${count(match?.distinctKinds)} kinds, ${coverage || 'n/a'} coverage`,
         `Candidates: ${templateCount} loaded, ${count(summary.plausibleCandidateCount)} plausible`,
-        `Predictions: ${safePredictionCount} safe, ${forcePredictionCount} best-guess, ${predictionCount} available`,
+        `Predictions: ${safePredictionCount} safe, ${provisionalPredictionCount} provisional consensus, ${forcePredictionCount} best-only force, ${predictionCount} displayed-set`,
         `Display: ${display}`
     ];
     if (summary.error) {

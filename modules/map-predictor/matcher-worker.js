@@ -55,6 +55,13 @@ export function compactMatcherResult(result) {
                 kind: cell.kind
             }))
             : [],
+        provisionalPredictions: Array.isArray(result?.provisionalPredictions)
+            ? result.provisionalPredictions.map(cell => ({
+                x: cell.x,
+                y: cell.y,
+                kind: cell.kind
+            }))
+            : [],
         forcePredictions: Array.isArray(result?.forcePredictions)
             ? result.forcePredictions.map(cell => ({
                 x: cell.x,
@@ -62,6 +69,7 @@ export function compactMatcherResult(result) {
                 kind: cell.kind
             }))
             : [],
+        structuralSingleton: result?.structuralSingleton === true,
         plausibleCandidateCount: result?.plausibleCandidateCount ?? 0,
         consensusOverflow: Boolean(result?.consensusOverflow),
         reason: result?.reason || 'not-evaluated'

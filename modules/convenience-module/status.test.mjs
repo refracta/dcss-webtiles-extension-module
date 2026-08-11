@@ -17,8 +17,10 @@ function readySummary(overrides = {}) {
         templates: ['alpha', 'beta'],
         plausibleCandidateCount: 1,
         safePredictionCount: 120,
+        provisionalPredictionCount: 120,
         forcePredictionCount: 135,
         predictionCount: 120,
+        predictionMode: 'safe',
         revealEnabled: true,
         forceRevealActive: false,
         match: {
@@ -50,7 +52,7 @@ test('Map status summarizes score and detailed matcher state', () => {
     assert.match(status.desc, /Verdict: SAFE; reason: ready/u);
     assert.match(status.desc, /Evidence: 384 cells, 4 kinds, 42\.5% coverage/u);
     assert.match(status.desc, /Candidates: 2 loaded, 1 plausible/u);
-    assert.match(status.desc, /Predictions: 120 safe, 135 best-guess, 120 available/u);
+    assert.match(status.desc, /Predictions: 120 safe, 120 provisional consensus, 135 best-only force, 120 displayed-set/u);
     assert.match(status.desc, /Display: on \(automatic\)/u);
 });
 
@@ -81,22 +83,25 @@ test('Map status is absent while Ctrl-M has paused the runtime', () => {
     assert.equal(status, null);
 });
 
-test('Map status distinguishes an automatic unconfirmed best guess', () => {
+test('Map status distinguishes automatic unconfirmed consensus terrain', () => {
     const status = createMapPredictorStatus(readySummary({
-        resultReason: 'policy-disabled',
+        resultReason: 'insufficient-evidence',
         plausibleCandidateCount: 3,
         safePredictionCount: 0,
-        predictionCount: 135
+        provisionalPredictionCount: 135,
+        forcePredictionCount: 180,
+        predictionCount: 135,
+        predictionMode: 'provisional'
     }));
 
     assert.equal(status.col, 14);
     assert.match(
         status.desc,
-        /Verdict: AUTO BEST GUESS \(unconfirmed; ambiguous\)/u
+        /Verdict: AUTO CONSENSUS \(unconfirmed identity\)/u
     );
-    assert.match(status.desc, /reason: policy-disabled/u);
+    assert.match(status.desc, /reason: insufficient-evidence/u);
     assert.match(status.desc, /3 plausible/u);
-    assert.match(status.desc, /Display: on \(automatic orange prediction\)/u);
+    assert.match(status.desc, /Display: on \(automatic orange shared terrain\)/u);
 });
 
 test('Map status distinguishes a prediction hidden with /reveal', () => {
@@ -104,14 +109,16 @@ test('Map status distinguishes a prediction hidden with /reveal', () => {
         resultReason: 'ambiguous',
         plausibleCandidateCount: 3,
         safePredictionCount: 0,
+        provisionalPredictionCount: 135,
         predictionCount: 135,
+        predictionMode: 'provisional',
         revealEnabled: false
     }));
 
     assert.equal(status.col, 8);
     assert.match(
         status.desc,
-        /Verdict: AVAILABLE \/ HIDDEN \(ambiguous best guess\)/u
+        /Verdict: AVAILABLE \/ HIDDEN \(shared candidate terrain\)/u
     );
     assert.match(status.desc, /Display: off \(hidden by \/reveal\)/u);
 });

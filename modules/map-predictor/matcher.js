@@ -2443,24 +2443,38 @@ function evaluateCompositeCandidates(
     const forceFamilies = bestPredictionFamilies.length
         ? bestPredictionFamilies
         : [compositeShellFamily(best)];
-    const forcePredictions = compositeConsensusPredictions(
-        forceFamilies,
+    const forcePredictions = best.matchPolicy.forceRevealDisabled === true
+        ? []
+        : compositeConsensusPredictions(
+            forceFamilies,
+            observations,
+            excludedKeys
+        );
+    // Automatic provisional terrain is the intersection of every retained
+    // parent placement, regime/prize assignment, and child pool. Keep it
+    // independent from the explicit best-placement force path so sparse
+    // evidence cannot select and paint one arbitrary quadrant assembly.
+    const familyConsensusPredictions = compositeConsensusPredictions(
+        predictionFamilies,
         observations,
         excludedKeys
     );
+    const provisionalForceAllowed = predictionFamilies.every(family =>
+        family.parent.matchPolicy.forceRevealDisabled !== true);
+    const provisionalPredictions = !provisionalForceAllowed
+        ? []
+        : familyConsensusPredictions;
     const consensusAuthorized = (evidenceReady && scoreReady)
         || trustedEntryConsensus;
-    const predictions = consensusAuthorized
-        ? compositeConsensusPredictions(
-            predictionFamilies,
-            observations,
-            excludedKeys
-        )
+    const predictions = consensusAuthorized && provisionalForceAllowed
+        ? familyConsensusPredictions
         : [];
     const ready = consensusAuthorized && predictionFamilies.length > 0
         && predictions.length >= options.minPredictedCells;
     const resolvedFamilyCount = families.filter(family =>
         !family.shellOnly).length;
+    const structuralSingleton = plausibleParents.length === 1
+        && resolvedFamilyCount === 1;
     return {
         ready,
         unique: resolvedFamilyCount === 1,
@@ -2468,7 +2482,9 @@ function evaluateCompositeCandidates(
         margin: plausibleParents.length > 1 ? 0 : 1,
         candidates: plausibleParents,
         predictions,
+        provisionalPredictions,
         forcePredictions,
+        structuralSingleton,
         plausibleCandidateCount: resolvedFamilyCount,
         consensusOverflow: false,
         trustedEntryConsensus,
@@ -2613,7 +2629,9 @@ export class MapMatcher {
             best: null,
             candidates: [],
             predictions: [],
+            provisionalPredictions: [],
             forcePredictions: [],
+            structuralSingleton: false,
             reason: 'not-evaluated'
         };
     }
@@ -2784,31 +2802,47 @@ export class MapMatcher {
             const forcePredictions = best.matchPolicy.forceRevealDisabled
                 ? []
                 : consensusPredictions([best], observations);
-            const predictions = !revealDisabled && !placementUnverified
+            const survivorConsensusPredictions = placementUnverified
+                || consensusOverflow || !survivors.length
+                ? []
+                : consensusPredictions(survivors, observations);
+            const provisionalForceAllowed = survivors.every(candidate =>
+                candidate.matchPolicy.forceRevealDisabled !== true);
+            const provisionalPredictions = !provisionalForceAllowed
+                ? []
+                : survivorConsensusPredictions;
+            const predictions = provisionalForceAllowed
+                && !revealDisabled && !placementUnverified
                 && evidenceReady && scoreReady && !consensusOverflow
-                ? consensusPredictions(survivors, observations)
+                ? survivorConsensusPredictions
                 : [];
             const uniqueWinner = margin >= this.options.minWinnerMargin;
+            const structuralSingleton = !placementUnverified
+                && !consensusOverflow && plausible.count === 1;
             const consensusReady = !revealDisabled && !placementUnverified
                 && !consensusOverflow && survivors.length > 0
                 && predictions.length >= this.options.minPredictedCells;
+            const winnerReady = provisionalForceAllowed
+                && (uniqueWinner || consensusReady);
             this.result = {
                 ready: !revealDisabled && !placementUnverified
                     && evidenceReady && scoreReady
-                    && (uniqueWinner || consensusReady),
+                    && winnerReady,
                 unique: uniqueWinner,
                 best,
                 margin,
                 candidates: survivors,
                 predictions,
+                provisionalPredictions,
                 forcePredictions,
+                structuralSingleton,
                 plausibleCandidateCount: plausible.count,
                 consensusOverflow,
                 reason: revealDisabled ? 'policy-disabled'
                     : placementUnverified ? placementUnverifiedReason
                         : !evidenceReady ? 'insufficient-evidence'
                             : !scoreReady ? 'below-threshold'
-                                : !(uniqueWinner || consensusReady)
+                                : !winnerReady
                                     ? 'ambiguous'
                                     : 'ready'
             };
@@ -2872,6 +2906,8 @@ export class MapMatcher {
                     ...compositeResult,
                     ready: false,
                     predictions: [],
+                    provisionalPredictions: [],
+                    structuralSingleton: false,
                     reason: placementUnverifiedReason
                 }
                 : compositeResult;
@@ -2893,37 +2929,53 @@ export class MapMatcher {
         const survivors = plausible.slice(0, this.options.maxConsensusCandidates);
         // Expose the singleton terrain cells from the current supported best
         // placement even when normal score, ambiguity, policy, or exhaustive-
-        // placement gates reject it. Callers must keep this separate from
-        // consensus predictions: it powers the provisional orange display as
-        // well as the explicit force command.
+        // placement gates reject it. This remains an explicit force-only
+        // diagnostic; automatic provisional display uses the all-candidate
+        // intersection below.
         const forcePredictions = best.matchPolicy.forceRevealDisabled
             ? []
             : consensusPredictions([best], observations);
-        const predictions = !revealDisabled && !placementUnverified
+        const survivorConsensusPredictions = placementUnverified
+            || consensusOverflow || !survivors.length
+            ? []
+            : consensusPredictions(survivors, observations);
+        const provisionalForceAllowed = survivors.every(candidate =>
+            candidate.matchPolicy.forceRevealDisabled !== true);
+        const provisionalPredictions = !provisionalForceAllowed
+            ? []
+            : survivorConsensusPredictions;
+        const predictions = provisionalForceAllowed
+            && !revealDisabled && !placementUnverified
             && evidenceReady && scoreReady && !consensusOverflow
-            ? consensusPredictions(survivors, observations)
+            ? survivorConsensusPredictions
             : [];
         const uniqueWinner = margin >= this.options.minWinnerMargin;
+        const structuralSingleton = !placementUnverified
+            && !consensusOverflow && plausible.length === 1;
         const consensusReady = !revealDisabled && !placementUnverified
             && !consensusOverflow && survivors.length > 0
             && predictions.length >= this.options.minPredictedCells;
+        const winnerReady = provisionalForceAllowed
+            && (uniqueWinner || consensusReady);
 
         this.result = {
             ready: !revealDisabled && !placementUnverified
-                && evidenceReady && scoreReady && (uniqueWinner || consensusReady),
+                && evidenceReady && scoreReady && winnerReady,
             unique: uniqueWinner,
             best,
             margin,
             candidates: survivors,
             predictions,
+            provisionalPredictions,
             forcePredictions,
+            structuralSingleton,
             plausibleCandidateCount: plausible.length,
             consensusOverflow,
             reason: revealDisabled ? 'policy-disabled'
                 : placementUnverified ? placementUnverifiedReason
                     : !evidenceReady ? 'insufficient-evidence'
                         : !scoreReady ? 'below-threshold'
-                            : !(uniqueWinner || consensusReady) ? 'ambiguous'
+                            : !winnerReady ? 'ambiguous'
                                 : 'ready'
         };
         return this.result;

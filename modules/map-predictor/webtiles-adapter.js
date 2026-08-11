@@ -721,6 +721,11 @@ export default class WebtilesAdapter {
         this._unreliableTerrainCells = new Set();
         this._pendingMaps = new WeakMap();
         this._pendingNativeReapply = new WeakMap();
+        // `player_on_level` describes the map currently displayed by
+        // WebTiles, not the player's branch. While it is false the client may
+        // be rendering another floor from the X map; those cells must never
+        // replace the current-floor matcher state.
+        this._playerOnLevel = null;
         this._xModeActive = false;
         this._serverMapCursor = null;
         this._shadowMapCursor = null;
@@ -777,6 +782,10 @@ export default class WebtilesAdapter {
         ]));
     }
 
+    get playerOnLevel() {
+        return this._playerOnLevel !== false;
+    }
+
     get nativeVisualStatus() {
         const backgroundFlag = mapPredictorBackgroundFlag(
             this.binding?.enums
@@ -831,6 +840,10 @@ export default class WebtilesAdapter {
             this.installKnowledgeVisibility(this.binding);
             this.installRendererTint(this.binding);
         }
+        // IO hooks are absent while MapPredictor is paused. Refresh this bit
+        // from WebTiles before rehydrating so a level-view switch made during
+        // that pause cannot leave the adapter permanently on the wrong map.
+        this.syncPlayerOnLevelFromBinding();
         this.window?.addEventListener?.('resize', this.handleWindowResize);
         this._installed = true;
         this._destroyed = false;
@@ -1100,8 +1113,10 @@ export default class WebtilesAdapter {
             this._serverMapCursor = null;
             this.clearNativePredictions();
             this.clearTerrainSamples();
+            this._playerOnLevel = null;
         }
         this.binding = binding;
+        this.syncPlayerOnLevelFromBinding(binding);
         this.installKnowledgeVisibility(binding);
         this.installRendererTint(binding);
         this.installShadowCursorHandlers();
@@ -1119,6 +1134,21 @@ export default class WebtilesAdapter {
         this.emit('binding', binding);
         this.notifyOwner('onWebtilesBound', binding);
         return this;
+    }
+
+    syncPlayerOnLevelFromBinding(binding = this.binding) {
+        if (typeof binding?.mapKnowledge?.player_on_level !== 'function') {
+            return this._playerOnLevel;
+        }
+        try {
+            const playerOnLevel = binding.mapKnowledge.player_on_level();
+            if (typeof playerOnLevel === 'boolean') {
+                this._playerOnLevel = playerOnLevel;
+            }
+        } catch (error) {
+            console.error(error);
+        }
+        return this._playerOnLevel;
     }
 
     installKnowledgeVisibility(binding = this.binding) {
@@ -1453,7 +1483,8 @@ export default class WebtilesAdapter {
     placeShadowMapCursor(location) {
         const cursorType = this.mapCursorType();
         const viewData = this.binding?.viewData;
-        if (cursorType === null
+        if (this._playerOnLevel === false
+            || cursorType === null
             || typeof viewData?.place_cursor !== 'function') {
             return false;
         }
@@ -1516,6 +1547,7 @@ export default class WebtilesAdapter {
 
     handleShadowCursorEvent(event) {
         if (!this._nativeMode || !this._revealEnabled
+            || this._playerOnLevel === false
             || !this._xModeActive || !this._serverMapCursor) {
             return;
         }
@@ -1702,26 +1734,59 @@ export default class WebtilesAdapter {
             return false;
         }
 
+        const hasPlayerOnLevel = Object.prototype.hasOwnProperty.call(
+            message,
+            'player_on_level'
+        );
+        const explicitPlayerOnLevel = hasPlayerOnLevel
+            ? Boolean(message.player_on_level)
+            : undefined;
+        const previousPlayerOnLevel = this._playerOnLevel;
+        const playerOnLevel = explicitPlayerOnLevel
+            ?? (previousPlayerOnLevel ?? true);
+        const returningToPlayerLevel = previousPlayerOnLevel === false
+            && playerOnLevel === true;
+        const leavingPlayerLevel = previousPlayerOnLevel !== false
+            && playerOnLevel === false;
+        // `spect_only` is emitted for a newly attached watcher's full-map
+        // synchronization. It is a view refresh, not a new Crawl floor.
+        const sameLevelResync = playerOnLevel === true
+            && message.spect_only === true;
+        const retainCurrentState = playerOnLevel === false
+            || returningToPlayerLevel
+            || sameLevelResync;
+        this._playerOnLevel = playerOnLevel;
+
         const cells = decodeMapCellDeltas(message.cells, {
             maxAbsCoordinate: this.maxAbsCoordinate
         });
-        for (const decodedCell of cells) {
-            const diff = decodedCell?.diff;
-            const hasBackground = diff?.t && typeof diff.t === 'object'
-                && Object.prototype.hasOwnProperty.call(diff.t, 'bg');
-            if (hasBackground || Number.isFinite(diff?.mf) || diff?.f === 0) {
-                this._unreliableTerrainCells.delete(
-                    cellKey(decodedCell.x, decodedCell.y)
-                );
+        if (playerOnLevel) {
+            for (const decodedCell of cells) {
+                const diff = decodedCell?.diff;
+                const hasBackground = diff?.t && typeof diff.t === 'object'
+                    && Object.prototype.hasOwnProperty.call(diff.t, 'bg');
+                if (hasBackground || Number.isFinite(diff?.mf)
+                    || diff?.f === 0) {
+                    this._unreliableTerrainCells.delete(
+                        cellKey(decodedCell.x, decodedCell.y)
+                    );
+                }
             }
         }
         if (message.clear === true) {
-            // Samples are level-local visual data. Clear them before the native
-            // handler processes the new level; onKnowledge will then repopulate
-            // them from cells carried by this same clear packet.
-            this.clearTerrainSamples();
+            if (!retainCurrentState) {
+                // Samples are level-local visual data. Clear them before the
+                // native handler processes a genuinely new current level;
+                // onKnowledge will repopulate them from this clear packet.
+                this.clearTerrainSamples();
+            }
             this.restoreNativeCellsBeforeServer();
-        } else {
+        } else if (leavingPlayerLevel) {
+            // A defensive path for versions which switch the displayed floor
+            // without a full clear. Retain prediction data, but remove native
+            // cells before an off-level diff can merge into them.
+            this.restoreNativeCellsBeforeServer();
+        } else if (playerOnLevel) {
             const restoredNativeKeys = this.restoreNativeCellsBeforeServer(cells);
             if (restoredNativeKeys.length > 0) {
                 // A normal server redraw (notably the full-screen X view) can
@@ -1734,29 +1799,47 @@ export default class WebtilesAdapter {
 
         const capture = {
             clear: message.clear === true,
-            playerOnLevel: Object.prototype.hasOwnProperty.call(
-                message,
-                'player_on_level'
-            ) ? Boolean(message.player_on_level) : undefined,
+            playerOnLevel,
+            previousPlayerOnLevel,
+            returningToPlayerLevel,
+            leavingPlayerLevel,
+            sameLevelResync,
+            retainCurrentState,
             vgrdc: cloneValue(message.vgrdc),
             cells,
             raw: cloneValue(message)
         };
         this._pendingMaps.set(message, capture);
 
-        if (capture.clear) {
+        if (capture.clear && !retainCurrentState) {
             this._observedCells.clear();
             this._unreliableTerrainCells.clear();
             this.clearPredictions();
         }
+        if (playerOnLevel === false || returningToPlayerLevel) {
+            this.clearShadowMapCursor({
+                restore: false,
+                remove: true,
+                reason: playerOnLevel === false
+                    ? 'off-level-map'
+                    : 'returning-to-player-level'
+            });
+            this._serverMapCursor = null;
+        }
 
         const beforePayload = cloneValue(capture);
         this.emit('map-before', beforePayload);
-        this.notifyOwner('onMap', {
-            clear: capture.clear,
-            touched: cloneValue(capture.cells),
-            raw: cloneValue(capture.raw)
-        });
+        if (playerOnLevel && !returningToPlayerLevel && !sameLevelResync) {
+            this.notifyOwner('onMap', {
+                clear: capture.clear,
+                playerOnLevel: true,
+                previousPlayerOnLevel,
+                returningToPlayerLevel: false,
+                sameLevelResync: false,
+                touched: cloneValue(capture.cells),
+                raw: cloneValue(capture.raw)
+            });
+        }
         return false;
     }
 
@@ -1778,7 +1861,17 @@ export default class WebtilesAdapter {
         const capture = this._pendingMaps.get(message)
             || {
                 clear: message.clear === true,
-                playerOnLevel: message.player_on_level,
+                playerOnLevel: Object.prototype.hasOwnProperty.call(
+                    message,
+                    'player_on_level'
+                )
+                    ? Boolean(message.player_on_level)
+                    : (this._playerOnLevel ?? true),
+                previousPlayerOnLevel: this._playerOnLevel,
+                returningToPlayerLevel: false,
+                leavingPlayerLevel: false,
+                sameLevelResync: message.spect_only === true,
+                retainCurrentState: message.spect_only === true,
                 vgrdc: cloneValue(message.vgrdc),
                 cells: decodeMapCellDeltas(message.cells, {
                     maxAbsCoordinate: this.maxAbsCoordinate
@@ -1786,6 +1879,19 @@ export default class WebtilesAdapter {
                 raw: cloneValue(message)
             };
         this._pendingMaps.delete(message);
+
+        if (capture.playerOnLevel === false) {
+            // The native client still needs the packet to draw the selected X
+            // map floor, but none of its knowledge belongs to the player's
+            // current level or the matcher.
+            this.emit('map', {
+                ...capture,
+                cells: [],
+                ignoredOffLevel: true
+            });
+            this.scheduleRender();
+            return;
+        }
 
         const knowledgeCells = [];
         for (const decodedCell of capture.cells) {
@@ -1835,7 +1941,15 @@ export default class WebtilesAdapter {
                 this.binding
             );
         }
-        if (nativeReapplyKeys.length > 0
+        if (capture.retainCurrentState
+            && this._nativeMode
+            && this._revealEnabled
+            && this._predictions.size > 0) {
+            // Returning from an off-level X map (or completing a spectator
+            // full resync) rebuilds native map knowledge. Reapply the retained
+            // current-floor prediction only after that authoritative merge.
+            this.applyNativePredictions(this._predictions);
+        } else if (nativeReapplyKeys.length > 0
             && this._nativeMode
             && this._revealEnabled) {
             this.reapplyNativePredictions(nativeReapplyKeys);
@@ -1858,6 +1972,13 @@ export default class WebtilesAdapter {
     }
 
     rehydrateKnowledge() {
+        // This is also the soft-resume boundary. WebTiles may have changed
+        // between the player's level and an off-level X map while our IO
+        // handlers were uninstalled.
+        this.syncPlayerOnLevelFromBinding();
+        if (this._playerOnLevel === false) {
+            return [];
+        }
         const mapKnowledge = this.binding?.mapKnowledge;
         const bounds = typeof mapKnowledge?.bounds === 'function'
             ? mapKnowledge.bounds()
@@ -1899,7 +2020,7 @@ export default class WebtilesAdapter {
     }
 
     rememberTerrainSamples(samples) {
-        if (!Array.isArray(samples)) {
+        if (this._playerOnLevel === false || !Array.isArray(samples)) {
             return 0;
         }
 
@@ -2397,7 +2518,8 @@ export default class WebtilesAdapter {
     }
 
     applyNativePredictions(input = this._predictions) {
-        if (!this._nativeMode || !this.binding) {
+        if (!this._nativeMode || !this.binding
+            || this._playerOnLevel === false) {
             return [];
         }
 
@@ -2426,7 +2548,8 @@ export default class WebtilesAdapter {
     }
 
     reapplyNativePredictions(keys) {
-        if (!this._nativeMode || !this.binding || !this._revealEnabled) {
+        if (!this._nativeMode || !this.binding || !this._revealEnabled
+            || this._playerOnLevel === false) {
             return [];
         }
         const injected = this.injectNativePredictions(this._predictions, keys);
@@ -2564,6 +2687,7 @@ export default class WebtilesAdapter {
             version: this.version,
             clientVersion: this.clientVersion,
             player: this.player,
+            playerOnLevel: this.playerOnLevel,
             revealEnabled: this.revealEnabled,
             nativeVisual: this.nativeVisualStatus,
             predictions: this.predictions,
@@ -2609,7 +2733,8 @@ export default class WebtilesAdapter {
         this.clearOverlay(this.dungeonOverlay);
         this.clearOverlay(this.minimapOverlay);
 
-        if (!this._revealEnabled || this._predictions.size === 0) {
+        if (!this._revealEnabled || this._predictions.size === 0
+            || this._playerOnLevel === false) {
             return;
         }
 
@@ -2980,6 +3105,9 @@ export default class WebtilesAdapter {
         this.clearTerrainSamples();
         this._pendingMaps = new WeakMap();
         this._pendingNativeReapply = new WeakMap();
+        if (releaseBinding) {
+            this._playerOnLevel = null;
+        }
         this._player = {};
         this._version = null;
         this._clientVersion = null;

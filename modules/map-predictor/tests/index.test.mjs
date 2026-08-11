@@ -240,6 +240,105 @@ ${quadrant('fixture_prize_mall',
 `;
 }
 
+function vaultsFixtureEntryPoints(template) {
+    const glyphs = new Set(template.metadata.matchAnchor.glyphs);
+    return template.grid.flatMap((row, y) => row.flatMap((cell, x) => {
+        const possible = new Set([
+            cell?.glyph,
+            ...(Array.isArray(cell?.possibleGlyphs)
+                ? cell.possibleGlyphs
+                : [])
+        ]);
+        return [...possible].some(glyph => glyphs.has(glyph))
+            ? [{x, y}]
+            : [];
+    }));
+}
+
+function vaultsFixtureTruth(template, entry) {
+    const composite = template.metadata.composite;
+    const names = [
+        'fixture_prize',
+        'fixture_regular_mall_1',
+        'fixture_regular_mall_2',
+        'fixture_regular_mall_3'
+    ];
+    const children = names.map(name => {
+        const variant = composite.variants.find(value => value.name === name);
+        const transform = allowedTransforms(variant)
+            .find(value => value.id === 'r0');
+        return transformTemplate(variant, transform).grid;
+    });
+    const singletonKind = cell => {
+        const normalized = [...new Set((cell?.kinds || [])
+            .map(normalizeTerrainKind)
+            .filter(Boolean))];
+        // O/k are dynamic items/subvault contents on ordinary floor. The
+        // matcher deliberately withholds them, but a concrete generated truth
+        // still needs their underlying terrain for mismatch accounting.
+        if (normalized.length === 0 && ['O', 'k'].includes(cell?.glyph)) {
+            return 'floor';
+        }
+        return normalized.length === 1 ? normalized[0] : null;
+    };
+    const sourceKind = (x, y) => {
+        for (let index = 0; index < composite.slots.length; index++) {
+            const slot = composite.slots[index];
+            const localX = x - slot.x;
+            const localY = y - slot.y;
+            if (localX < 0 || localY < 0
+                || localX >= slot.width || localY >= slot.height
+                || !slot.mask[localY]?.[localX]) {
+                continue;
+            }
+            const cell = children[index][localY]?.[localX];
+            return cell == null ? 'floor' : singletonKind(cell);
+        }
+        return singletonKind(template.grid[y]?.[x]);
+    };
+    const offsetX = -entry.x;
+    const offsetY = -entry.y;
+    const absoluteX = Math.floor((80 - template.width) / 2);
+    const absoluteY = Math.floor((70 - template.height) / 2);
+    const bounds = {
+        minX: offsetX - absoluteX,
+        minY: offsetY - absoluteY,
+        maxX: offsetX - absoluteX + 79,
+        maxY: offsetY - absoluteY + 69
+    };
+    const truth = new Map();
+    for (let y = bounds.minY; y <= bounds.maxY; y++) {
+        for (let x = bounds.minX; x <= bounds.maxX; x++) {
+            const sourceX = x - offsetX;
+            const sourceY = y - offsetY;
+            const kind = sourceX >= 0 && sourceX < template.width
+                && sourceY >= 0 && sourceY < template.height
+                ? sourceKind(sourceX, sourceY)
+                : 'wall';
+            if (kind) {
+                truth.set(`${x},${y}`, {x, y, kind});
+            }
+        }
+    }
+    return {truth, offsetX, offsetY};
+}
+
+function vaultsFixtureLos(truth, radius) {
+    const cells = [];
+    for (let y = -radius; y <= radius; y++) {
+        for (let x = -radius; x <= radius; x++) {
+            if (x * x + y * y > radius * radius + 8) {
+                continue;
+            }
+            const cell = truth.get(`${x},${y}`);
+            if (cell) {
+                cells.push(cell);
+            }
+        }
+    }
+    return cells;
+}
+
 function createHarness(options = {}) {
     const template = fixtureTemplate();
     const messages = [];
@@ -694,6 +793,115 @@ test('Vaults:5 is one audited shell with four complete quadrant slots', () => {
         ': vaults_end_rune(_G)\n: kfeat("x = lava")\nMAP'
     );
     assert.deepEqual(parseRuntimeDes(changedQuadrant, {path}), []);
+});
+
+test('Vaults:5 sparse auto terrain is six-landing assembly consensus', () => {
+    const path = 'crawl-ref/source/dat/des/branches/vaults.des';
+    const [parsed] = parseRuntimeDes(vaultsCompositeSourceFixture(), {path});
+    const [template] = selectSafeTemplates(
+        [parsed],
+        {place: 'Vaults', depth: 5},
+        {levelEntry: {x: 0, y: 0}}
+    );
+    const entries = vaultsFixtureEntryPoints(template);
+    assert.equal(entries.length, 6);
+
+    let unsafeEntryForceMismatches = 0;
+    for (const entry of entries) {
+        const generated = vaultsFixtureTruth(template, entry);
+        const matcher = new MapMatcher({requireExhaustivePlacement: true});
+        matcher.setTemplates([template]);
+        const observed = new Map();
+        const {module, adapter} = createHarness();
+        module.onLoad();
+        module.templates = [template];
+        const steps = [
+            ['entry-only', [generated.truth.get('0,0')]],
+            ['radius-2', vaultsFixtureLos(generated.truth, 2)],
+            ['radius-8', vaultsFixtureLos(generated.truth, 8)]
+        ];
+
+        for (const [label, cells] of steps) {
+            for (const cell of cells.filter(Boolean)) {
+                observed.set(`${cell.x},${cell.y}`, cell);
+            }
+            const result = matcher.updateObservations([...observed.values()]);
+            const detail = `${entry.x},${entry.y} ${label}`;
+            assert.equal(result.ready, false, detail);
+            assert.equal(result.unique, false, detail);
+            assert.equal(result.reason, 'insufficient-evidence', detail);
+            assert.ok(result.plausibleCandidateCount > 1, detail);
+            assert.deepEqual(result.predictions, [], detail);
+            assert.ok(result.provisionalPredictions.length > 0, detail);
+
+            const provisionalMismatches = result.provisionalPredictions
+                .filter(cell => generated.truth.get(`${cell.x},${cell.y}`)
+                    ?.kind !== cell.kind);
+            assert.deepEqual(provisionalMismatches, [], detail);
+
+            // Runtime must display the cross-placement/assembly intersection,
+            // never the much larger current-best force guess.
+            module.handleResult(result);
+            assert.equal(module.getDebugState().predictionMode, 'provisional');
+            assert.equal(
+                module.getDebugState().provisionalPredictionCount,
+                result.provisionalPredictions.length,
+                detail
+            );
+            assert.deepEqual(
+                adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+                result.provisionalPredictions,
+                detail
+            );
+
+            if (label === 'entry-only') {
+                unsafeEntryForceMismatches += result.forcePredictions
+                    .filter(cell => generated.truth.get(`${cell.x},${cell.y}`)
+                        ?.kind !== cell.kind)
+                    .length;
+                assert.ok(
+                    result.provisionalPredictions.length
+                        < result.forcePredictions.length,
+                    detail
+                );
+            }
+        }
+        module.destroy();
+    }
+    assert.ok(unsafeEntryForceMismatches > 0);
+});
+
+test('Vaults:5 reconnect without an exact entry keeps force terrain manual', () => {
+    const path = 'crawl-ref/source/dat/des/branches/vaults.des';
+    const [parsed] = parseRuntimeDes(vaultsCompositeSourceFixture(), {path});
+    const entry = {x: 34, y: 28};
+    const [anchored] = selectSafeTemplates(
+        [parsed],
+        {place: 'Vaults', depth: 5},
+        {levelEntry: {x: 0, y: 0}}
+    );
+    const generated = vaultsFixtureTruth(anchored, entry);
+    const unanchored = structuredClone(anchored);
+    delete unanchored.metadata.matchAnchor;
+    const matcher = new MapMatcher({requireExhaustivePlacement: true});
+    matcher.setTemplates([unanchored]);
+    const result = matcher.updateObservations(
+        vaultsFixtureLos(generated.truth, 8)
+    );
+
+    assert.equal(result.reason, 'placement-unverified');
+    assert.deepEqual(result.predictions, []);
+    assert.deepEqual(result.provisionalPredictions, []);
+    assert.ok(result.forcePredictions.length > 0);
+
+    const {module, adapter} = createHarness();
+    module.onLoad();
+    module.templates = [unanchored];
+    module.handleResult(result);
+    assert.equal(module.getDebugState().predictionMode, 'none');
+    assert.equal(adapter.revealEnabled, false);
+    assert.deepEqual(adapter.predictions, []);
+    module.destroy();
 });
 
 test('audited Slime helper rejects a duplicate allowed orient call', () => {
@@ -1392,6 +1600,8 @@ test('worker result serialization omits transformed grids and candidate payloads
         },
         candidates: [{transformed: {grid: template.grid}}],
         predictions: [{x: 3, y: 4, kind: 'wall'}],
+        provisionalPredictions: [{x: 4, y: 5, kind: 'door'}],
+        structuralSingleton: true,
         forcePredictions: [{x: 5, y: 6, kind: 'floor'}]
     });
 
@@ -1404,6 +1614,10 @@ test('worker result serialization omits transformed grids and candidate payloads
     assert.equal(compact.best.template.grid, undefined);
     assert.equal(compact.candidates, undefined);
     assert.deepEqual(compact.predictions, [{x: 3, y: 4, kind: 'wall'}]);
+    assert.deepEqual(compact.provisionalPredictions, [
+        {x: 4, y: 5, kind: 'door'}
+    ]);
+    assert.equal(compact.structuralSingleton, true);
     assert.deepEqual(compact.forcePredictions, [
         {x: 5, y: 6, kind: 'floor'}
     ]);
@@ -1524,7 +1738,7 @@ test('module loads exact-version sources, infers a map, and reveals locally', as
     assert.equal(adapter.predictions.length, 0);
 });
 
-test('force reveal maps the best rejected placement and reports detailed status', () => {
+test('ambiguous best-only terrain stays hidden until explicit force reveal', () => {
     const {module, adapter, commands, messages, template} = createHarness();
     module.onLoad();
     const forcedCells = Array.from({length: 6}, (_, index) => ({
@@ -1555,20 +1769,15 @@ test('force reveal maps the best rejected placement and reports detailed status'
         forcePredictions: forcedCells
     });
 
-    assert.equal(module.getDebugState().status, 'map-provisional');
-    assert.equal(module.getDebugState().predictionMode, 'provisional');
-    assert.equal(adapter.revealEnabled, true);
-    assert.deepEqual(
-        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
-        forcedCells
-    );
-    commands.get('/reveal').handler();
+    assert.equal(module.getDebugState().status, 'matching');
+    assert.equal(module.getDebugState().predictionMode, 'none');
     assert.equal(adapter.revealEnabled, false);
+    assert.deepEqual(adapter.predictions, []);
     commands.get('/reveal_status').handler();
     assert.match(messages.at(-1), /unaccepted candidate/);
     assert.match(messages.at(-1), /91\.00%/);
     assert.match(messages.at(-1), /3 plausible/);
-    assert.match(messages.at(-1), /6 force cells/);
+    assert.match(messages.at(-1), /6 best-only force cells/);
     assert.match(messages.at(-1), /policy-disabled/);
 
     commands.get('/force_reveal').handler();
@@ -1580,12 +1789,9 @@ test('force reveal maps the best rejected placement and reports detailed status'
 
     commands.get('/force_reveal').handler();
     assert.equal(module.forceRevealActive, false);
-    // Leaving explicit force restores the manual OFF state that preceded it.
+    // Leaving explicit force restores the hidden automatic state.
     assert.equal(adapter.revealEnabled, false);
-    assert.deepEqual(
-        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
-        forcedCells
-    );
+    assert.deepEqual(adapter.predictions, []);
     assert.match(messages.at(-1), /Forced terrain cleared/);
 
     module.handleResult({
@@ -1595,6 +1801,59 @@ test('force reveal maps the best rejected placement and reports detailed status'
     commands.get('/force_reveal').handler();
     assert.match(messages.at(-1), /no unrevealed inferred cells left/);
     assert.doesNotMatch(messages.at(-1), /No candidate placement/);
+});
+
+test('automatic provisional display prefers consensus over best-only force', () => {
+    const {module, adapter, commands, template} = createHarness();
+    module.onLoad();
+    module.templates = [template];
+    const consensus = [
+        {x: 1, y: 2, kind: 'wall'},
+        {x: 2, y: 2, kind: 'floor'}
+    ];
+    const forced = [
+        ...consensus,
+        {x: 30, y: 40, kind: 'door'}
+    ];
+    module.handleResult({
+        ready: false,
+        unique: false,
+        structuralSingleton: false,
+        reason: 'ambiguous',
+        margin: 0,
+        plausibleCandidateCount: 8,
+        consensusOverflow: false,
+        best: {
+            template: {name: template.name, path: template.path},
+            score: 0.98,
+            transform: 'r0h',
+            offsetX: -4,
+            offsetY: 3
+        },
+        predictions: [],
+        provisionalPredictions: consensus,
+        forcePredictions: forced
+    });
+
+    assert.equal(module.getDebugState().predictionMode, 'provisional');
+    assert.deepEqual(
+        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+        consensus
+    );
+
+    commands.get('/force_reveal').handler();
+    assert.equal(module.getDebugState().predictionMode, 'forced');
+    assert.deepEqual(
+        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+        forced
+    );
+    commands.get('/force_reveal').handler();
+    assert.equal(module.getDebugState().predictionMode, 'provisional');
+    assert.deepEqual(
+        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+        consensus
+    );
+    module.destroy();
 });
 
 test('detection-only and force-disabled results stay hidden automatically', () => {
@@ -1633,6 +1892,7 @@ test('manual reveal OFF latches across later provisional candidate updates', () 
         ready: false,
         reason: 'below-threshold',
         predictions: [],
+        provisionalPredictions: [{x: 1, y: 2, kind: 'floor'}],
         forcePredictions: [{x: 1, y: 2, kind: 'floor'}]
     };
 
@@ -1643,6 +1903,7 @@ test('manual reveal OFF latches across later provisional candidate updates', () 
     module.handleResult({
         ...provisional,
         best: {...provisional.best, score: 0.94, offsetX: 3},
+        provisionalPredictions: [{x: 4, y: 2, kind: 'wall'}],
         forcePredictions: [{x: 4, y: 2, kind: 'wall'}]
     });
     assert.equal(adapter.revealEnabled, false);
@@ -1714,6 +1975,121 @@ test('only an observed level transition installs and preserves an entry anchor',
     module.destroy();
 });
 
+test('same-key Pandemonium map clears forget the old floor and re-arm auto reveal', () => {
+    const {module, adapter, template} = createHarness();
+    module.onLoad();
+    module.onPlayer({
+        place: 'Pandemonium',
+        depth: 0,
+        pos: {x: 4, y: 5}
+    });
+
+    // Pan-to-Pan transitions retain the same wire place/depth pair. Seed the
+    // first floor with observations and an automatically displayed result.
+    module.templates = [template];
+    module.matcher.setTemplates([template]);
+    module.matcher.updateObservations([{
+        x: 4,
+        y: 5,
+        kind: 'floor'
+    }], {evaluate: false});
+    module.handleResult(compactReadyResult(template));
+    const levelKey = module.levelKey;
+    const firstGeneration = module.levelGeneration;
+
+    assert.equal(module.autoRevealApplied, true);
+    assert.equal(adapter.revealEnabled, true);
+    assert.ok(module.matcher.observations.size > 0);
+    assert.ok(adapter.predictions.length > 0);
+
+    module.onPlayer({
+        place: 'Pandemonium',
+        depth: 0,
+        pos: {x: -7, y: 8}
+    });
+    assert.equal(module.levelKey, levelKey);
+    module.onMap({
+        clear: true,
+        raw: {msg: 'map', clear: true, player_on_level: true}
+    });
+
+    assert.equal(module.levelKey, levelKey);
+    assert.ok(module.levelGeneration > firstGeneration);
+    assert.equal(module.matcher.observations.size, 0);
+    assert.equal(module.getDebugState().observationCount, 0);
+    assert.deepEqual(adapter.predictions, []);
+    assert.equal(adapter.revealEnabled, false);
+    assert.equal(module.autoRevealApplied, false);
+    assert.equal(module.getDebugState().match, null);
+
+    // The next floor's normal supported result is shown automatically again;
+    // no force command is involved.
+    module.handleResult(compactReadyResult(template, -8, 7));
+    assert.equal(module.autoRevealApplied, true);
+    assert.equal(adapter.revealEnabled, true);
+    assert.ok(adapter.predictions.length > 0);
+    module.destroy();
+});
+
+test('off-level and distinguishable resync clears preserve manual reveal OFF', () => {
+    const {module, adapter, template} = createHarness();
+    module.onLoad();
+    module.onPlayer({
+        place: 'Pandemonium',
+        depth: 0,
+        pos: {x: 4, y: 5}
+    });
+    module.templates = [template];
+    module.matcher.setTemplates([template]);
+    module.matcher.updateObservations([{
+        x: 4,
+        y: 5,
+        kind: 'floor'
+    }], {evaluate: false});
+    module.handleResult(compactReadyResult(template));
+    module.toggleReveal();
+
+    const generation = module.levelGeneration;
+    const observations = module.matcher.observations.size;
+    const predictions = structuredClone(adapter.predictions);
+    assert.equal(module.autoRevealApplied, true);
+    assert.equal(adapter.revealEnabled, false);
+
+    module.onMap({
+        clear: true,
+        raw: {
+            msg: 'map',
+            clear: true,
+            player_on_level: false
+        }
+    });
+    module.onMap({
+        clear: true,
+        playerOnLevel: true,
+        returningToPlayerLevel: true,
+        raw: {msg: 'map', clear: true, player_on_level: true}
+    });
+    module.onMap({
+        clear: true,
+        playerOnLevel: true,
+        sameLevelResync: true,
+        raw: {
+            msg: 'map',
+            clear: true,
+            player_on_level: true,
+            spect_only: true
+        }
+    });
+
+    assert.equal(module.levelGeneration, generation);
+    assert.equal(module.matcher.observations.size, observations);
+    assert.deepEqual(adapter.predictions, predictions);
+    assert.equal(adapter.revealEnabled, false);
+    assert.equal(module.autoRevealApplied, true);
+    assert.equal(module.getDebugState().match.name, template.name);
+    module.destroy();
+});
+
 test('the Slime wall-collapse message invalidates inferred end terrain', async () => {
     const template = fixtureTemplate();
     template.name = 'slime_end_fixture';
@@ -1768,7 +2144,7 @@ test('the Slime wall-collapse message invalidates inferred end terrain', async (
     module.destroy();
 });
 
-test('later contradictory terrain demotes a safe map to a provisional candidate', async () => {
+test('later contradictory terrain withdraws a map when no consensus remains', async () => {
     const {module, adapter, template} = createHarness();
     module.onLoad();
     transitionToWizlab(module);
@@ -1792,10 +2168,11 @@ test('later contradictory terrain demotes a safe map to a provisional candidate'
     module.onKnowledge(contradictory, observed.binding);
     await new Promise(resolve => setTimeout(resolve, 20));
 
-    assert.equal(module.getDebugState().status, 'map-provisional');
+    assert.equal(module.getDebugState().status, 'matching');
     assert.notEqual(module.getDebugState().resultReason, 'ready');
-    assert.equal(module.getDebugState().predictionMode, 'provisional');
-    assert.ok(adapter.predictions.length > 0);
+    assert.equal(module.getDebugState().predictionMode, 'none');
+    assert.equal(module.getDebugState().provisionalPredictionCount, 0);
+    assert.deepEqual(adapter.predictions, []);
 });
 
 test('unsupported places fail closed without source requests or predictions', async () => {
@@ -1923,8 +2300,10 @@ test('the first version packet preserves map evidence received during reconnect'
     assert.equal(module.getDebugState().observationCount, before);
     assert.equal(module.getDebugState().levelSignals.levelEntry, undefined);
     assert.equal(module.templates[0].metadata.matchAnchor, undefined);
-    assert.ok(module.getDebugState().predictionCount > 0);
-    assert.equal(module.getDebugState().predictionMode, 'provisional');
+    assert.equal(module.getDebugState().predictionCount, 0);
+    assert.equal(module.getDebugState().predictionMode, 'none');
+    assert.equal(module.getDebugState().provisionalPredictionCount, 0);
+    assert.ok(module.getDebugState().forcePredictionCount > 0);
     assert.equal(module.getDebugState().resultReason, 'placement-unverified');
     module.destroy();
 });

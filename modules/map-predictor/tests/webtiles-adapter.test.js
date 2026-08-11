@@ -978,6 +978,271 @@ test('clears level predictions and never merges predictions into map knowledge',
     adapter.destroy();
 });
 
+test('same-key Pandemonium clear removes old native and observed map state', () => {
+    const harness = nativeMapHarness();
+    const {adapter, dwem, cells, enums} = harness;
+    dwem.Modules.IOHook.handle_message({
+        msg: 'player',
+        place: 'Pandemonium',
+        depth: 0,
+        pos: {x: 3, y: 4}
+    });
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        cells: [{
+            x: 3,
+            y: 4,
+            f: 6,
+            mf: enums.MF_FLOOR,
+            t: {bg: 0x2A}
+        }]
+    });
+    adapter.rememberTerrainSamples([{
+        kind: 'floor',
+        cell: {f: 6, mf: enums.MF_FLOOR, t: {bg: 0x2A}}
+    }]);
+    adapter.setPredictions([{x: 20, y: 21, kind: 'floor'}]);
+    adapter.setRevealEnabled(true);
+
+    assert.equal(adapter.observedCells.size, 1);
+    assert.equal(adapter._nativeCells.size, 1);
+    assert.equal(cells.get('20,21').mf, enums.MF_MAP_FLOOR);
+
+    // Pan-to-Pan retains the same place/depth fields. The following full map
+    // packet, rather than the player level key, is the authoritative boundary.
+    dwem.Modules.IOHook.handle_message({
+        msg: 'player',
+        place: 'Pandemonium',
+        depth: 0,
+        pos: {x: -6, y: 7}
+    });
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        clear: true,
+        player_on_level: true,
+        cells: [{
+            x: -6,
+            y: 7,
+            f: 6,
+            mf: enums.MF_FLOOR,
+            t: {bg: 0x35}
+        }]
+    });
+
+    assert.deepEqual(adapter.predictions, []);
+    assert.equal(adapter._nativeCells.size, 0);
+    assert.equal(adapter.observedCells.size, 1);
+    assert.equal(adapter.observedCells.has('3,4'), false);
+    assert.equal(adapter.observedCells.has('-6,7'), true);
+    assert.equal(cells.has('20,21'), false);
+    assert.equal(cells.has('3,4'), false);
+    assert.equal(cells.get('-6,7').mf, enums.MF_FLOOR);
+    adapter.destroy();
+});
+
+test('off-level X maps retain current-floor evidence and manual reveal state', () => {
+    const mapEvents = [];
+    const knowledgeEvents = [];
+    const harness = nativeMapHarness({
+        onMap(payload) {
+            mapEvents.push(payload);
+        },
+        onKnowledge(cells) {
+            knowledgeEvents.push(cells);
+        }
+    });
+    const {adapter, dwem, cells, enums} = harness;
+    const currentFloor = {
+        x: 3,
+        y: 4,
+        f: 6,
+        mf: enums.MF_FLOOR,
+        t: {bg: 0x2A}
+    };
+    dwem.Modules.IOHook.handle_message({
+        msg: 'player',
+        place: 'Pandemonium',
+        depth: 0,
+        pos: {x: 3, y: 4}
+    });
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        player_on_level: true,
+        cells: [currentFloor]
+    });
+    adapter.rememberTerrainSamples([{
+        kind: 'floor',
+        cell: currentFloor
+    }]);
+    adapter.setPredictions([{x: 20, y: 21, kind: 'floor'}]);
+    adapter.setRevealEnabled(true);
+
+    assert.equal(mapEvents.length, 1);
+    assert.equal(knowledgeEvents.length, 1);
+    assert.equal(adapter._nativeCells.size, 1);
+    assert.equal(adapter._terrainSamples.size, 1);
+
+    // The same coordinate on another floor deliberately has different
+    // terrain. It must be drawn by WebTiles but never enter current-floor
+    // observations or notify the matcher owner.
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        clear: true,
+        player_on_level: false,
+        cells: [{
+            x: 3,
+            y: 4,
+            f: 17,
+            mf: enums.MF_WALL,
+            t: {bg: 0x77}
+        }]
+    });
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        cells: [{x: 8, y: 9, f: 17, mf: enums.MF_WALL, t: {bg: 0x77}}]
+    });
+
+    assert.equal(adapter.playerOnLevel, false);
+    assert.equal(mapEvents.length, 1);
+    assert.equal(knowledgeEvents.length, 1);
+    assert.equal(adapter.observedCells.size, 1);
+    assert.equal(adapter.observedCells.get('3,4').mf, enums.MF_FLOOR);
+    assert.equal(adapter.observedCells.has('8,9'), false);
+    assert.equal(adapter.predictions.length, 1);
+    assert.equal(adapter.revealEnabled, true);
+    assert.equal(adapter._nativeCells.size, 0);
+    assert.equal(adapter._terrainSamples.size, 1);
+    assert.deepEqual(adapter.applyNativePredictions(adapter.predictions), []);
+    assert.equal(cells.get('3,4').mf, enums.MF_WALL);
+
+    // Returning to the player's floor is a view transition, not a new Pan
+    // level. Retained predictions are re-applied after the native full merge.
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        clear: true,
+        player_on_level: true,
+        cells: [currentFloor]
+    });
+    assert.equal(adapter.playerOnLevel, true);
+    assert.equal(mapEvents.length, 1);
+    assert.equal(knowledgeEvents.length, 2);
+    assert.equal(adapter.predictions.length, 1);
+    assert.equal(adapter.revealEnabled, true);
+    assert.equal(adapter._nativeCells.size, 1);
+    assert.equal(cells.get('20,21').mf, enums.MF_MAP_FLOOR);
+
+    // A manual OFF choice survives another off-level round trip and a
+    // distinguishable spectator-only same-floor full synchronization.
+    adapter.setRevealEnabled(false);
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        clear: true,
+        player_on_level: false,
+        cells: [{x: -1, y: -2, f: 17, mf: enums.MF_WALL, t: {bg: 0x77}}]
+    });
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        clear: true,
+        player_on_level: true,
+        cells: [currentFloor]
+    });
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        clear: true,
+        player_on_level: true,
+        spect_only: true,
+        cells: [currentFloor]
+    });
+
+    assert.equal(mapEvents.length, 1);
+    assert.equal(adapter.revealEnabled, false);
+    assert.equal(adapter.predictions.length, 1);
+    assert.equal(adapter._nativeCells.size, 0);
+    assert.equal(adapter.observedCells.get('3,4').mf, enums.MF_FLOOR);
+    adapter.destroy();
+});
+
+test('soft teardown retains the off-level guard and hard teardown resets it', () => {
+    const {adapter, dwem} = nativeMapHarness();
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        clear: true,
+        player_on_level: false,
+        cells: []
+    });
+    assert.equal(adapter.playerOnLevel, false);
+
+    adapter.destroy({releaseBinding: false});
+    assert.equal(adapter._playerOnLevel, false);
+    assert.equal(adapter.playerOnLevel, false);
+    assert.deepEqual(adapter.rehydrateKnowledge(), []);
+
+    adapter.destroy({releaseBinding: true});
+    assert.equal(adapter._playerOnLevel, null);
+    assert.equal(adapter.playerOnLevel, true);
+    assert.equal(adapter.binding, null);
+});
+
+test('soft resume refreshes player_on_level before rehydrating map knowledge', () => {
+    const mapEvents = [];
+    const knowledgeEvents = [];
+    const harness = nativeMapHarness({
+        onMap(payload) {
+            mapEvents.push(payload);
+        },
+        onKnowledge(cells) {
+            knowledgeEvents.push(cells);
+        }
+    });
+    const {adapter, dwem, mapKnowledge, cells, enums} = harness;
+    let boundPlayerOnLevel = true;
+    mapKnowledge.player_on_level = () => boundPlayerOnLevel;
+    mapKnowledge.bounds = () => ({left: 8, right: 8, top: 9, bottom: 9});
+    cells.set('8,9', {x: 8, y: 9, f: 17, mf: enums.MF_FLOOR});
+
+    // Pause while viewing another level, return while handlers are absent,
+    // then resume. The retained false bit must not suppress current knowledge
+    // or ordinary follow-up diffs which omit player_on_level.
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        clear: true,
+        player_on_level: false,
+        cells: []
+    });
+    adapter.destroy({releaseBinding: false});
+    boundPlayerOnLevel = true;
+    cells.set('8,9', {x: 8, y: 9, f: 17, mf: enums.MF_FLOOR});
+    adapter.install();
+    assert.equal(adapter.playerOnLevel, true);
+    assert.deepEqual(
+        adapter.rehydrateKnowledge().map(({x, y}) => ({x, y})),
+        [{x: 8, y: 9}]
+    );
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        cells: [{x: 8, y: 9, f: 18, mf: enums.MF_FLOOR}]
+    });
+    assert.equal(mapEvents.length, 1);
+    assert.equal(knowledgeEvents.length, 1);
+
+    // The inverse transition is equally important: entering an off-level map
+    // while paused must not be ingested as the player's current floor.
+    adapter.destroy({releaseBinding: false});
+    boundPlayerOnLevel = false;
+    adapter.install();
+    assert.equal(adapter.playerOnLevel, false);
+    assert.deepEqual(adapter.rehydrateKnowledge(), []);
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        cells: [{x: -4, y: -5, f: 19, mf: enums.MF_WALL}]
+    });
+    assert.equal(mapEvents.length, 1);
+    assert.equal(knowledgeEvents.length, 1);
+    assert.equal(adapter.observedCells.has('-4,-5'), false);
+
+    adapter.destroy({releaseBinding: true});
+});
+
 test('injects safe sampled terrain through native WebTiles map handling', () => {
     const ownerMaps = [];
     const ownerKnowledge = [];
@@ -2127,10 +2392,40 @@ test('draws predictions on separate transparent dungeon and minimap canvases', (
 
     const dungeonFillCount = dungeonOverlay.context.calls
         .filter(([name]) => name === 'fillRect').length;
-    adapter.setRevealEnabled(false);
+    const offLevel = {
+        msg: 'map',
+        clear: true,
+        player_on_level: false,
+        cells: []
+    };
+    adapter.handleMessageBefore(offLevel);
+    adapter.handleMessageAfter(offLevel);
+    adapter.setPredictions([{x: 7, y: 7, kind: 'floor', confidence: 1}]);
+    assert.equal(adapter.playerOnLevel, false);
     assert.equal(
         dungeonOverlay.context.calls.filter(([name]) => name === 'fillRect').length,
         dungeonFillCount
+    );
+    assert.ok(dungeonOverlay.context.calls.some(([name]) => name === 'clearRect'));
+
+    const returnToLevel = {
+        msg: 'map',
+        clear: true,
+        player_on_level: true,
+        cells: []
+    };
+    adapter.handleMessageBefore(returnToLevel);
+    adapter.handleMessageAfter(returnToLevel);
+    assert.equal(adapter.playerOnLevel, true);
+    assert.equal(
+        dungeonOverlay.context.calls.filter(([name]) => name === 'fillRect').length,
+        dungeonFillCount + 1
+    );
+
+    adapter.setRevealEnabled(false);
+    assert.equal(
+        dungeonOverlay.context.calls.filter(([name]) => name === 'fillRect').length,
+        dungeonFillCount + 1
     );
     assert.ok(dungeonOverlay.context.calls.some(([name]) => name === 'clearRect'));
 

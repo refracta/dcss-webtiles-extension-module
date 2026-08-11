@@ -2747,16 +2747,30 @@ function automaticPredictionPlan(result) {
         return {mode: 'safe', predictions: safePredictions};
     }
 
-    // `forcePredictions` is also the matcher's capability boundary for a
-    // supported best placement. Detection-only and source-audit-failed
-    // templates set forceRevealDisabled and therefore expose no cells here.
-    // Use that audited best-placement output for the normal orange,
-    // explicitly provisional display without entering force-command state.
-    const provisionalPredictions = Array.isArray(result?.forcePredictions)
-        ? result.forcePredictions
+    // Provisional terrain is a separate matcher contract: every still-
+    // plausible identity, transform, placement, and composite assembly agrees
+    // on these cells. Never turn an ambiguous best candidate into an automatic
+    // full-map force reveal.
+    const provisionalPredictions = Array.isArray(
+        result?.provisionalPredictions
+    )
+        ? result.provisionalPredictions
         : [];
     if (result?.best && provisionalPredictions.length > 0) {
         return {mode: 'provisional', predictions: provisionalPredictions};
+    }
+
+    // A true structural singleton makes the best-only force intersection
+    // equivalent to all-candidate consensus. Keep this narrow fallback for
+    // older/special matcher results; `/force_reveal` remains available for
+    // every other best-effort placement.
+    const singletonPredictions = result?.structuralSingleton === true
+        && result?.consensusOverflow !== true
+        && Array.isArray(result?.forcePredictions)
+        ? result.forcePredictions
+        : [];
+    if (result?.best && singletonPredictions.length > 0) {
+        return {mode: 'provisional', predictions: singletonPredictions};
     }
     return {mode: 'none', predictions: []};
 }
@@ -3360,8 +3374,32 @@ export default class MapPredictorRuntime {
         }
     }
 
-    onMap({clear, touched, raw} = {}) {
+    onMap({
+        clear,
+        touched,
+        raw,
+        playerOnLevel,
+        returningToPlayerLevel = false,
+        sameLevelResync = false
+    } = {}) {
         if (!this.runtimeEnabled || !this.matcher) {
+            return;
+        }
+        const rawPlayerOnLevel = Object.prototype.hasOwnProperty.call(
+            raw || {},
+            'player_on_level'
+        )
+            ? Boolean(raw.player_on_level)
+            : undefined;
+        const effectivePlayerOnLevel = playerOnLevel ?? rawPlayerOnLevel;
+        if (effectivePlayerOnLevel === false
+            || returningToPlayerLevel
+            || sameLevelResync
+            || raw?.spect_only === true) {
+            // Off-level X-map packets are display-only. Returning from that
+            // view and spectator full synchronizations rebuild WebTiles map
+            // knowledge for the same floor, so retain matcher evidence,
+            // predictions, and the user's manual reveal choice.
             return;
         }
         if (clear) {
@@ -3399,7 +3437,15 @@ export default class MapPredictorRuntime {
             this.awaitingLevelEntry = false;
             this.resetLevel({
                 keepTemplates: !signalBoundTemplates,
-                keepReveal: false
+                keepReveal: false,
+                // `place` and `depth` are not a complete level identity:
+                // every Pandemonium floor is reported as Pandemonium:0.
+                // A full map packet is the authoritative boundary available
+                // to WebTiles for those same-key transitions. Re-arm the
+                // one-shot automatic reveal after clearing the old level so
+                // the next supported match is displayed without requiring
+                // /reveal or /force_reveal.
+                resetAutoReveal: true
             });
             this.matcher.setFocusPosition(focus, {evaluate: false});
             if (signalBoundTemplates) {
@@ -3989,9 +4035,9 @@ export default class MapPredictorRuntime {
                 best?.offsetX,
                 best?.offsetY
             ].join('|')
-            // A provisional best placement can move repeatedly while terrain
-            // arrives. Keep displaying the latest cells, but notify only once
-            // per level until the matcher promotes it to a safe result.
+            // The retained candidate set can narrow repeatedly while terrain
+            // arrives. Keep displaying its latest shared cells, but notify
+            // only once per level until the matcher promotes it to safe.
             : [this.levelKey, 'provisional'].join('|');
         if (fingerprint === this.notificationFingerprint) {
             this.emitStatus();
@@ -4199,7 +4245,9 @@ export default class MapPredictorRuntime {
             + `(${escapeHtml(match.placementSearch || 'unknown')} placement) `
             + `@ ${match.offsetX ?? '?'},${match.offsetY ?? '?'}; `
             + `${summary.plausibleCandidateCount} plausible, `
-            + `${summary.safePredictionCount} safe / ${summary.forcePredictionCount} force cells; `
+            + `${summary.safePredictionCount} safe / `
+            + `${summary.provisionalPredictionCount} provisional consensus / `
+            + `${summary.forcePredictionCount} best-only force cells; `
             + `reason ${escapeHtml(summary.resultReason || 'unknown')}, `
             + `forced ${summary.forceRevealActive ? 'on' : 'off'}.`
         );
@@ -4254,6 +4302,11 @@ export default class MapPredictorRuntime {
                     : automaticPredictionPlan(this.result).mode,
             safePredictionCount: Array.isArray(this.result?.predictions)
                 ? this.result.predictions.length
+                : 0,
+            provisionalPredictionCount: Array.isArray(
+                this.result?.provisionalPredictions
+            )
+                ? this.result.provisionalPredictions.length
                 : 0,
             forcePredictionCount: Array.isArray(this.result?.forcePredictions)
                 ? this.result.forcePredictions.length

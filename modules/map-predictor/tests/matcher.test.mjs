@@ -208,6 +208,8 @@ test('consensus fails closed when plausible candidates exceed the cap', () => {
     assert.ok(result.plausibleCandidateCount > 2);
     assert.equal(result.ready, false);
     assert.deepEqual(result.predictions, []);
+    assert.deepEqual(result.provisionalPredictions, []);
+    assert.equal(result.structuralSingleton, false);
 });
 
 test('uncertain cells are only predicted when all surviving possibilities agree', () => {
@@ -569,6 +571,126 @@ test('disabled partial policy blocks a heuristically unique reflected placement'
     ), true);
 });
 
+test('a force-disabled plausible survivor vetoes safe and provisional terrain', () => {
+    const rows = [
+        ['wall', 'wall', 'wall'],
+        ['wall', 'floor', 'door'],
+        ['wall', 'floor', 'wall']
+    ];
+    const supported = template('supported-candidate', rows, {
+        matchPolicy: {
+            minScore: 1,
+            minEvidenceCells: 4,
+            minEvidenceWeight: 4,
+            minDistinctKinds: 2
+        }
+    });
+    const detectionOnly = template('detection-only-candidate', rows, {
+        matchPolicy: {
+            minScore: 1,
+            minEvidenceCells: 4,
+            minEvidenceWeight: 4,
+            minDistinctKinds: 2,
+            revealDisabled: true,
+            forceRevealDisabled: true
+        }
+    });
+    const observations = [
+        {x: 1, y: 1, kind: 'wall'},
+        {x: 2, y: 2, kind: 'floor'},
+        {x: 3, y: 2, kind: 'door'},
+        {x: 1, y: 3, kind: 'wall'}
+    ];
+
+    for (const legacyExhaustivePlacement of [false, true]) {
+        const matcher = new MapMatcher({
+            worldWidth: 5,
+            worldHeight: 5,
+            minScore: 1,
+            minEvidenceCells: 1,
+            minEvidenceWeight: 1,
+            minDistinctKinds: 1,
+            minPredictedCells: 1,
+            legacyExhaustivePlacement
+        });
+        matcher.setTemplates([supported, detectionOnly]);
+        const result = matcher.updateObservations(observations);
+
+        assert.equal(result.best.template.name, supported.name);
+        assert.equal(result.ready, false);
+        assert.equal(result.reason, 'ambiguous');
+        assert.equal(result.plausibleCandidateCount, 2);
+        assert.deepEqual(result.predictions, []);
+        assert.deepEqual(result.provisionalPredictions, []);
+        assert.ok(result.forcePredictions.length > 0);
+    }
+});
+
+test('a non-tied force-disabled survivor still vetoes automatic terrain', () => {
+    const supportedRows = Array.from({length: 10}, (_, y) =>
+        Array.from({length: 10}, (_, x) =>
+            x === 0 || y === 0 || x === 9 || y === 9
+                ? 'wall'
+                : 'floor'));
+    const detectionRows = structuredClone(supportedRows);
+    for (let x = 2; x <= 7; x++) {
+        detectionRows[2][x] = 'wall';
+    }
+    const policy = {
+        minScore: 0.9,
+        minEvidenceCells: 10,
+        minEvidenceWeight: 10,
+        minDistinctKinds: 2,
+        minCoverage: 0,
+        minSpanXRatio: 0,
+        minSpanYRatio: 0,
+        requiredKinds: [],
+        plausibleSlack: 0.08,
+        plausibleMinScore: 0.8
+    };
+    const supported = template('supported-non-tie', supportedRows, {
+        matchPolicy: policy
+    });
+    const detectionOnly = template('detection-non-tie', detectionRows, {
+        matchPolicy: {
+            ...policy,
+            revealDisabled: true,
+            forceRevealDisabled: true
+        }
+    });
+    const observations = [];
+    supported.grid.forEach((row, y) => row.forEach((entry, x) => {
+        if (x !== 9 || y !== 9) {
+            observations.push({x, y, kind: entry.kinds[0]});
+        }
+    }));
+
+    for (const legacyExhaustivePlacement of [false, true]) {
+        const matcher = new MapMatcher({
+            worldWidth: 10,
+            worldHeight: 10,
+            minEvidenceCells: 1,
+            minEvidenceWeight: 1,
+            minDistinctKinds: 1,
+            minPredictedCells: 1,
+            minWinnerMargin: 0.025,
+            legacyExhaustivePlacement
+        });
+        matcher.setTemplates([supported, detectionOnly]);
+        const result = matcher.updateObservations(observations);
+
+        assert.equal(result.best.template.name, supported.name);
+        assert.equal(result.best.score, 1);
+        assert.ok(result.margin > 0.025 && result.margin < 0.08);
+        assert.equal(result.unique, true);
+        assert.equal(result.plausibleCandidateCount, 2);
+        assert.equal(result.ready, false);
+        assert.equal(result.reason, 'ambiguous');
+        assert.deepEqual(result.predictions, []);
+        assert.deepEqual(result.provisionalPredictions, []);
+    }
+});
+
 test('entry anchor follows a reflected possible glyph and rejects terrain-derived offsets', () => {
     const source = template('anchored-reflection', [
         ['wall', 'door', 'portal'],
@@ -735,6 +857,7 @@ test('correlation exhaustive placement is result-equivalent to legacy enumeratio
         unique: result.unique,
         reason: result.reason,
         margin: result.margin,
+        structuralSingleton: result.structuralSingleton,
         plausibleCandidateCount: result.plausibleCandidateCount,
         consensusOverflow: result.consensusOverflow,
         best: result.best && {
@@ -762,6 +885,7 @@ test('correlation exhaustive placement is result-equivalent to legacy enumeratio
             evidenceCells: candidate.evidenceCells
         })),
         predictions: result.predictions,
+        provisionalPredictions: result.provisionalPredictions,
         forcePredictions: result.forcePredictions
     });
 
@@ -842,6 +966,90 @@ test('correlation exhaustive placement is result-equivalent to legacy enumeratio
             `legal exhaustive offsets, seed ${seed}`
         );
     }
+});
+
+test('correlation exhaustive placement emits only provisional survivor consensus', () => {
+    const rows = [
+        ['wall', 'floor', 'door', 'lava'],
+        ['altar', 'stair', 'portal', 'deep_water'],
+        ['shallow_water', 'wall', 'floor', 'statue'],
+        ['door', 'lava', 'altar', 'wall']
+    ];
+    const policy = {
+        exhaustivePlacement: true,
+        revealDisabled: true,
+        minScore: 1,
+        minEvidenceCells: 10,
+        minEvidenceWeight: 10,
+        minDistinctKinds: 2,
+        minCoverage: 0,
+        minSpanXRatio: 0,
+        minSpanYRatio: 0,
+        requiredKinds: []
+    };
+    const first = template('correlation-provisional-a', rows, {
+        orient: 'float',
+        encompass: false,
+        matchPolicy: policy
+    });
+    const secondRows = structuredClone(rows);
+    secondRows[3][3] = 'floor';
+    const second = template('correlation-provisional-b', secondRows, {
+        orient: 'float',
+        encompass: false,
+        matchPolicy: policy
+    });
+    const offset = {x: 2, y: -1};
+    const observations = [];
+    first.grid.forEach((row, y) => row.forEach((cell, x) => {
+        if (y < 3) {
+            observations.push({
+                x: offset.x + x,
+                y: offset.y + y,
+                kind: cell.kinds[0]
+            });
+        }
+    }));
+    const options = {
+        worldWidth: 10,
+        worldHeight: 8,
+        requireExhaustivePlacement: true,
+        minEvidenceCells: 1,
+        minEvidenceWeight: 1,
+        minDistinctKinds: 1,
+        minScore: 1,
+        maxConsensusCandidates: 8,
+        minPredictedCells: 1
+    };
+    const correlation = new MapMatcher(options);
+    const legacy = new MapMatcher({...options, legacyExhaustivePlacement: true});
+    correlation.setTemplates([first, second]);
+    legacy.setTemplates([first, second]);
+    const actual = correlation.updateObservations(observations);
+    const expected = legacy.updateObservations(observations);
+
+    assert.ok(correlation.getEvaluationStats().exhaustiveBatches > 0);
+    assert.equal(actual.ready, false);
+    assert.equal(actual.reason, 'policy-disabled');
+    assert.equal(actual.structuralSingleton, false);
+    assert.deepEqual(actual.predictions, []);
+    assert.ok(actual.provisionalPredictions.length > 0, JSON.stringify({
+        reason: actual.reason,
+        plausible: actual.plausibleCandidateCount,
+        overflow: actual.consensusOverflow,
+        candidates: actual.candidates.map(candidate => candidate.id),
+        force: actual.forcePredictions.length,
+        stats: correlation.getEvaluationStats()
+    }));
+    assert.ok(actual.provisionalPredictions.length
+        < actual.forcePredictions.length);
+    assert.deepEqual(
+        actual.provisionalPredictions,
+        expected.provisionalPredictions
+    );
+    assert.deepEqual(actual.forcePredictions, expected.forcePredictions);
+    assert.equal(actual.provisionalPredictions.some(cell =>
+        cell.x === offset.x + 3 && cell.y === offset.y + 3), false);
 });
 
 test('multiple symmetric entry anchors reveal only world-space consensus', () => {
@@ -1931,6 +2139,60 @@ test('Vaults composite uses a stair anchor and reveals exact slot consensus', ()
             === prediction.kind), true);
     assert.equal(afterMutation.predictions.some(prediction =>
         matcher.volatileObservations.has(`${prediction.x},${prediction.y}`)), false);
+});
+
+test('a force-disabled singleton composite cannot auto-display best terrain', () => {
+    const source = vaultsCompositeMatcherFixture();
+    source.metadata.matchPolicy.forceRevealDisabled = true;
+    source.metadata.composite.type = 'fixed-subvaults-v1';
+    delete source.metadata.composite.regimes;
+    source.metadata.composite.slots.forEach((slot, index) => {
+        slot.role = `fixed-slot-${index}`;
+    });
+    source.metadata.composite.variants.forEach((variant, index) => {
+        variant.roles = [`fixed-slot-${index}`];
+    });
+    const offset = {x: -5, y: -5};
+    const observations = [];
+    source.grid.forEach((row, y) => row.forEach((entry, x) => {
+        if (x === 6 && y === 5) {
+            return;
+        }
+        const slotIndex = source.metadata.composite.slots.findIndex(slot =>
+            x >= slot.x && x < slot.x + slot.width
+            && y >= slot.y && y < slot.y + slot.height);
+        const kind = slotIndex < 0
+            ? entry.kinds[0]
+            : source.metadata.composite.variants[slotIndex]
+                .grid[y - source.metadata.composite.slots[slotIndex].y]
+                [x - source.metadata.composite.slots[slotIndex].x]
+                .kinds[0];
+        observations.push({
+            x: offset.x + x,
+            y: offset.y + y,
+            kind
+        });
+    }));
+    const matcher = new MapMatcher({
+        worldWidth: 14,
+        worldHeight: 12,
+        requireExhaustivePlacement: true,
+        minScore: 1,
+        minEvidenceCells: 3,
+        minEvidenceWeight: 3,
+        minDistinctKinds: 1,
+        minPredictedCells: 1
+    });
+    matcher.setTemplates([source]);
+    const result = matcher.updateObservations(observations);
+
+    assert.equal(result.best.template.name, source.name);
+    assert.equal(result.structuralSingleton, true);
+    assert.equal(result.ready, false);
+    assert.equal(result.reason, 'ambiguous');
+    assert.deepEqual(result.predictions, []);
+    assert.deepEqual(result.provisionalPredictions, []);
+    assert.deepEqual(result.forcePredictions, []);
 });
 
 test('Vaults composite keeps the fixed shell when quadrant roles are modified', () => {
