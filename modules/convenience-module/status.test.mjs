@@ -55,7 +55,7 @@ test('Map status summarizes score and detailed matcher state', () => {
     assert.match(status.desc, /Evidence: 384 cells, 4 kinds, 42\.5% coverage/u);
     assert.match(status.desc, /Candidates: 2 loaded, 1 plausible/u);
     assert.match(status.desc, /Cells: 135 selected for display, 135 current-best, 120 safe diagnostic, 120 consensus diagnostic, 135 explicit-force eligible/u);
-    assert.match(status.desc, /Controls: display on \(automatic orange best candidate\); \/reveal on; \/force_reveal available/u);
+    assert.match(status.desc, /Controls: display on \(automatic warm-gray best candidate\); \/reveal on; \/force_reveal available/u);
     assert.equal(status.desc.split('\n').length, 8);
     assert.doesNotMatch(status.desc, / \| /u);
 });
@@ -106,7 +106,7 @@ test('Map status distinguishes an unaccepted automatic best candidate', () => {
     );
     assert.match(status.desc, /reason: insufficient-evidence/u);
     assert.match(status.desc, /3 plausible/u);
-    assert.match(status.desc, /Controls: display on \(automatic orange best candidate\)/u);
+    assert.match(status.desc, /Controls: display on \(automatic warm-gray best candidate\)/u);
 });
 
 test('Map status distinguishes a prediction hidden with /reveal', () => {

@@ -77,7 +77,7 @@ export function createMapPredictorStatus(summary) {
         colour = 14;
     } else if (displayed) {
         verdict = `AUTO BEST GUESS (${accepted ? 'accepted match' : 'unaccepted candidate'}${ambiguous ? '; ambiguous' : ''})`;
-        display = 'on (automatic orange best candidate)';
+        display = 'on (automatic warm-gray best candidate)';
         colour = 14;
     } else if (hidden) {
         verdict = `AVAILABLE / HIDDEN (best guess${ambiguous ? '; ambiguous' : ''})`;

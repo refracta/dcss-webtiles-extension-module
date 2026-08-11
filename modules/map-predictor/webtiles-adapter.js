@@ -9,7 +9,7 @@ const DEFAULT_MAX_ABS_COORDINATE = 32767;
 const UNSEEN = 0x00040000;
 const BASE_TILE_MASK = 0x0000FFFF;
 const MAP_PREDICTOR_BG_FLAG_EXPORT = 'DWEM_MAP_PREDICTOR_BG_FLAG';
-const MAP_PREDICTOR_TINT = 'rgba(255, 128, 24, 0.32)';
+const MAP_PREDICTOR_TINT = 'rgba(105, 92, 78, 0.24)';
 const SHADOW_CURSOR_EVENT_NAMESPACE = '.mapPredictorShadowCursor';
 const SHADOW_CURSOR_EVENTS = [
     `game_keydown${SHADOW_CURSOR_EVENT_NAMESPACE}`,
@@ -253,7 +253,7 @@ export function installMapPredictorKnowledgeVisibilityBroker(
 }
 
 /**
- * Add the orange tint directly to DungeonCellRenderer's normal cell draw.
+ * Add the subdued warm-gray tint directly to DungeonCellRenderer's normal cell draw.
  * No auxiliary dungeon/minimap canvas is involved. The marker remains packed
  * in the cell background and therefore survives normal map/X-view redraws.
  * This function is serialized into the WebTiles `./cell_renderer` closure.
@@ -262,7 +262,7 @@ export function installMapPredictorRendererTint(
     DungeonCellRenderer,
     enums,
     mapKnowledge,
-    tint = 'rgba(255, 128, 24, 0.32)'
+    tint = 'rgba(105, 92, 78, 0.24)'
 ) {
     const prototype = DungeonCellRenderer?.prototype;
     const flag = enums?.DWEM_MAP_PREDICTOR_BG_FLAG;

@@ -4042,7 +4042,7 @@ export default class MapPredictorRuntime {
             + `${result.ready ? 'matched' : 'best candidate'} `
             + `(${percentage}%). `
             + (autoAppliedNow
-                ? 'Automatically mapped as an uncertain orange best guess; '
+                ? 'Automatically mapped as an uncertain warm-gray best guess; '
                     + 'type <b>/reveal</b> to hide it.'
                 : 'Type <b>/reveal</b> to magic-map the inferred terrain.')
         );

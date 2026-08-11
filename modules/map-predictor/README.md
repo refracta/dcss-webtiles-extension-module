@@ -1,8 +1,9 @@
 # Map Predictor
 
 Map Predictor compares observed terrain with known fixed maps and predicts
-terrain that has not been seen yet. Predictions are shown in orange only in
-the client and do not change the server map or saved game.
+terrain that has not been seen yet. Predictions are shown with a subdued
+warm-gray tint only in the client and do not change the server map or saved
+game.
 
 Enable it in the RC file:
 
@@ -17,10 +18,10 @@ map_predictor = true
 
 `Map (NN.N%)` is terrain similarity, not the probability that a prediction is
 correct. Whenever matching has a best candidate with constrained unseen cells,
-that candidate's current best terrain estimate is shown automatically in
-orange—even at 100% similarity when acceptance, ambiguity, placement, or source
-policy checks are unresolved. A later winner replaces the orange estimate.
-Orange terrain is always unconfirmed and may be wrong; safe and multi-candidate
+that candidate's current best terrain estimate is shown automatically with a
+warm-gray tint—even at 100% similarity when acceptance, ambiguity, placement,
+or source policy checks are unresolved. A later winner replaces the estimate.
+Tinted terrain is always unconfirmed and may be wrong; safe and multi-candidate
 consensus counts remain diagnostic information rather than the automatic
 display source.
 
