@@ -519,20 +519,45 @@ test('background flag broker removes enum hot-path work while disabled', () => {
     broker.uninstall();
 });
 
-test('custom mapped cells stay unseen and receive only the native warm-gray tint', () => {
+test('custom mapped cells stay unseen and receive only the native gray hatch', () => {
     const calls = [];
     class Renderer {
         constructor() {
             this.cell_width = 32;
             this.cell_height = 32;
             this.ctx = {
-                fillStyle: null,
+                strokeStyle: null,
+                lineWidth: null,
+                lineCap: null,
+                globalAlpha: null,
                 globalCompositeOperation: null,
                 save() {
                     calls.push(['save']);
                 },
-                fillRect(...args) {
-                    calls.push(['fillRect', this.fillStyle, ...args]);
+                beginPath() {
+                    calls.push(['beginPath']);
+                },
+                rect(...args) {
+                    calls.push(['rect', ...args]);
+                },
+                clip() {
+                    calls.push(['clip']);
+                },
+                moveTo(...args) {
+                    calls.push(['moveTo', ...args]);
+                },
+                lineTo(...args) {
+                    calls.push(['lineTo', ...args]);
+                },
+                stroke() {
+                    calls.push([
+                        'stroke',
+                        this.strokeStyle,
+                        this.lineWidth,
+                        this.lineCap,
+                        this.globalAlpha,
+                        this.globalCompositeOperation
+                    ]);
                 },
                 restore() {
                     calls.push(['restore']);
@@ -584,10 +609,26 @@ test('custom mapped cells stay unseen and receive only the native warm-gray tint
         renderer.do_render_cell(3, 4, 120, 144, customCell),
         'rendered'
     );
-    assert.deepEqual(calls, [
+    assert.deepEqual(calls.slice(0, 6), [
         ['base'],
         ['save'],
-        ['fillRect', 'rgba(32, 29, 26, 0.36)', 120, 144, 40, 36],
+        ['beginPath'],
+        ['rect', 120, 144, 40, 36],
+        ['clip'],
+        ['beginPath']
+    ]);
+    assert.equal(calls.filter(([name]) => name === 'moveTo').length, 8);
+    assert.equal(calls.filter(([name]) => name === 'lineTo').length, 8);
+    assert.deepEqual(
+        calls.find(([name]) => name === 'moveTo'),
+        ['moveTo', 120, 150]
+    );
+    assert.deepEqual(
+        calls.findLast(([name]) => name === 'lineTo'),
+        ['lineTo', 160, 173]
+    );
+    assert.deepEqual(calls.slice(-3), [
+        ['stroke', 'rgba(170, 170, 170, 0.46)', 1, 'butt', 1, 'source-over'],
         ['restore'],
         ['cursor', 3, 4, 120, 144]
     ]);
@@ -690,7 +731,7 @@ test('installs native flag, renderer tint, and binding source mappers', () => {
         injectedFlags.flags.DWEM_MAP_PREDICTED,
         MAP_PREDICTOR_FLAG
     );
-    assert.match(byMatcher.get('./cell_renderer').source, /rgba\(32, 29, 26, 0\.36\)/);
+    assert.match(byMatcher.get('./cell_renderer').source, /rgba\(170, 170, 170, 0\.46\)/);
     assert.match(
         byMatcher.get('./cell_renderer').source,
         /MapPredictorRendererTintTarget/

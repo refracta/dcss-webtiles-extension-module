@@ -2453,7 +2453,7 @@ function evaluateCompositeCandidates(
         excludedKeys
     );
     // `forceRevealDisabled` remains an audit boundary for the explicit unsafe
-    // command. It deliberately does not suppress the separate warm-gray
+    // command. It deliberately does not suppress the separate gray-hatched
     // best-display contract requested by the user.
     const forcePredictions = best.matchPolicy.forceRevealDisabled === true
         ? []
@@ -2944,7 +2944,7 @@ export class MapMatcher {
         const survivors = plausible.slice(0, this.options.maxConsensusCandidates);
         // Expose singleton-constrained terrain from the current highest-scoring
         // placement independently of acceptance, ambiguity, placement proof,
-        // and reveal policy. The runtime uses this for the always-on warm-gray
+        // and reveal policy. The runtime uses this for the always-on gray-hatched
         // estimate; the explicit force command remains separately audit-gated.
         const bestDisplayPredictions = consensusPredictions(
             [best],

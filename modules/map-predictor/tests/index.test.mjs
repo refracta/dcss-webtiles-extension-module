@@ -1924,7 +1924,7 @@ test('automatic display prefers the current best over ambiguous consensus', () =
     module.destroy();
 });
 
-test('a changed best candidate immediately replaces a visible warm-gray set', () => {
+test('a changed best candidate immediately replaces a visible gray-hatched set', () => {
     const {module, adapter, template} = createHarness();
     module.onLoad();
     module.templates = [template];

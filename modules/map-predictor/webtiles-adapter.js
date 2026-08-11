@@ -9,7 +9,7 @@ const DEFAULT_MAX_ABS_COORDINATE = 32767;
 const UNSEEN = 0x00040000;
 const BASE_TILE_MASK = 0x0000FFFF;
 const MAP_PREDICTOR_BG_FLAG_EXPORT = 'DWEM_MAP_PREDICTOR_BG_FLAG';
-const MAP_PREDICTOR_TINT = 'rgba(32, 29, 26, 0.36)';
+const MAP_PREDICTOR_TINT = 'rgba(170, 170, 170, 0.46)';
 const SHADOW_CURSOR_EVENT_NAMESPACE = '.mapPredictorShadowCursor';
 const SHADOW_CURSOR_EVENTS = [
     `game_keydown${SHADOW_CURSOR_EVENT_NAMESPACE}`,
@@ -253,7 +253,8 @@ export function installMapPredictorKnowledgeVisibilityBroker(
 }
 
 /**
- * Add the dark warm-gray tint directly to DungeonCellRenderer's normal cell draw.
+ * Add a subdued gray diagonal hatch directly to DungeonCellRenderer's normal
+ * cell draw.
  * No auxiliary dungeon/minimap canvas is involved. The marker remains packed
  * in the cell background and therefore survives normal map/X-view redraws.
  * This function is serialized into the WebTiles `./cell_renderer` closure.
@@ -262,7 +263,7 @@ export function installMapPredictorRendererTint(
     DungeonCellRenderer,
     enums,
     mapKnowledge,
-    tint = 'rgba(32, 29, 26, 0.36)'
+    tint = 'rgba(170, 170, 170, 0.46)'
 ) {
     const prototype = DungeonCellRenderer?.prototype;
     const flag = enums?.DWEM_MAP_PREDICTOR_BG_FLAG;
@@ -310,7 +311,14 @@ export function installMapPredictorRendererTint(
             && Number.isSafeInteger(activeFlag[1])
             && (background[1] & activeFlag[1]) !== 0;
         if (!marked || !this.ctx
-            || typeof this.ctx.fillRect !== 'function') {
+            || typeof this.ctx.save !== 'function'
+            || typeof this.ctx.restore !== 'function'
+            || typeof this.ctx.beginPath !== 'function'
+            || typeof this.ctx.rect !== 'function'
+            || typeof this.ctx.clip !== 'function'
+            || typeof this.ctx.moveTo !== 'function'
+            || typeof this.ctx.lineTo !== 'function'
+            || typeof this.ctx.stroke !== 'function') {
             return result;
         }
 
@@ -321,17 +329,44 @@ export function installMapPredictorRendererTint(
                 height: this.cell_height
             };
         if (!Number.isFinite(scaled?.width)
-            || !Number.isFinite(scaled?.height)) {
+            || !Number.isFinite(scaled?.height)
+            || scaled.width <= 0
+            || scaled.height <= 0) {
             return result;
         }
 
-        this.ctx.save?.();
+        this.ctx.save();
         try {
+            this.ctx.globalAlpha = 1;
             this.ctx.globalCompositeOperation = 'source-over';
-            this.ctx.fillStyle = active.tint;
-            this.ctx.fillRect(x, y, scaled.width, scaled.height);
+            this.ctx.strokeStyle = active.tint;
+            this.ctx.lineCap = 'butt';
+            this.ctx.lineWidth = Math.max(
+                1,
+                Math.round(Math.min(scaled.width, scaled.height) / 32)
+            );
+            this.ctx.beginPath();
+            this.ctx.rect(x, y, scaled.width, scaled.height);
+            this.ctx.clip();
+            this.ctx.beginPath();
+            const spacing = Math.max(
+                8 * this.ctx.lineWidth,
+                Math.round(Math.min(scaled.width, scaled.height) / 4)
+            );
+            const firstDiagonal = Math.ceil((x + y) / spacing) * spacing;
+            const lastDiagonal = x + scaled.width + y + scaled.height;
+            for (let diagonal = firstDiagonal;
+                diagonal <= lastDiagonal;
+                diagonal += spacing) {
+                this.ctx.moveTo(x, diagonal - x);
+                this.ctx.lineTo(
+                    x + scaled.width,
+                    diagonal - x - scaled.width
+                );
+            }
+            this.ctx.stroke();
         } finally {
-            this.ctx.restore?.();
+            this.ctx.restore();
         }
 
         // The stock renderer draws cursors near the end of do_render_cell.
