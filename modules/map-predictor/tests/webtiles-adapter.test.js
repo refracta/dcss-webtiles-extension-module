@@ -587,7 +587,7 @@ test('custom mapped cells stay unseen and receive only the native warm-gray tint
     assert.deepEqual(calls, [
         ['base'],
         ['save'],
-        ['fillRect', 'rgba(105, 92, 78, 0.24)', 120, 144, 40, 36],
+        ['fillRect', 'rgba(32, 29, 26, 0.36)', 120, 144, 40, 36],
         ['restore'],
         ['cursor', 3, 4, 120, 144]
     ]);
@@ -690,7 +690,7 @@ test('installs native flag, renderer tint, and binding source mappers', () => {
         injectedFlags.flags.DWEM_MAP_PREDICTED,
         MAP_PREDICTOR_FLAG
     );
-    assert.match(byMatcher.get('./cell_renderer').source, /rgba\(105, 92, 78, 0\.24\)/);
+    assert.match(byMatcher.get('./cell_renderer').source, /rgba\(32, 29, 26, 0\.36\)/);
     assert.match(
         byMatcher.get('./cell_renderer').source,
         /MapPredictorRendererTintTarget/

@@ -2699,7 +2699,7 @@ map_predictor = true (DWEM)
     Enables Map Predictor for the current game. The default is false; use the lowercase literal true.
     Spectators follow the watched player's active RC setting, not the viewer's RC setting.
     While enabled, press Ctrl-M to pause or resume prediction without changing the RC file.
-    The current highest-scoring candidate's constrained unseen terrain is displayed automatically with a subdued warm-gray tint,
+    The current highest-scoring candidate's constrained unseen terrain is displayed automatically with a dark warm-gray tint,
       even when its match is ambiguous, unaccepted, placement-unverified, policy-disabled, or below 100% similarity.
       Tinted terrain is an inferred best guess and may be wrong; /reveal can deliberately hide it.
     The multiline Map status tooltip separates similarity, ambiguity, evidence, candidates, cells, and controls.

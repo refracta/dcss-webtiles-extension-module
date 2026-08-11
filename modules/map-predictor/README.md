@@ -1,7 +1,7 @@
 # Map Predictor
 
 Map Predictor compares observed terrain with known fixed maps and predicts
-terrain that has not been seen yet. Predictions are shown with a subdued
+terrain that has not been seen yet. Predictions are shown with a dark
 warm-gray tint only in the client and do not change the server map or saved
 game.
 
