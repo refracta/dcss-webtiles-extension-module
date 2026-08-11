@@ -20,7 +20,15 @@ export default class CommandManager {
             aliases = []
         } = options;
 
-        const commandTarget = { command, argumentTypes, handler, module, description, argDescriptions };
+        const commandTarget = {
+            command,
+            argumentTypes,
+            handler,
+            module,
+            description,
+            argDescriptions,
+            aliases: [...aliases]
+        };
         this.commands.push(commandTarget);
         this.commandTrie.insert(command, aliases, commandTarget);
 
@@ -28,6 +36,40 @@ export default class CommandManager {
         aliases.forEach(alias => {
             this.aliasMap[alias] = command;
         });
+    }
+
+    rebuildCommandIndex() {
+        this.commandTrie = new CommandTrie();
+        this.aliasMap = {};
+        for (const command of this.commands) {
+            const aliases = Array.isArray(command.aliases)
+                ? command.aliases
+                : [];
+            this.commandTrie.insert(command.command, aliases, command);
+            for (const alias of aliases) {
+                this.aliasMap[alias] = command.command;
+            }
+        }
+    }
+
+    removeCommand(command) {
+        const previousLength = this.commands.length;
+        this.commands = this.commands.filter(entry => entry.command !== command);
+        if (this.commands.length === previousLength) {
+            return false;
+        }
+        this.rebuildCommandIndex();
+        return true;
+    }
+
+    removeCommandsByModule(module) {
+        const previousLength = this.commands.length;
+        this.commands = this.commands.filter(entry => entry.module !== module);
+        const removed = previousLength - this.commands.length;
+        if (removed > 0) {
+            this.rebuildCommandIndex();
+        }
+        return removed;
     }
 
     getCommandsByModule(module) {

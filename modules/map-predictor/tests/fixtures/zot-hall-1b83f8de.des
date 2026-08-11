@@ -1,0 +1,106 @@
+NAME:    hall_of_Zot
+TAGS:    no_dump no_trap_gen patrolling
+PLACE:   Zot:$
+ORIENT:  north
+MONS:    orb guardian, boundless tesseract
+MONS:    electric golem, killer klown, ancient lich / dread lich
+MONS:    orb of appropriateness
+KITEM:   R = prismatic gem
+KITEM:   Z = Orb of Zot
+KFEAT:   Z = orb dais
+# Traps to spread throughout the vault. Fewer alarm traps as those have a big
+# effect on the vault as a whole.
+KFEAT:   ~ = trap_zot / trap_dispersal / trap_teleport_permanent / trap_net \
+             / trap_alarm w:5
+# Flat distribution of traps for specific sections.
+KFEAT:   ^ = trap_zot / trap_dispersal / trap_teleport_permanent / trap_alarm \
+             / trap_net
+# Weaker trap lua for replacing the old rare double-trapped entrances option.
+{{
+local weaker_t = { { t = "trap_tyrant", weight = 12 },
+                   { t = "trap_harlequin w:7", weight = 10 },
+                   { t = "trap_archmage", weight = 7 },
+                   { t = "trap_devourer w:5", weight = 5}, }
+local t_choice_a = util.random_weighted_from("weight", weaker_t)
+local t_choice_b = t_choice_a
+while t_choice_a == t_choice_b do
+  t_choice_b = util.random_weighted_from("weight", weaker_t)
+end
+}}
+KMASK:   ^~ = no_item_gen
+SHUFFLE: DdOo / HhPp
+# As a replacement to the small chance of both wing entrances being covered in
+# traps, cover up one and use weaker traps along the full path of the other.
+: if crawl.one_chance_in(4) then
+NSUBST:  H = 1:^ / * = ^'
+SUBST:   D = '
+:   kfeat("oO = " .. t_choice_a.t .. " / " .. t_choice_b.t)
+: else
+SUBST:   D = ^'', O = d, o = '
+: end
+SUBST:   P = h, Hp = '
+# Place a minimum number of traps and some extra liches in each lower wing.
+NSUBST:  d = 2=5. / 4=~ / ., h = 2=5. / 4=~ / .
+# In each upper wing, place a few monsters along with locations for the main
+# monster set on '?'. Use more central areas in the upper wings to do this.
+# Both boundless tesseracts are placed in fixed positions right by the upper
+# wing entrances, replacing old chances to place monster statues or traps there.
+NSUBST:  f = 3 / 4 / 6 / 9 = ? .:8 / e, k = 3 / 4 / 6 / 9 = ? .:8 / j
+# Minimum number of traps in each upper wing.
+NSUBST:  e = 4=~ / ., j = 4=~ / .
+# Each upper wing has equal chance to get one of three sets that most heavily
+# weight specific monsters: killer klown, ancient / dread lich, or orbs.
+SUBST:   ? : KLM
+SUBST:   K = 0 4:40 5 6 ., L = 0 4 5:40 6 ., M = 0 4 5 6:40 .
+# Make a final sprinkling of traps throughout the vault.
+SUBST:   . = ~ .:600, ' = .
+# For upper-wing entrances, sometimes put statue monsters, traps, or statues.
+SUBST:   E = 2 ^:20 G .:80, J = 2 ^:20 G .:80
+# For the orb chamber, some guaranteed and random traps. About 4 on-average.
+NSUBST:  - = 2=^ / * = ^ .:240
+# Colours
+COLOUR:     cX = lightmagenta
+TILE:       c = stone_wall_zot_last
+LFLOORCOL:  magenta
+LROCKCOL:   lightmagenta
+LFLOORTILE: floor_rough_magenta
+LROCKTILE:  wall_zot_lightmagenta
+validate {{ return has_exit_from_glyph('Z') }}
+MAP
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXeeeeeeeeeeeeeXXXXXXXXXXXXXXXXXXXXXXXXXjjjjjjjjjjjjjXXXXXXXXXXXXXX
+XXXXXXXXXXXXeeeeeeeeeeeeeeeeeeeXXXXXXXXXXXXXXXXXXXjjjjjjjjjjjjjjjjjjjXXXXXXXXXXX
+XXXXXXXXXXXeeeeeeeeeeeeeeeeeeeeeeXXXXXXXXXXXXXXXjjjjjjjjjjjjjjjjjjjjjjXXXXXXXXXX
+XXXXXXXXXXeeeeeeeeeeeeeeeeeeeeeeeeXXXXXXXXXXXXXjjjjjjjjjjjjjjjjjjjjjjjjXXXXXXXXX
+XXXXXXXXXXeeeeeeefffffffffffffeeeeXXX---1---XXXjjjjkkkkkkkkkkkkkjjjjjjjXXXXXXXXX
+XXXXXXXXXXXeeeeeefffffffffffffeeeeXX--1---1--XXjjjjkkkkkkkkkkkkkjjjjjjXXXXXXXXXX
+XXXXXXXXXXXXeeeeefffffffffffffeeeeX1---------1XjjjjkkkkkkkkkkkkkjjjjjXXXXXXXXXXX
+XXXXXXXXXXXXXeeeefffffffffffffeeeee--1--Z--1--jjjjjkkkkkkkkkkkkkjjjjXXXXXXXXXXXX
+XXXXXXXXXXXXeeeeefffffffffffffeeeeX1---------1XjjjjkkkkkkkkkkkkkjjjjjXXXXXXXXXXX
+XXXXXXXXXXXeeeeeefffffffffffffeeeeXX--1---1--XXjjjjkkkkkkkkkkkkkjjjjjjXXXXXXXXXX
+XXXXXXXXXXeeeeeeefffffffffffffeeeeXXX---1---XXXjjjjkkkkkkkkkkkkkjjjjjjjXXXXXXXXX
+XXXXXXXXXXeeeeeeefffffffffffffeeeecXXXXXXXXXXXcjjjjkkkkkkkkkkkkkjjjjjjjXXXXXXXXX
+XXXXXXXXXXXeeeeeeeeeeeeeeeeeeeeeecccccccccccccccjjjjjjjjjjjjjjjjjjjjjjXXXXXXXXXX
+XXXXXXXXXXXXeeeeeeeeeeeeeeeeeeeXcccccccccccccccccXjjjjjjjjjjjjjjjjjjjXXXXXXXXXXX
+XXXXXXXXXXXXXeeeeee2eeeeeeeeXXXXcccccccccccccccccXXXXjjjjjjjj2jjjjjjXXXXXXXXXXXX
+XXXXXXXXXXXXXX.111.ccXXXXXXXXXXXcccccccccccccccccXXXXXXXXXXXcc.111.XXXXXXXXXXXXX
+XXXXXXXXXXXccddddddGdddddddODDo1ccccccccccccccccc1pHHPhhhhhhhGhhhhhhccXXXXXXXXXX
+XXXXXXXXXXccddddddddddddddd.cc1...ccccccccccccc...1cc.hhhhhhhhhhhhhhhccXXXXXXXXX
+XXXXXXXXXccddddddddddddddddddccc...ccccccccccc...ccchhhhhhhhhhhhhhhhhhccXXXXXXXX
+XXXXXXXXXcddddddddddddddddddddccc.1.....1.....1.ccchhhhhhhhhhhhhhhhhhhhcXXXXXXXX
+XXXXXXXXXcddddddddddddddddddddcXcc......R......ccXchhhhhhhhhhhhhhhhhhhhcXXXXXXXX
+XXXXXXXXXcddddddddddddddddddddcXXc.............cXXchhhhhhhhhhhhhhhhhhhhcXXXXXXXX
+XXXXXXXXXcddddddddddddddddddddcXXcc...........ccXXchhhhhhhhhhhhhhhhhhhhcXXXXXXXX
+XXXXXXXXXcddddddddddddddddddddcXXXc...........cXXXchhhhhhhhhhhhhhhhhhhhcXXXXXXXX
+XXXXXXXXXcddddddddddddddddddddcXXcc...........ccXXchhhhhhhhhhhhhhhhhhhhcXXXXXXXX
+XXXXXXXXXccddddddddddddddddddccXXc.............cXXcchhhhhhhhhhhhhhhhhhccXXXXXXXX
+XXXXXXXXXXccddddddddddddddddccXXcc.............ccXXcchhhhhhhhhhhhhhhhccXXXXXXXXX
+XXXXXXXXXXXccddddddddddddddccXXXcp.............ocXXXcchhhhhhhhhhhhhhccXXXXXXXXXX
+XXXXXXXXXXXXccccccccccccccccXXXXcccccccc@ccccccccXXXXccccccccccccccccXXXXXXXXXXX
+ENDMAP

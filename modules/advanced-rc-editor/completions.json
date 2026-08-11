@@ -2058,6 +2058,12 @@
         "meta": "dwem option"
     },
     {
+        "caption": "map_predictor",
+        "value": "map_predictor",
+        "docText": "map_predictor = true \n    Enables Map Predictor for the current game. The default is false.\n    While enabled, press Ctrl-M to pause or resume prediction without changing the RC file.\n    Accepted predictions are displayed automatically with an orange tint.\n    When false, Map Predictor does not install gameplay hooks, load map sources, run matching workers, or retain map data.",
+        "meta": "dwem option"
+    },
+    {
         "caption": "redirect_chat",
         "value": "redirect_chat",
         "docText": "redirect_chat = true \n    Simultaneously outputs chat messages in the game message window.",

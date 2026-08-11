@@ -1,5 +1,8 @@
 # AdvancedRCEditor
 
+The editor includes completion and inline documentation for DWEM RC options, including
+`map_predictor = true`.
+
 ## Get Parameters
 ### arce_rcfile
 When you click the edit rc button, it will immediately overwrite the RC file.

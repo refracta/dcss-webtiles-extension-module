@@ -5,7 +5,7 @@ import 'https://cdn.jsdelivr.net/npm/ace-builds@1.36.2/src-noconflict/ext-langua
 
 export default class AdvancedRCEditor {
     static name = 'AdvancedRCEditor';
-    static version = '0.1';
+    static version = '0.2';
     static dependencies = ['IOHook', 'SiteInformation'];
     static description = '(Beta) This module provides advanced rc editor.';
 

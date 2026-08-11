@@ -2695,6 +2695,12 @@ disable_clear_chat = true (DWEM)
 show_gold_status = true (DWEM)
     Displays the current gold in the right status interface when you are not a follower of Gozag.
 
+map_predictor = true (DWEM)
+    Enables Map Predictor for the current game. The default is false.
+    While enabled, press Ctrl-M to pause or resume prediction without changing the RC file.
+    Accepted predictions are displayed automatically with an orange tint.
+    When false, Map Predictor does not install gameplay hooks, load map sources, run matching workers, or retain map data.
+
 redirect_chat = true (DWEM)
     Simultaneously outputs chat messages in the game message window.
 

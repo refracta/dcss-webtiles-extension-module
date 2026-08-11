@@ -81,7 +81,7 @@ export default class BasicModule {
   - Description: (Beta) This module implements sound effects and (Experimental) BGM in the webtiles environment. You can
     use it by adding a sound pack to the RC configuration.
 
-- [`ConvenienceModule:0.1`](modules/convenience-module)
+- [`ConvenienceModule:0.2`](modules/convenience-module)
     - Description: (Beta) This module provides convenience features.
 
 - [`IOHook:1.0`](modules/io-hook)
@@ -106,10 +106,20 @@ export default class BasicModule {
 - [`CNCPublicChat:0.1`](modules/cnc-public-chat)
     - Description: (Beta) This module provides CNC server public chat.
 
+- [`MapPredictor:0.2`](modules/map-predictor)
+    - Description: Predicts audited fixed-map terrain from the terrain already observed by the client.
+    - Add `map_predictor = true` to your RC file to enable it. It is fully dormant when the option is absent or false.
+    - Press `Ctrl-M` in a game to pause or resume prediction while the RC option is enabled.
+    - Spectators use the watched player's `map_predictor` RC setting and run the same matcher on received map data.
+    - Accepted predictions are displayed automatically. Below-threshold or detection-only candidates are never
+      displayed automatically; `/force_reveal` remains an explicit unsafe override.
+    - The `Map (NN.N%)` status light reports terrain-match similarity; its tooltip shows the selected candidate,
+      evidence, ambiguity, and prediction state. The percentage is a similarity score, not a probability of correctness.
+    - Predicted terrain is marked with a translucent orange tint. It is client-side guidance and may be wrong;
+      authoritative terrain received from the server always replaces it.
+
 # Notes
 
 DWEM is currently in the development and testing phase.
-
-
 
 
