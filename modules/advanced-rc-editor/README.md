@@ -1,7 +1,9 @@
 # AdvancedRCEditor
 
 The editor includes completion and inline documentation for DWEM RC options, including
-`map_predictor = true`.
+`map_predictor = true`. The value is the lowercase literal `true`; the option
+defaults to false. While spectating, Map Predictor reads the watched player's
+active RC rather than the viewer's RC.
 
 ## Get Parameters
 ### arce_rcfile

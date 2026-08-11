@@ -118,10 +118,11 @@ const SPRINT_SPECS = Object.freeze({
         roleGlyphs: Object.freeze([
             ...'ABCDEFGHIJKLMNOPRSTUVWYZ', '*', '%', '|', '$'
         ]),
-        // The inline Lua block replaces both markers with floor after the
-        // child rooms have been resolved. parseDes deliberately does not run
-        // arbitrary Lua, so apply these two exact-source substitutions here.
-        floorGlyphs: Object.freeze(['<', 'a'])
+        // The inline Lua block replaces the future hatch glyph with floor.
+        // Its `a` marker survives SUBST and Crawl later materializes it as a
+        // transporter landing site, so the literal marker parser's portal
+        // kind must remain intact.
+        floorGlyphs: Object.freeze(['<'])
     })
 });
 
@@ -282,7 +283,7 @@ function replaceHelperCall(source, helper, replacement = '') {
     );
 }
 
-function sanitizeAuditedSprintSource(source, path) {
+export function sanitizeAuditedSprintSource(source, path) {
     let sanitized = String(source || '').replace(/^\s*SUBVAULT:.*$/gmu, '');
     if (path.endsWith('/fedhas.des')) {
         sanitized = replaceHelperCall(sanitized, 'invisibility_setup');
@@ -333,9 +334,21 @@ function sanitizeAuditedSprintSource(source, path) {
     } else if (path.endsWith('/zigsprint.des')) {
         sanitized = sanitized.replace(
             /^\s*:\s*setup_room\(_G,\s*(\d+)\)\s*$/gmu,
-            (line, rawId) => Number(rawId) > 1
-                ? ['SUBST: a = .', 'SUBST: Z = XXX.', 'SUBST: z = XX.'].join('\n')
-                : ''
+            (line, rawId) => [
+                // dgn_make_transporters_from_markers() materializes every
+                // setup_room origin as DNGN_TRANSPORTER after SUBST. The
+                // helper itself is stripped because its remaining effects are
+                // non-terrain or independently modelled below.
+                'KFEAT: A = transporter',
+                ...(Number(rawId) > 1 ? [
+                    // The `a = .` SUBST changes only the source glyph. Its
+                    // transp_dest_loc marker persists and is postprocessed to
+                    // DNGN_TRANSPORTER_LANDING, the same coarse portal kind.
+                    'KFEAT: a = transporter_landing',
+                    'SUBST: Z = XXX.',
+                    'SUBST: z = XX.'
+                ] : [])
+            ].join('\n')
         );
     }
     return sanitized;
@@ -510,6 +523,109 @@ function overlaySlotConsensus(grid, slot, candidates) {
             };
         }
     }
+}
+
+function zigsprintTransporterPoints(source, parsed, primary, spec) {
+    if (spec.name !== 'sprint_v') {
+        return [];
+    }
+    const primaryBlock = mapBlock(source, primary.name);
+    const primaryRows = mapRows(primaryBlock);
+    const declarations = subvaultDeclarations(primaryBlock);
+    if (declarations.length !== spec.roleGlyphs.length) {
+        return null;
+    }
+
+    const points = [];
+    for (const declaration of declarations) {
+        const slot = slotForGlyph(primaryRows, declaration.glyph);
+        const matches = parsed.filter(template =>
+            templateMatchesSelector(template, declaration.selector));
+        if (!slot || matches.length !== 1) {
+            return null;
+        }
+        const [child] = matches;
+        const childBlock = mapBlock(source, child.name);
+        const childRows = mapRows(childBlock);
+        const setupCalls = [...String(childBlock || '').matchAll(
+            /^\s*:\s*setup_room\(_G,\s*(\d+)\)\s*$/gmu
+        )];
+        if (setupCalls.length !== 1
+            || allowedTransforms(child).map(transform => transform.id)
+                .join('|') !== 'r0'
+            || childRows.length !== slot.height
+            || childRows.some(row => row.length !== slot.width)) {
+            return null;
+        }
+        const setupId = Number(setupCalls[0][1]);
+        let origins = 0;
+        let destinations = 0;
+        let outsideSlot = false;
+        childRows.forEach((row, y) => {
+            for (let x = 0; x < row.length; x++) {
+                const origin = row[x] === 'A';
+                const destination = setupId > 1 && row[x] === 'a';
+                if (!origin && !destination) {
+                    continue;
+                }
+                if (!slot.mask[y]?.[x]) {
+                    outsideSlot = true;
+                    return;
+                }
+                origins += Number(origin);
+                destinations += Number(destination);
+                points.push({
+                    x: slot.x + x,
+                    y: slot.y + y,
+                    role: origin ? 'origin' : 'destination'
+                });
+            }
+        });
+        if (outsideSlot || origins < 1
+            || (setupId > 1 && destinations < 1)) {
+            return null;
+        }
+    }
+
+    const finalMarker = /^\s*:\s*lua_marker\(\s*['"]a['"]\s*,\s*transp_dest_loc\(\s*['"]arena_28['"]\s*\)\s*\)\s*$/gmu;
+    if ([...String(primaryBlock || '').matchAll(finalMarker)].length !== 1) {
+        return null;
+    }
+    let finalDestinations = 0;
+    primaryRows.forEach((row, y) => {
+        for (let x = 0; x < row.length; x++) {
+            if (row[x] === 'a') {
+                points.push({x, y, role: 'destination'});
+                finalDestinations++;
+            }
+        }
+    });
+    const unique = new Set(points.map(point => `${point.x},${point.y}`));
+    return finalDestinations === 1 && unique.size === points.length
+        ? points
+        : null;
+}
+
+function installZigsprintTransporters(grid, source, parsed, primary, spec) {
+    const points = zigsprintTransporterPoints(source, parsed, primary, spec);
+    if (points === null || !Array.isArray(grid)) {
+        return null;
+    }
+    const result = grid.map(row => row.map(cell => cell == null
+        ? null
+        : {...cell, kinds: [...(cell.kinds || [])]}));
+    for (const point of points) {
+        const cell = result[point.y]?.[point.x];
+        if (!cell) {
+            return null;
+        }
+        result[point.y][point.x] = {
+            ...cell,
+            kinds: ['portal'],
+            certain: true
+        };
+    }
+    return result;
 }
 
 function resolveSprintSubvaults(source, parsed, cleanParsed, primary, spec) {
@@ -702,13 +818,22 @@ export function auditedSprintDestinationTemplates(source, parsed, options = {}) 
         return [];
     }
 
-    const grid = installSprintEntrySentinel(resolveSprintSubvaults(
+    const resolvedGrid = resolveSprintSubvaults(
         source,
         parsed || [],
         cleanParsed,
         sanitized,
         spec
-    ), spec);
+    );
+    const transporterGrid = installZigsprintTransporters(
+        resolvedGrid,
+        source,
+        parsed || [],
+        rawPrimary,
+        spec
+    );
+    const grid = transporterGrid
+        && installSprintEntrySentinel(transporterGrid, spec);
     if (!grid) {
         return [];
     }

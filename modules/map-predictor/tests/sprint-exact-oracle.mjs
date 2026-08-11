@@ -76,9 +76,10 @@ const GOLDEN = Object.freeze({
     'zigsprint.des': Object.freeze({
         name: 'sprint_v', width: 80, height: 70,
         source: 'ef3775a40109e1979de7d2d4ed60150651716da85812c400f9ac085ee6dd2f1f',
-        single: 5020, multi: 160, masked: 420, nil: 0,
+        single: 5022, multi: 160, masked: 418, nil: 0,
         transforms: ['r0'], anchor: [8, 10],
-        digest: '5caf9a4a39b46b9bdad69b60a860d178a01874ae983cdec62cca0ff54336d993'
+        portals: 56,
+        digest: '878765c2bf1c6ad4bb651de781cbc0a26799c1da9ef2baf832c8024f4657ce6f'
     })
 });
 
@@ -143,6 +144,99 @@ function mapRows(block) {
         String(block || '')
     );
     return match ? match[1].split('\n') : [];
+}
+
+// Independently project exact-source setup_room markers into the encompass
+// primary. This deliberately does not call the production sanitizer or
+// subvault resolver: the oracle should catch either one dropping an origin or
+// landing cell from a dynamically masked child.
+function expectedZigsprintTransporters(source) {
+    const primaryBlock = mapBlock(source, 'sprint_v');
+    const primaryRows = mapRows(primaryBlock);
+    const declarations = [...String(primaryBlock || '').matchAll(
+        /^\s*SUBVAULT:\s*(\S+)\s*:\s*(\S+)\s*$/gmu
+    )].flatMap(match => [...match[1]].map(glyph => ({
+        glyph,
+        child: match[2]
+    })));
+    assert.equal(declarations.length, 28, 'zigsprint child-room inventory');
+
+    const expected = [];
+    for (const declaration of declarations) {
+        const parentPoints = [];
+        primaryRows.forEach((row, y) => {
+            for (let x = 0; x < row.length; x++) {
+                if (row[x] === declaration.glyph) {
+                    parentPoints.push({x, y});
+                }
+            }
+        });
+        assert.ok(parentPoints.length > 0, declaration.glyph);
+        const slotX = Math.min(...parentPoints.map(point => point.x));
+        const slotY = Math.min(...parentPoints.map(point => point.y));
+        const slotWidth = Math.max(...parentPoints.map(point => point.x))
+            - slotX + 1;
+        const slotHeight = Math.max(...parentPoints.map(point => point.y))
+            - slotY + 1;
+        const childBlock = mapBlock(source, declaration.child);
+        const childRows = mapRows(childBlock);
+        const setup = /^\s*:\s*setup_room\(_G,\s*(\d+)\)\s*$/mu.exec(
+            String(childBlock || '')
+        );
+        assert.ok(setup, `${declaration.child}: setup_room`);
+        assert.equal(childRows.length, slotHeight);
+        assert.ok(childRows.every(row => row.length === slotWidth));
+        const setupId = Number(setup[1]);
+        let origins = 0;
+        let destinations = 0;
+        childRows.forEach((row, y) => {
+            for (let x = 0; x < row.length; x++) {
+                const origin = row[x] === 'A';
+                const destination = setupId > 1 && row[x] === 'a';
+                if (!origin && !destination) {
+                    continue;
+                }
+                assert.equal(
+                    primaryRows[slotY + y]?.[slotX + x],
+                    declaration.glyph,
+                    `${declaration.child}: marker remains inside its slot`
+                );
+                origins += Number(origin);
+                destinations += Number(destination);
+                expected.push({
+                    x: slotX + x,
+                    y: slotY + y,
+                    child: declaration.child,
+                    role: origin ? 'origin' : 'destination'
+                });
+            }
+        });
+        assert.ok(origins > 0, `${declaration.child}: transporter origin`);
+        assert.equal(destinations > 0, setupId > 1,
+            `${declaration.child}: transporter destination`);
+    }
+
+    assert.equal([...String(primaryBlock || '').matchAll(
+        /^\s*:\s*lua_marker\(\s*['"]a['"]\s*,\s*transp_dest_loc\(\s*['"]arena_28['"]\s*\)\s*\)\s*$/gmu
+    )].length, 1, 'zigsprint final destination marker');
+    const finalDestinations = [];
+    primaryRows.forEach((row, y) => {
+        for (let x = 0; x < row.length; x++) {
+            if (row[x] === 'a') {
+                finalDestinations.push({
+                    x,
+                    y,
+                    child: 'sprint_v',
+                    role: 'destination'
+                });
+            }
+        }
+    });
+    assert.equal(finalDestinations.length, 1);
+    expected.push(...finalDestinations);
+    assert.equal(new Set(expected.map(point =>
+        `${point.x},${point.y}`)).size, expected.length);
+    return expected;
 }
 
 function directSubvaultConsensusChecks(source, parsed, primary, runtime) {
@@ -287,6 +381,7 @@ const started = performance.now();
 const templates = [];
 const reports = [];
 let directConsensusTotal = 0;
+let zigsprintTransporterTruth = null;
 for (const canonicalPath of SPRINT_SOURCE_PATHS) {
     const basename = path.basename(canonicalPath);
     const golden = GOLDEN[basename];
@@ -331,6 +426,20 @@ for (const canonicalPath of SPRINT_SOURCE_PATHS) {
     });
     assert.equal(canonical.digest, golden.digest,
         `${basename}: independently frozen terrain digest`);
+    if (Number.isInteger(golden.portals)) {
+        zigsprintTransporterTruth = expectedZigsprintTransporters(source);
+        assert.equal(zigsprintTransporterTruth.length, golden.portals);
+        const actual = [];
+        template.grid.forEach((row, y) => row.forEach((cell, x) => {
+            if (singletonKind(cell) === 'portal') {
+                actual.push(`${x},${y}`);
+            }
+        }));
+        const expected = zigsprintTransporterTruth.map(point =>
+            `${point.x},${point.y}`);
+        assert.deepEqual(actual.sort(), expected.sort(),
+            `${basename}: every independently projected transporter`);
+    }
     assert.deepEqual(
         allowedTransforms(template).map(transform => transform.id),
         golden.transforms,
@@ -365,6 +474,78 @@ for (const canonicalPath of SPRINT_SOURCE_PATHS) {
 assert.equal(selectAuditedSprintCatalog(templates).length, 9);
 assert.ok(directConsensusTotal >= 4000,
     `too few independent child-consensus checks: ${directConsensusTotal}`);
+
+// Reproduce the real Ziggurat Sprint opening timeline. The entrance stair is
+// (8,10), while setup_room's first transporter origin is (9,1), so the latter
+// enters the Chebyshev observation square at radius 9. It must be modelled as
+// a portal; treating the marker as floor used to make the exact sprint_v
+// candidate lose to arena_sprint at that moment.
+const zigsprint = templates.find(template => template.name === 'sprint_v');
+assert.ok(zigsprint, 'zigsprint exact template');
+const zigsprintWorld = worldCells(zigsprint, allowedTransforms(zigsprint)[0]);
+assert.deepEqual(zigsprintWorld.anchor, {x: 8, y: 10});
+const firstTransporter = zigsprintWorld.cells.find(cell =>
+    cell.x === 9 && cell.y === 1);
+assert.deepEqual(firstTransporter, {x: 9, y: 1, kind: 'portal'});
+for (let radius = 4; radius <= 12; radius++) {
+    const observations = zigsprintWorld.cells.filter(cell =>
+        Math.abs(cell.x - zigsprintWorld.anchor.x) <= radius
+        && Math.abs(cell.y - zigsprintWorld.anchor.y) <= radius)
+        // Keep the observed truth independent from the template assertion so
+        // a future accidental floor model reproduces the radius-9 flip.
+        .map(cell => cell.x === 9 && cell.y === 1
+            ? {...cell, kind: 'portal'}
+            : cell);
+    const matcher = new MapMatcher({
+        requireExhaustivePlacement: true,
+        minPredictedCells: 1,
+        maxConsensusCandidates: 8192
+    });
+    matcher.setTemplates(selectSafeTemplates(
+        templates,
+        {place: 'Dungeon', depth: 1},
+        {}
+    ));
+    matcher.updateObservations(observations, {evaluate: false});
+    const result = matcher.evaluate();
+    assert.equal(result.reason, 'ready', `zigsprint radius ${radius}`);
+    assert.equal(result.best.template.name, 'sprint_v',
+        `zigsprint radius ${radius}: stable exact winner`);
+    assert.equal(result.best.transform, 'r0');
+    assert.equal(result.best.offsetX, 0);
+    assert.equal(result.best.offsetY, 0);
+    assert.equal(result.best.score, 1);
+}
+
+// room_27 is otherwise deliberately masked because choose_mset_4 mutates its
+// interior dynamically. Its setup_room origin and landing are nevertheless
+// exact. Reveal each in sequence and ensure neither can dislodge sprint_v.
+const finalRoomMarkers = zigsprintTransporterTruth.filter(point =>
+    point.child === 'room_27');
+assert.deepEqual(finalRoomMarkers.map(point => point.role).sort(),
+    ['destination', 'origin']);
+const laterObservations = zigsprintWorld.cells.filter(cell =>
+    Math.abs(cell.x - zigsprintWorld.anchor.x) <= 8
+    && Math.abs(cell.y - zigsprintWorld.anchor.y) <= 8);
+for (const marker of finalRoomMarkers) {
+    laterObservations.push({x: marker.x, y: marker.y, kind: 'portal'});
+    const matcher = new MapMatcher({
+        requireExhaustivePlacement: true,
+        minPredictedCells: 1,
+        maxConsensusCandidates: 8192
+    });
+    matcher.setTemplates(selectSafeTemplates(
+        templates,
+        {place: 'Dungeon', depth: 1},
+        {}
+    ));
+    matcher.updateObservations(laterObservations, {evaluate: false});
+    const result = matcher.evaluate();
+    assert.equal(result.reason, 'ready',
+        `zigsprint room_27 ${marker.role}`);
+    assert.equal(result.best.template.name, 'sprint_v');
+    assert.equal(result.best.score, 1);
+}
 
 // Exercise every Crawl-legal primary transform with exact coarse terrain,
 // exhaustive unanchored placement, the 80x70 reset-wall model, and all nine

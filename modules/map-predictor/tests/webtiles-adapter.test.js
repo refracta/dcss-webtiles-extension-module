@@ -1439,11 +1439,27 @@ test('repairs a sparse real LOS diff after restoring its synthetic cell', () => 
     assert.equal(ownerKnowledge[0][0].cell.mf, undefined);
     assert.deepEqual(ownerKnowledge[0][0].cell.t, {bg: 99});
     assert.equal(ownerKnowledge[0][0].cell.t.bg & 0x00020000, 0);
+    assert.equal(ownerKnowledge[0][0].terrainReliable, false);
+    assert.equal(adapter._unreliableTerrainCells.has('20,21'), true);
 
     // The server-owned cell was removed from the synthetic registry, so a
     // later rollback cannot overwrite the new authoritative knowledge.
     adapter.clearNativePredictions();
     assert.equal(cells.get('20,21').f, 23);
+    adapter.destroy({releaseBinding: false});
+    assert.equal(adapter._unreliableTerrainCells.has('20,21'), true);
+    adapter.install();
+    dwem.Modules.IOHook.handle_message({
+        msg: 'player',
+        place: 'Dungeon',
+        depth: 1
+    });
+    dwem.Modules.IOHook.handle_message({
+        msg: 'player',
+        place: 'Dungeon',
+        depth: 2
+    });
+    assert.equal(adapter._unreliableTerrainCells.has('20,21'), false);
     adapter.destroy();
 });
 

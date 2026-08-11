@@ -50,8 +50,8 @@ test('Map status summarizes score and detailed matcher state', () => {
     assert.match(status.desc, /Verdict: SAFE; reason: ready/u);
     assert.match(status.desc, /Evidence: 384 cells, 4 kinds, 42\.5% coverage/u);
     assert.match(status.desc, /Candidates: 2 loaded, 1 plausible/u);
-    assert.match(status.desc, /Predictions: 120 safe, 135 inferred, 120 displayed/u);
-    assert.match(status.desc, /Reveal: on/u);
+    assert.match(status.desc, /Predictions: 120 safe, 135 best-guess, 120 available/u);
+    assert.match(status.desc, /Display: on \(automatic\)/u);
 });
 
 test('Map status labels safe consensus without claiming a unique map identity', () => {
@@ -81,17 +81,87 @@ test('Map status is absent while Ctrl-M has paused the runtime', () => {
     assert.equal(status, null);
 });
 
-test('Map status distinguishes an unsafe unaccepted candidate', () => {
+test('Map status distinguishes an automatic unconfirmed best guess', () => {
     const status = createMapPredictorStatus(readySummary({
-        resultReason: 'ambiguous',
+        resultReason: 'policy-disabled',
         plausibleCandidateCount: 3,
-        revealEnabled: false
+        safePredictionCount: 0,
+        predictionCount: 135
     }));
 
     assert.equal(status.col, 14);
-    assert.match(status.desc, /Verdict: UNSAFE \(unaccepted\)/u);
-    assert.match(status.desc, /reason: ambiguous/u);
+    assert.match(
+        status.desc,
+        /Verdict: AUTO BEST GUESS \(unconfirmed; ambiguous\)/u
+    );
+    assert.match(status.desc, /reason: policy-disabled/u);
     assert.match(status.desc, /3 plausible/u);
+    assert.match(status.desc, /Display: on \(automatic orange prediction\)/u);
+});
+
+test('Map status distinguishes a prediction hidden with /reveal', () => {
+    const status = createMapPredictorStatus(readySummary({
+        resultReason: 'ambiguous',
+        plausibleCandidateCount: 3,
+        safePredictionCount: 0,
+        predictionCount: 135,
+        revealEnabled: false
+    }));
+
+    assert.equal(status.col, 8);
+    assert.match(
+        status.desc,
+        /Verdict: AVAILABLE \/ HIDDEN \(ambiguous best guess\)/u
+    );
+    assert.match(status.desc, /Display: off \(hidden by \/reveal\)/u);
+});
+
+test('Map status labels a force-disabled detection-only candidate as blocked', () => {
+    const status = createMapPredictorStatus(readySummary({
+        resultReason: 'policy-disabled',
+        safePredictionCount: 0,
+        forcePredictionCount: 0,
+        predictionCount: 0,
+        revealEnabled: false
+    }));
+
+    assert.equal(status.col, 12);
+    assert.match(
+        status.desc,
+        /Verdict: BLOCKED \(detection-only; no supported cells\)/u
+    );
+    assert.match(status.desc, /Display: blocked/u);
+});
+
+test('Map status reserves unsafe wording for an explicit force override', () => {
+    const status = createMapPredictorStatus(readySummary({
+        resultReason: 'below-threshold',
+        safePredictionCount: 0,
+        predictionCount: 135,
+        forceRevealActive: true
+    }));
+
+    assert.equal(status.col, 14);
+    assert.match(status.desc, /Verdict: UNSAFE FORCE \(explicit\)/u);
+    assert.match(status.desc, /Display: on \(explicit unsafe override\)/u);
+});
+
+test('Map status exposes runtime failures instead of labelling them waiting', () => {
+    const status = createMapPredictorStatus(readySummary({
+        status: 'source-error',
+        resultReason: null,
+        match: null,
+        safePredictionCount: 0,
+        forcePredictionCount: 0,
+        predictionCount: 0,
+        revealEnabled: false,
+        error: {code: 'HTTPError', message: 'source download failed'}
+    }));
+
+    assert.equal(status.col, 12);
+    assert.match(status.desc, /Verdict: ERROR; reason: source-error/u);
+    assert.match(status.desc, /Display: off \(runtime error\)/u);
+    assert.match(status.desc, /Error: HTTPError — source download failed/u);
 });
 
 test('status merge replaces only ConvenienceModule entries', () => {

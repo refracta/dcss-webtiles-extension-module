@@ -24,7 +24,7 @@ import {
     naturalBranchEndPrimaries
 } from './branch-end-destinations.js';
 
-export const PARSER_VERSION = 'des-runtime-v22';
+export const PARSER_VERSION = 'des-runtime-v23';
 const EVALUATION_DELAY_MS = 140;
 // The exact Temple closed set is 94 maps (53 revealable layouts plus 41
 // detection-only negatives). Keep the worker as the preferred path, while
@@ -2739,6 +2739,28 @@ function resultSummary(result) {
     };
 }
 
+function automaticPredictionPlan(result) {
+    const safePredictions = Array.isArray(result?.predictions)
+        ? result.predictions
+        : [];
+    if (result?.ready && safePredictions.length > 0) {
+        return {mode: 'safe', predictions: safePredictions};
+    }
+
+    // `forcePredictions` is also the matcher's capability boundary for a
+    // supported best placement. Detection-only and source-audit-failed
+    // templates set forceRevealDisabled and therefore expose no cells here.
+    // Use that audited best-placement output for the normal orange,
+    // explicitly provisional display without entering force-command state.
+    const provisionalPredictions = Array.isArray(result?.forcePredictions)
+        ? result.forcePredictions
+        : [];
+    if (result?.best && provisionalPredictions.length > 0) {
+        return {mode: 'provisional', predictions: provisionalPredictions};
+    }
+    return {mode: 'none', predictions: []};
+}
+
 export default class MapPredictorRuntime {
     static name = MODULE_NAME;
     static version = '0.2';
@@ -2796,6 +2818,7 @@ export default class MapPredictorRuntime {
         this.evaluationTimer = null;
         this.notificationFingerprint = null;
         this.forceRevealActive = false;
+        this.revealEnabledBeforeForce = null;
         this.commandsRegistered = false;
         this.destroyed = false;
         this.evaluationDelay = options.evaluationDelay ?? EVALUATION_DELAY_MS;
@@ -3067,6 +3090,7 @@ export default class MapPredictorRuntime {
         this.templates = [];
         this.result = null;
         this.forceRevealActive = false;
+        this.revealEnabledBeforeForce = null;
         this.autoRevealApplied = false;
         this.status = status;
         this.error = null;
@@ -3161,7 +3185,7 @@ export default class MapPredictorRuntime {
 
         commandManager.addCommand('/reveal', [], () => this.toggleReveal(), {
             module: MODULE_NAME,
-            description: 'Toggle safe inferred terrain in the client map'
+            description: 'Toggle supported inferred terrain in the client map'
         });
         commandManager.addCommand('/force_reveal', [], () => {
             this.toggleForceReveal();
@@ -3746,6 +3770,7 @@ export default class MapPredictorRuntime {
         this.result = this.matcher.getResult();
         this.notificationFingerprint = null;
         this.forceRevealActive = false;
+        this.revealEnabledBeforeForce = null;
         if (resetAutoReveal) {
             this.autoRevealApplied = false;
         }
@@ -3905,6 +3930,7 @@ export default class MapPredictorRuntime {
                 : [];
             if (!result?.best || !forced.length) {
                 this.forceRevealActive = false;
+                this.revealEnabledBeforeForce = null;
                 this.webtilesAdapter.clearPredictions();
                 this.webtilesAdapter.setRevealEnabled(false);
                 if (this.templates.length) {
@@ -3923,7 +3949,8 @@ export default class MapPredictorRuntime {
             this.emitStatus();
             return;
         }
-        if (!result?.ready || !result.predictions?.length) {
+        const automatic = automaticPredictionPlan(result);
+        if (automatic.mode === 'none') {
             this.webtilesAdapter.clearPredictions();
             if (this.templates.length) {
                 this.status = 'matching';
@@ -3933,11 +3960,13 @@ export default class MapPredictorRuntime {
         }
 
         const confidence = result.best?.score ?? 1;
-        this.webtilesAdapter.setPredictions(result.predictions.map(cell => ({
+        this.webtilesAdapter.setPredictions(automatic.predictions.map(cell => ({
             ...cell,
             confidence
         })));
-        this.status = 'map-inferred';
+        this.status = automatic.mode === 'safe'
+            ? 'map-inferred'
+            : 'map-provisional';
 
         const best = result.best;
         const autoAppliedNow = this.autoRevealApplied === false;
@@ -3950,14 +3979,20 @@ export default class MapPredictorRuntime {
             this.autoRevealApplied = true;
             this.webtilesAdapter.setRevealEnabled(true);
         }
-        const fingerprint = [
-            this.levelKey,
-            best?.template?.path,
-            best?.template?.name,
-            best?.transform,
-            best?.offsetX,
-            best?.offsetY
-        ].join('|');
+        const fingerprint = automatic.mode === 'safe'
+            ? [
+                this.levelKey,
+                'safe',
+                best?.template?.path,
+                best?.template?.name,
+                best?.transform,
+                best?.offsetX,
+                best?.offsetY
+            ].join('|')
+            // A provisional best placement can move repeatedly while terrain
+            // arrives. Keep displaying the latest cells, but notify only once
+            // per level until the matcher promotes it to a safe result.
+            : [this.levelKey, 'provisional'].join('|');
         if (fingerprint === this.notificationFingerprint) {
             this.emitStatus();
             return;
@@ -3966,9 +4001,14 @@ export default class MapPredictorRuntime {
         const name = escapeHtml(best?.template?.name || 'fixed map');
         const percentage = Math.round(confidence * 1000) / 10;
         this.sendLocalMessage(
-            `<b>[MapPredictor]</b> ${name} matched (${percentage}%). `
+            `<b>[MapPredictor]</b> ${name} `
+            + `${automatic.mode === 'safe' ? 'matched' : 'candidate'} `
+            + `(${percentage}%). `
             + (autoAppliedNow
-                ? 'Automatically mapped; type <b>/reveal</b> to hide it.'
+                ? automatic.mode === 'safe'
+                    ? 'Automatically mapped; type <b>/reveal</b> to hide it.'
+                    : 'Automatically mapped as an uncertain orange estimate; '
+                        + 'type <b>/reveal</b> to hide it.'
                 : 'Type <b>/reveal</b> to magic-map the inferred terrain.')
         );
         this.emitStatus();
@@ -3978,7 +4018,7 @@ export default class MapPredictorRuntime {
         if (!this.runtimeEnabled || !this.webtilesAdapter) {
             return false;
         }
-        if (!this.result?.ready || !this.webtilesAdapter.predictions.length) {
+        if (!this.webtilesAdapter.predictions.length) {
             const detail = this.result?.reason === 'anchor-unverified'
                 ? ' The terrain matched, but the arrival square was not the map portal; use /force_reveal for an explicit best-effort placement.'
                 : this.result?.reason === 'placement-unverified'
@@ -3987,7 +4027,7 @@ export default class MapPredictorRuntime {
                     ? ' This map family is detection-only until its dynamic alternatives are fully verified.'
                     : '';
             this.sendLocalMessage(
-                '<b>[MapPredictor]</b> No safely revealable fixed-map match yet.'
+                '<b>[MapPredictor]</b> No supported fixed-map prediction yet.'
                 + detail
             );
             return false;
@@ -4005,12 +4045,18 @@ export default class MapPredictorRuntime {
             return false;
         }
         if (this.forceRevealActive) {
+            const restoreReveal = this.revealEnabledBeforeForce === true;
             this.forceRevealActive = false;
+            this.revealEnabledBeforeForce = null;
             this.webtilesAdapter.setRevealEnabled(false);
             this.webtilesAdapter.clearPredictions();
-            this.autoRevealApplied = false;
-            // Keep a safe result ready for a later normal /reveal command.
+            // Restore the normal safe/provisional cells without consuming or
+            // resetting the level's automatic-reveal latch. In particular, a
+            // manual /reveal OFF from before the force override stays OFF.
             this.handleResult(this.result);
+            this.webtilesAdapter.setRevealEnabled(
+                restoreReveal && this.webtilesAdapter.predictions.length > 0
+            );
             this.sendLocalMessage(
                 '<b>[MapPredictor]</b> Forced terrain cleared from the client map.'
             );
@@ -4038,6 +4084,7 @@ export default class MapPredictorRuntime {
             return false;
         }
 
+        this.revealEnabledBeforeForce = this.webtilesAdapter.revealEnabled;
         this.forceRevealActive = true;
         const confidence = this.result.best?.score ?? 0;
         this.webtilesAdapter.setPredictions(predictions.map(cell => ({
@@ -4087,6 +4134,7 @@ export default class MapPredictorRuntime {
         );
         this.notificationFingerprint = null;
         this.forceRevealActive = false;
+        this.revealEnabledBeforeForce = null;
         this.webtilesAdapter.clearPredictions();
         this.templates = [];
         this.sourceKey = null;
@@ -4199,6 +4247,11 @@ export default class MapPredictorRuntime {
             templates: this.templates.map(template => template.name),
             observationCount: this.matcher?.observations?.size ?? 0,
             predictionCount: this.webtilesAdapter?.predictions?.length ?? 0,
+            predictionMode: (this.webtilesAdapter?.predictions?.length ?? 0) === 0
+                ? 'none'
+                : this.forceRevealActive
+                    ? 'forced'
+                    : automaticPredictionPlan(this.result).mode,
             safePredictionCount: Array.isArray(this.result?.predictions)
                 ? this.result.predictions.length
                 : 0,

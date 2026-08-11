@@ -2696,9 +2696,12 @@ show_gold_status = true (DWEM)
     Displays the current gold in the right status interface when you are not a follower of Gozag.
 
 map_predictor = true (DWEM)
-    Enables Map Predictor for the current game. The default is false.
+    Enables Map Predictor for the current game. The default is false; use the lowercase literal true.
+    Spectators follow the watched player's active RC setting, not the viewer's RC setting.
     While enabled, press Ctrl-M to pause or resume prediction without changing the RC file.
-    Accepted predictions are displayed automatically with an orange tint.
+    Supported best-placement and safe-consensus predictions are displayed automatically with an orange tint,
+      even when terrain similarity is below 100%. Orange terrain is inferred, unconfirmed, and may be wrong.
+    The Map status tooltip distinguishes SAFE, SAFE CONSENSUS, AUTO BEST GUESS, AVAILABLE / HIDDEN, and BLOCKED.
     When false, Map Predictor does not install gameplay hooks, load map sources, run matching workers, or retain map data.
 
 redirect_chat = true (DWEM)

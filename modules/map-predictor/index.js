@@ -19,6 +19,7 @@ function emptyState(module) {
         templates: [],
         observationCount: 0,
         predictionCount: 0,
+        predictionMode: 'none',
         safePredictionCount: 0,
         forcePredictionCount: 0,
         plausibleCandidateCount: 0,

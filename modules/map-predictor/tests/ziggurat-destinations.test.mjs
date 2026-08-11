@@ -52,7 +52,7 @@ function repeatedCenteredDescriptor(width, height) {
 }
 
 test('synchronous source hash agrees with Node SHA-256', () => {
-    assert.equal(PARSER_VERSION, 'des-runtime-v22');
+    assert.equal(PARSER_VERSION, 'des-runtime-v23');
     for (const source of ['', 'abc', 'ziggurat\nMAP\nENDMAP\n']) {
         assert.equal(
             sha256Ascii(source),

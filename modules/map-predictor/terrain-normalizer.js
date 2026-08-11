@@ -220,6 +220,12 @@ export function normalizeWebtilesKnowledgeUpdate(entry, binding = {}) {
     if (!entry || !Number.isInteger(entry.x) || !Number.isInteger(entry.y)) {
         return null;
     }
+    // The adapter may borrow a predicted background tile solely to repair a
+    // sparse native LOS redraw. It remains useful for rendering, but must not
+    // feed the prediction back into matcher observations.
+    if (entry.terrainReliable === false) {
+        return null;
+    }
 
     const isEnvelope = Object.prototype.hasOwnProperty.call(entry, 'cell');
     const cell = isEnvelope

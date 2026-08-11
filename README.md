@@ -111,15 +111,16 @@ export default class BasicModule {
     - Add `map_predictor = true` to your RC file to enable it. It is fully dormant when the option is absent or false.
     - Press `Ctrl-M` in a game to pause or resume prediction while the RC option is enabled.
     - Spectators use the watched player's `map_predictor` RC setting and run the same matcher on received map data.
-    - Accepted predictions are displayed automatically. Below-threshold or detection-only candidates are never
-      displayed automatically; `/force_reveal` remains an explicit unsafe override.
+    - Supported best-placement and safe-consensus predictions are displayed automatically, even below a 100% match.
+      Orange means client-side, unconfirmed terrain; candidates with no supported inferred cells remain blocked.
+      `/force_reveal` remains an explicit unsafe override.
     - The `Map (NN.N%)` status light reports terrain-match similarity; its tooltip shows the selected candidate,
-      evidence, ambiguity, and prediction state. The percentage is a similarity score, not a probability of correctness.
+      evidence, ambiguity, and whether the result is safe, an automatic best guess, hidden, or blocked. The percentage
+      is a similarity score, not a probability of correctness.
     - Predicted terrain is marked with a translucent orange tint. It is client-side guidance and may be wrong;
       authoritative terrain received from the server always replaces it.
 
 # Notes
 
 DWEM is currently in the development and testing phase.
-
 

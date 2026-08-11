@@ -2891,10 +2891,11 @@ export class MapMatcher {
             .filter(candidate => plausibleCandidate(candidate, best, this.options));
         const consensusOverflow = plausible.length > this.options.maxConsensusCandidates;
         const survivors = plausible.slice(0, this.options.maxConsensusCandidates);
-        // Explicit user override: expose the singleton terrain cells from the
-        // current best placement even when normal score, ambiguity, policy, or
-        // exhaustive-placement gates reject it. Callers must keep this
-        // separate from safe predictions and require an explicit command.
+        // Expose the singleton terrain cells from the current supported best
+        // placement even when normal score, ambiguity, policy, or exhaustive-
+        // placement gates reject it. Callers must keep this separate from
+        // consensus predictions: it powers the provisional orange display as
+        // well as the explicit force command.
         const forcePredictions = best.matchPolicy.forceRevealDisabled
             ? []
             : consensusPredictions([best], observations);

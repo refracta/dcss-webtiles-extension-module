@@ -30,6 +30,24 @@ test('known minimap terrain becomes matcher evidence', () => {
     });
 });
 
+test('a visually repaired synthetic background never becomes matcher evidence', () => {
+    assert.equal(normalizeWebtilesKnowledgeUpdate({
+        x: 2,
+        y: 3,
+        removed: false,
+        terrainReliable: false,
+        cell: {f: 23, t: {bg: 99}}
+    }, {
+        enums,
+        dngn: {
+            DNGN_UNSEEN: 0,
+            FLOOR_MAX: 0x70,
+            WALL_MAX: 0x100,
+            basetile: tile => tile & 0xffff
+        }
+    }), null);
+});
+
 test('unseen feature zero is ignored even with an explore minimap value', () => {
     assert.equal(normalizeWebtilesCell({x: 2, y: 3, f: 0, mf: 1}, {enums}), null);
 });

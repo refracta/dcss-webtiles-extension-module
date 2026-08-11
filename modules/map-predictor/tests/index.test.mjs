@@ -1555,7 +1555,15 @@ test('force reveal maps the best rejected placement and reports detailed status'
         forcePredictions: forcedCells
     });
 
-    assert.deepEqual(adapter.predictions, []);
+    assert.equal(module.getDebugState().status, 'map-provisional');
+    assert.equal(module.getDebugState().predictionMode, 'provisional');
+    assert.equal(adapter.revealEnabled, true);
+    assert.deepEqual(
+        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+        forcedCells
+    );
+    commands.get('/reveal').handler();
+    assert.equal(adapter.revealEnabled, false);
     commands.get('/reveal_status').handler();
     assert.match(messages.at(-1), /unaccepted candidate/);
     assert.match(messages.at(-1), /91\.00%/);
@@ -1572,8 +1580,12 @@ test('force reveal maps the best rejected placement and reports detailed status'
 
     commands.get('/force_reveal').handler();
     assert.equal(module.forceRevealActive, false);
+    // Leaving explicit force restores the manual OFF state that preceded it.
     assert.equal(adapter.revealEnabled, false);
-    assert.deepEqual(adapter.predictions, []);
+    assert.deepEqual(
+        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+        forcedCells
+    );
     assert.match(messages.at(-1), /Forced terrain cleared/);
 
     module.handleResult({
@@ -1583,6 +1595,62 @@ test('force reveal maps the best rejected placement and reports detailed status'
     commands.get('/force_reveal').handler();
     assert.match(messages.at(-1), /no unrevealed inferred cells left/);
     assert.doesNotMatch(messages.at(-1), /No candidate placement/);
+});
+
+test('detection-only and force-disabled results stay hidden automatically', () => {
+    const {module, adapter, template} = createHarness();
+    module.onLoad();
+    module.templates = [template];
+    module.handleResult({
+        ready: false,
+        unique: true,
+        reason: 'policy-disabled',
+        best: {
+            template: {name: template.name, path: template.path},
+            score: 1,
+            transform: 'identity',
+            offsetX: 0,
+            offsetY: 0
+        },
+        predictions: [],
+        // The matcher emits this empty array for forceRevealDisabled and
+        // failed-audit detection-only templates.
+        forcePredictions: []
+    });
+
+    assert.equal(module.getDebugState().status, 'matching');
+    assert.equal(module.getDebugState().predictionMode, 'none');
+    assert.equal(adapter.revealEnabled, false);
+    assert.deepEqual(adapter.predictions, []);
+});
+
+test('manual reveal OFF latches across later provisional candidate updates', () => {
+    const {module, adapter, template} = createHarness();
+    module.onLoad();
+    module.templates = [template];
+    const provisional = {
+        ...compactReadyResult(template),
+        ready: false,
+        reason: 'below-threshold',
+        predictions: [],
+        forcePredictions: [{x: 1, y: 2, kind: 'floor'}]
+    };
+
+    module.handleResult(provisional);
+    assert.equal(adapter.revealEnabled, true);
+    assert.equal(module.toggleReveal(), false);
+
+    module.handleResult({
+        ...provisional,
+        best: {...provisional.best, score: 0.94, offsetX: 3},
+        forcePredictions: [{x: 4, y: 2, kind: 'wall'}]
+    });
+    assert.equal(adapter.revealEnabled, false);
+    assert.equal(module.autoRevealApplied, true);
+    assert.deepEqual(
+        adapter.predictions.map(({x, y, kind}) => ({x, y, kind})),
+        [{x: 4, y: 2, kind: 'wall'}]
+    );
 });
 
 test('leaving force reveal restores an accepted safe auto reveal', () => {
@@ -1700,7 +1768,7 @@ test('the Slime wall-collapse message invalidates inferred end terrain', async (
     module.destroy();
 });
 
-test('later contradictory terrain withdraws an already inferred map', async () => {
+test('later contradictory terrain demotes a safe map to a provisional candidate', async () => {
     const {module, adapter, template} = createHarness();
     module.onLoad();
     transitionToWizlab(module);
@@ -1724,9 +1792,10 @@ test('later contradictory terrain withdraws an already inferred map', async () =
     module.onKnowledge(contradictory, observed.binding);
     await new Promise(resolve => setTimeout(resolve, 20));
 
-    assert.equal(module.getDebugState().status, 'matching');
+    assert.equal(module.getDebugState().status, 'map-provisional');
     assert.notEqual(module.getDebugState().resultReason, 'ready');
-    assert.deepEqual(adapter.predictions, []);
+    assert.equal(module.getDebugState().predictionMode, 'provisional');
+    assert.ok(adapter.predictions.length > 0);
 });
 
 test('unsupported places fail closed without source requests or predictions', async () => {
@@ -1854,7 +1923,9 @@ test('the first version packet preserves map evidence received during reconnect'
     assert.equal(module.getDebugState().observationCount, before);
     assert.equal(module.getDebugState().levelSignals.levelEntry, undefined);
     assert.equal(module.templates[0].metadata.matchAnchor, undefined);
-    assert.equal(module.getDebugState().predictionCount, 0);
+    assert.ok(module.getDebugState().predictionCount > 0);
+    assert.equal(module.getDebugState().predictionMode, 'provisional');
+    assert.equal(module.getDebugState().resultReason, 'placement-unverified');
     module.destroy();
 });
 

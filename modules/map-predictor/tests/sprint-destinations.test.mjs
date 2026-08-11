@@ -6,9 +6,11 @@ import MapPredictor, {
     selectSafeTemplates,
     templateSelectionPlayer
 } from '../runtime.js';
+import {parseDes} from '../des-parser.js';
 import {MapMatcher} from '../matcher.js';
 import SourceRepository from '../source-repository.js';
 import {
+    sanitizeAuditedSprintSource,
     selectAuditedSprintCatalog,
     sprintSourceSha256,
     SPRINT_ENTRY_SENTINEL,
@@ -185,6 +187,33 @@ test('Sprint source hashing is synchronous and standards-compatible', () => {
         sprintSourceSha256('abc'),
         'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
     );
+});
+
+test('Ziggurat Sprint setup-room transporters survive helper sanitization', () => {
+    const source = String.raw`
+NAME: room_start
+: setup_room(_G, 1)
+MAP
+Aa
+ENDMAP
+
+NAME: room_1
+: setup_room(_G, 2)
+MAP
+AaZz
+ENDMAP
+`;
+    const sanitized = sanitizeAuditedSprintSource(
+        source,
+        'crawl-ref/source/dat/des/sprint/zigsprint.des'
+    );
+    const [start, later] = parseDes(sanitized);
+
+    assert.deepEqual(start.grid[0][0].kinds, ['portal']);
+    assert.deepEqual(start.grid[0][1].kinds, ['floor']);
+    assert.deepEqual(later.grid[0][0].kinds, ['portal']);
+    assert.deepEqual(later.grid[0][1].kinds, ['portal']);
+    assert.deepEqual(later.metadata.parseWarnings, []);
 });
 
 test('Sprint catalog audit requires the complete exact nine once each', () => {
@@ -370,7 +399,7 @@ test('Sprint auto reveal is once per session and manual OFF survives reload', as
     assert.equal(adapter.revealEnabled, true);
 });
 
-test('all accepted fixed maps auto reveal while rejected candidates do not', () => {
+test('safe results are preferred and supported rejected candidates auto reveal provisionally', () => {
     const {module, adapter} = harness();
     const ordinary = sprintTemplate('ordinary');
     ordinary.metadata.sprint = false;
@@ -386,8 +415,14 @@ test('all accepted fixed maps auto reveal while rejected candidates do not', () 
         ...readyResult(ordinary),
         ready: false,
         reason: 'below-threshold',
-        predictions: []
+        predictions: [],
+        forcePredictions: [{x: 7, y: 8, kind: 'floor'}]
     });
-    assert.equal(adapter.revealEnabled, false);
-    assert.equal(module.autoRevealApplied, false);
+    assert.equal(adapter.revealEnabled, true);
+    assert.equal(module.autoRevealApplied, true);
+    assert.equal(module.getDebugState().status, 'map-provisional');
+    assert.equal(module.getDebugState().predictionMode, 'provisional');
+    assert.deepEqual(adapter.predictions.map(({x, y, kind}) => ({x, y, kind})), [
+        {x: 7, y: 8, kind: 'floor'}
+    ]);
 });

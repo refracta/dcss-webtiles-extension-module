@@ -695,7 +695,7 @@ function playerLevelKey(player) {
  * - onPlayer(snapshot, data)
  * - onMessages(messages, raw)
  * - onMap({clear, touched, raw})
- * - onKnowledge([{x, y, cell, removed}], binding)
+ * - onKnowledge([{x, y, cell, removed, terrainReliable}], binding)
  */
 export default class WebtilesAdapter {
     constructor(owner = null, options = {}) {
@@ -715,6 +715,10 @@ export default class WebtilesAdapter {
         this._observedCells = new Map();
         this._terrainSamples = new Map();
         this._nativeCells = new Map();
+        // A real sparse LOS delta can omit both `mf` and `t.bg`. Native
+        // rendering then needs the prediction's sampled background as a visual
+        // repair, but that repaired tile is not authoritative terrain evidence.
+        this._unreliableTerrainCells = new Set();
         this._pendingMaps = new WeakMap();
         this._pendingNativeReapply = new WeakMap();
         this._xModeActive = false;
@@ -1679,6 +1683,7 @@ export default class WebtilesAdapter {
             if (previousLevelKey && nextLevelKey
                 && previousLevelKey !== nextLevelKey) {
                 this.clearTerrainSamples();
+                this._unreliableTerrainCells.clear();
             }
             const payload = {
                 player: this.player,
@@ -1700,6 +1705,16 @@ export default class WebtilesAdapter {
         const cells = decodeMapCellDeltas(message.cells, {
             maxAbsCoordinate: this.maxAbsCoordinate
         });
+        for (const decodedCell of cells) {
+            const diff = decodedCell?.diff;
+            const hasBackground = diff?.t && typeof diff.t === 'object'
+                && Object.prototype.hasOwnProperty.call(diff.t, 'bg');
+            if (hasBackground || Number.isFinite(diff?.mf) || diff?.f === 0) {
+                this._unreliableTerrainCells.delete(
+                    cellKey(decodedCell.x, decodedCell.y)
+                );
+            }
+        }
         if (message.clear === true) {
             // Samples are level-local visual data. Clear them before the native
             // handler processes the new level; onKnowledge will then repopulate
@@ -1731,6 +1746,7 @@ export default class WebtilesAdapter {
 
         if (capture.clear) {
             this._observedCells.clear();
+            this._unreliableTerrainCells.clear();
             this.clearPredictions();
         }
 
@@ -1785,6 +1801,7 @@ export default class WebtilesAdapter {
             const key = cellKey(decodedCell.x, decodedCell.y);
             if (removed) {
                 this._observedCells.delete(key);
+                this._unreliableTerrainCells.delete(key);
             } else if (knowledge) {
                 this._observedCells.set(
                     key,
@@ -1810,7 +1827,10 @@ export default class WebtilesAdapter {
                     x: entry.x,
                     y: entry.y,
                     cell: cloneValue(entry.knowledge),
-                    removed: entry.removed
+                    removed: entry.removed,
+                    terrainReliable: !this._unreliableTerrainCells.has(
+                        cellKey(entry.x, entry.y)
+                    )
                 })),
                 this.binding
             );
@@ -1868,7 +1888,10 @@ export default class WebtilesAdapter {
                     x,
                     y,
                     cell: cloneValue(knowledge),
-                    removed: false
+                    removed: false,
+                    terrainReliable: !this._unreliableTerrainCells.has(
+                        cellKey(x, y)
+                    )
                 });
             }
         }
@@ -2209,6 +2232,8 @@ export default class WebtilesAdapter {
         if (!Number.isSafeInteger(background)) {
             return false;
         }
+        const usedPredictedTerrain = this.predictionKind({mf: expected?.mf})
+            === 'unknown';
 
         const mapKnowledge = this.binding?.mapKnowledge;
         if (!mapKnowledge || typeof mapKnowledge.get !== 'function') {
@@ -2228,6 +2253,11 @@ export default class WebtilesAdapter {
             target.t = {};
         }
         target.t.bg = background;
+        if (usedPredictedTerrain) {
+            this._unreliableTerrainCells.add(record.key);
+        } else {
+            this._unreliableTerrainCells.delete(record.key);
+        }
         return true;
     }
 
@@ -2944,6 +2974,9 @@ export default class WebtilesAdapter {
         this.clearNativePredictions();
         this._predictions.clear();
         this._observedCells.clear();
+        if (releaseBinding) {
+            this._unreliableTerrainCells.clear();
+        }
         this.clearTerrainSamples();
         this._pendingMaps = new WeakMap();
         this._pendingNativeReapply = new WeakMap();

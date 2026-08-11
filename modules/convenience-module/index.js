@@ -45,18 +45,58 @@ export function createMapPredictorStatus(summary) {
     const match = summary.match || null;
     const score = percentage(match?.score);
     const forced = summary.forceRevealActive === true;
-    const accepted = summary.resultReason === 'ready';
-    const consensus = accepted && (match?.unique === false
-        || count(summary.plausibleCandidateCount) > 1);
-    const verdict = forced
-        ? 'UNSAFE (forced)'
-        : accepted
-            ? consensus
-                ? 'SAFE CONSENSUS (ambiguous identity)'
-                : 'SAFE'
-            : match
-                ? 'UNSAFE (unaccepted)'
-                : 'WAITING';
+    const safePredictionCount = count(summary.safePredictionCount);
+    const forcePredictionCount = count(summary.forcePredictionCount);
+    const predictionCount = count(summary.predictionCount);
+    const revealEnabled = summary.revealEnabled === true;
+    const accepted = summary.resultReason === 'ready'
+        && safePredictionCount > 0;
+    const ambiguous = match?.unique === false
+        || count(summary.plausibleCandidateCount) > 1;
+    const displayed = revealEnabled && predictionCount > 0;
+    const hidden = !revealEnabled && predictionCount > 0;
+    const blocked = Boolean(match) && forcePredictionCount === 0;
+    let verdict = 'WAITING';
+    let display = 'off (waiting for a supported prediction)';
+    let colour = 8;
+
+    if (forced) {
+        verdict = `UNSAFE FORCE (explicit${ambiguous ? '; ambiguous' : ''})`;
+        display = displayed
+            ? 'on (explicit unsafe override)'
+            : 'off (explicit force has no displayed cells)';
+        colour = 14;
+    } else if (displayed && accepted) {
+        verdict = ambiguous
+            ? 'SAFE CONSENSUS (ambiguous identity)'
+            : 'SAFE';
+        display = 'on (automatic)';
+        colour = 10;
+    } else if (displayed) {
+        verdict = `AUTO BEST GUESS (unconfirmed${ambiguous ? '; ambiguous' : ''})`;
+        display = 'on (automatic orange prediction)';
+        colour = 14;
+    } else if (hidden) {
+        const available = accepted
+            ? ambiguous ? 'safe consensus' : 'safe prediction'
+            : ambiguous ? 'ambiguous best guess' : 'best guess';
+        verdict = `AVAILABLE / HIDDEN (${available})`;
+        display = 'off (hidden by /reveal)';
+    } else if (summary.error) {
+        verdict = 'ERROR';
+        display = 'off (runtime error)';
+        colour = 12;
+    } else if (blocked) {
+        verdict = summary.resultReason === 'policy-disabled'
+            ? 'BLOCKED (detection-only; no supported cells)'
+            : 'BLOCKED (no supported inferred cells)';
+        display = 'blocked';
+        colour = 12;
+    } else if (match && forcePredictionCount > 0) {
+        verdict = `AVAILABLE (best guess${ambiguous ? '; ambiguous' : ''})`;
+        display = 'off (supported cells are available)';
+        colour = 14;
+    }
     const coverage = percentage(match?.coverage);
     const templateCount = Array.isArray(summary.templates)
         ? summary.templates.length
@@ -68,15 +108,21 @@ export function createMapPredictorStatus(summary) {
         `Verdict: ${verdict}; reason: ${tooltipValue(summary.resultReason, summary.status || 'not evaluated')}`,
         `Evidence: ${count(match?.evidenceCells)} cells, ${count(match?.distinctKinds)} kinds, ${coverage || 'n/a'} coverage`,
         `Candidates: ${templateCount} loaded, ${count(summary.plausibleCandidateCount)} plausible`,
-        `Predictions: ${count(summary.safePredictionCount)} safe, ${count(summary.forcePredictionCount)} inferred, ${count(summary.predictionCount)} displayed`,
-        `Reveal: ${summary.revealEnabled === true ? 'on' : 'off'}${forced ? ' (forced)' : ''}`
+        `Predictions: ${safePredictionCount} safe, ${forcePredictionCount} best-guess, ${predictionCount} available`,
+        `Display: ${display}`
     ];
+    if (summary.error) {
+        details.push(
+            `Error: ${tooltipValue(summary.error.code, 'error')} — `
+            + tooltipValue(summary.error.message, 'no details')
+        );
+    }
 
     return {
         light: `Map (${score || '--.-%'})`,
         text: 'map predictor',
         desc: details.join(' | '),
-        col: !match ? 8 : (accepted && !forced ? 10 : 14),
+        col: colour,
         isCustomStatus: true,
         dwemStatusId: MAP_PREDICTOR_STATUS_ID
     };
