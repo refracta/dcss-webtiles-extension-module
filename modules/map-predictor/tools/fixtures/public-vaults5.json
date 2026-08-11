@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "name": "public-vaults5-autoexplore",
+  "recordingUrl": "https://wtrec.nemelex.cards/wtrec/waagh/2026-08-09.01%3A34%3A17.wtrec",
+  "startTime": 5320000,
+  "endTime": 5565000,
+  "speed": 10,
+  "timeoutMs": 180000,
+  "settleMs": 1500,
+  "targets": [
+    {
+      "id": "vaults5",
+      "place": "Vaults",
+      "depth": 5,
+      "fromTime": 5329562,
+      "toTime": 5559627
+    },
+    {
+      "id": "vaults4-after-vaults5",
+      "place": "Vaults",
+      "depth": 4,
+      "fromTime": 5559628,
+      "toTime": 5565000
+    }
+  ]
+}

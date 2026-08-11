@@ -1,0 +1,78 @@
+{
+  "sidecar": {
+    "schemaVersion": 1,
+    "name": "synthetic-vaults5",
+    "targets": [
+      {
+        "id": "v5",
+        "place": "Vaults",
+        "depth": 5,
+        "truthAt": 15
+      }
+    ]
+  },
+  "raw": {
+    "samples": [
+      {
+        "eventTime": 10,
+        "eventIndex": 1,
+        "resetSequence": 1,
+        "player": {"place": "Vaults", "depth": 5},
+        "status": "matching",
+        "reason": "insufficient-evidence",
+        "observations": 10,
+        "displayed": 0,
+        "native": 0,
+        "safe": 0,
+        "provisional": 0,
+        "force": 100,
+        "plausible": 4,
+        "predictionMode": "none",
+        "revealEnabled": false,
+        "forceRevealActive": false,
+        "match": null
+      },
+      {
+        "eventTime": 20,
+        "eventIndex": 2,
+        "resetSequence": 2,
+        "player": {"place": "Vaults", "depth": 5},
+        "status": "matching",
+        "reason": "insufficient-evidence",
+        "observations": 20,
+        "displayed": 1,
+        "native": 1,
+        "safe": 0,
+        "provisional": 1,
+        "force": 100,
+        "plausible": 2,
+        "predictionMode": "provisional",
+        "revealEnabled": true,
+        "forceRevealActive": false,
+        "match": {
+          "name": "vaults5_test",
+          "transform": "identity",
+          "offsetX": 0,
+          "offsetY": 0,
+          "score": 0.99,
+          "margin": 0.1
+        }
+      }
+    ],
+    "resets": [],
+    "truth": {
+      "v5": {
+        "capturedAt": 15,
+        "finalizedAt": 25,
+        "predictionMode": "provisional",
+        "displayedPredictions": [{"x": 1, "y": 1, "kind": "wall"}],
+        "safePredictions": [],
+        "provisionalPredictions": [{"x": 1, "y": 1, "kind": "wall"}],
+        "observations": [{"x": 1, "y": 1, "kind": "wall"}]
+      }
+    },
+    "currentEventTime": 30,
+    "currentEventIndex": 9,
+    "finalState": {"versionText": "0.35-a0"}
+  }
+}

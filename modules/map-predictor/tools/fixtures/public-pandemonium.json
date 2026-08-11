@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "name": "public-wizard-pandemonium-autoexplore",
+  "recordingUrl": "https://wtrec.nemelex.cards/wtrec/WizardModePhilia/2026-02-17.14%3A06%3A03.wtrec",
+  "startTime": 2200000,
+  "endTime": 2297000,
+  "speed": 20,
+  "timeoutMs": 180000,
+  "settleMs": 1500,
+  "targets": [
+    {
+      "id": "pandemonium",
+      "place": "Pandemonium",
+      "depth": 0,
+      "fromTime": 2212476,
+      "toTime": 2296754
+    },
+    {
+      "id": "vaults-after-pandemonium",
+      "place": "Vaults",
+      "depth": 1,
+      "fromTime": 2296755,
+      "toTime": 2297000
+    }
+  ]
+}

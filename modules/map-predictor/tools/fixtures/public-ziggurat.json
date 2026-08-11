@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "name": "public-wizard-ziggurat-transition",
+  "recordingUrl": "https://wtrec.nemelex.cards/wtrec/WizardModePhilia/2026-02-17.14%3A06%3A03.wtrec",
+  "startTime": 235000,
+  "endTime": 320000,
+  "speed": 20,
+  "timeoutMs": 180000,
+  "settleMs": 1500,
+  "targets": [
+    {
+      "id": "ziggurat",
+      "place": "Ziggurat",
+      "fromTime": 247776,
+      "toTime": 313959
+    },
+    {
+      "id": "bailey-after-ziggurat",
+      "place": "a Bailey",
+      "depth": 0,
+      "fromTime": 313960,
+      "toTime": 320000
+    }
+  ]
+}
