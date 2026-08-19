@@ -10,8 +10,8 @@ function hookPoint() {
     const handlers = [];
     return {
         handlers,
-        addHandler(identifier, handler) {
-            handlers.push({identifier, handler});
+        addHandler(identifier, handler, priority = 0) {
+            handlers.push({identifier, handler, priority});
         },
         removeHandler(identifier) {
             for (let index = handlers.length - 1; index >= 0; index--) {
@@ -21,6 +21,13 @@ function hookPoint() {
             }
         }
     };
+}
+
+function dispatchHook(point, message) {
+    for (const entry of point.handlers.slice()
+        .sort((left, right) => right.priority - left.priority)) {
+        entry.handler(message);
+    }
 }
 
 function fakeDocument() {
@@ -303,14 +310,22 @@ test('RC false is lazy and Ctrl-M performs a zero-map-memory runtime cycle', asy
     assert.equal(module.getDebugState().predictionCount, 0);
     assert.equal(module.getDebugState().workerActive, false);
     assert.equal(commands.length, 0);
-    assert.equal(receiveBefore.handlers.length, 0);
+    assert.equal(receiveBefore.handlers.length, 1);
+    assert.deepEqual(
+        receiveBefore.handlers.map(({identifier, priority}) => ({
+            identifier,
+            priority
+        })),
+        [{identifier: 'map-predictor-paused-context', priority: 1}]
+    );
     assert.equal(receiveAfter.handlers.length, 0);
     assert.equal(sendBefore.handlers.length, 0);
     assert.equal(dwem.Injector.replacers.length, 0);
     assert.equal(counters.cacheCloses, 1);
     assert.equal(adapters[0].observedCells.size, 0);
     assert.equal(adapters[0].predictions.length, 0);
-    // RC true keeps only the capture key used to resume the clean runtime.
+    // RC true keeps only the capture key and a raw player/version tracker used
+    // to resume the clean runtime on the floor currently being played.
     assert.equal(document.listeners.filter(entry => entry.capture).length, 1);
 
     const enable = ctrlMEvent();
@@ -322,6 +337,11 @@ test('RC false is lazy and Ctrl-M performs a zero-map-memory runtime cycle', asy
     assert.equal(counters.matchers, 2);
     assert.equal(counters.adapters, 1);
     assert.equal(commands.length, 5);
+    assert.equal(receiveBefore.handlers.length, 1);
+    assert.equal(
+        receiveBefore.handlers[0].identifier,
+        'map-predictor-webtiles-adapter'
+    );
     assert.equal(dwem.Injector.replacers.length, 3);
     assert.equal(module.getDebugState().observationCount, 1);
 
@@ -332,6 +352,7 @@ test('RC false is lazy and Ctrl-M performs a zero-map-memory runtime cycle', asy
     assert.equal(module.runtimeEnabled, false);
     assert.equal(document.listeners.filter(entry => entry.capture).length, 0);
     assert.equal(commands.length, 0);
+    assert.equal(receiveBefore.handlers.length, 0);
     assert.equal(dwem.Injector.replacers.length, 0);
     assert.equal(module.webtilesAdapter, null);
     assert.equal(states.at(-1).rcEnabled, false);
@@ -343,6 +364,117 @@ test('RC false is lazy and Ctrl-M performs a zero-map-memory runtime cycle', asy
     );
     assert.equal(module.runtimeEnabled, true);
     assert.equal(counters.repositories, 3);
+});
+
+test('Ctrl-M resumes from the raw current floor instead of the floor where it paused', async () => {
+    const harness = lifecycleHarness();
+    const {
+        module,
+        document,
+        rcHandlers,
+        receiveBefore,
+        receiveAfter,
+        adapters
+    } = harness;
+    module.onLoad();
+    await rcHandlers.get('map-predictor-rc').onGameInitialize(
+        'map_predictor = true'
+    );
+
+    const currentCell = {
+        x: 9,
+        y: 11,
+        f: 1,
+        mf: 1,
+        t: {bg: 0x20}
+    };
+    adapters[0].bindWebtiles({
+        mapKnowledge: {
+            get(x, y) {
+                return x === 9 && y === 11 ? currentCell : undefined;
+            },
+            bounds() {
+                return {left: 9, right: 9, top: 11, bottom: 11};
+            },
+            player_on_level() {
+                return true;
+            }
+        },
+        renderer: {},
+        player: {},
+        enums: {MF_UNSEEN: 0, MF_FLOOR: 1},
+        dngn: {
+            DNGN_UNSEEN: 0,
+            FLOOR_MAX: 0x70,
+            WALL_MAX: 0x100,
+            basetile(tile) {
+                return tile & 0xFFFF;
+            }
+        }
+    });
+    module.runtime.onPlayer({
+        place: 'Dungeon',
+        depth: 2,
+        pos: {x: 1, y: 2},
+        turn: 120
+    });
+
+    document.dispatch('keydown', ctrlMEvent());
+    assert.equal(module.runtimeEnabled, false);
+    assert.equal(receiveAfter.handlers.length, 0);
+    assert.deepEqual(
+        receiveBefore.handlers.map(({identifier, priority}) => ({
+            identifier,
+            priority
+        })),
+        [{identifier: 'map-predictor-paused-context', priority: 1}]
+    );
+
+    // A real level transition sends player diffs before its full map. While
+    // paused, retain only this raw identity/focus context; map cells remain
+    // entirely unobserved until Ctrl-M resumes and rehydrates WebTiles.
+    dispatchHook(receiveBefore, {
+        msg: 'player',
+        place: 'Vaults',
+        depth: 5,
+        name: 'Watcher'
+    });
+    dispatchHook(receiveBefore, {
+        msg: 'player',
+        pos: {x: 9, y: 11},
+        turn: 456
+    });
+    const contextBeforeMap = structuredClone(module.runtime.resumeContext);
+    dispatchHook(receiveBefore, {
+        msg: 'map',
+        clear: true,
+        cells: [{x: 9, y: 11, f: 999, mf: 999}]
+    });
+    assert.deepEqual(module.runtime.resumeContext, contextBeforeMap);
+    assert.equal(adapters[0].observedCells.size, 0);
+
+    document.dispatch('keydown', ctrlMEvent());
+    assert.equal(module.runtimeEnabled, true);
+    assert.equal(module.runtime.player.place, 'Vaults');
+    assert.equal(module.runtime.player.depth, 5);
+    assert.deepEqual(module.runtime.player.pos, {x: 9, y: 11});
+    assert.equal(module.runtime.player.turn, 456);
+    assert.equal(module.runtime.levelKey, `Vaults${String.fromCharCode(0)}5`);
+    assert.equal(module.runtime.matcher.focusPosition.x, 9);
+    assert.equal(module.runtime.matcher.focusPosition.y, 11);
+    assert.equal(module.runtime.getDebugState().observationCount, 1);
+    assert.equal(adapters[0].player.place, 'Vaults');
+    assert.equal(adapters[0].player.depth, 5);
+    assert.equal(module.runtime.resumeContext, null);
+    assert.deepEqual(
+        receiveBefore.handlers.map(({identifier}) => identifier),
+        ['map-predictor-webtiles-adapter']
+    );
+
+    await rcHandlers.get('map-predictor-rc').onGameInitialize(
+        'map_predictor = false'
+    );
+    assert.equal(receiveBefore.handlers.length, 0);
 });
 
 test('the RC facade has no static parser, catalog, matcher, or adapter imports', async () => {

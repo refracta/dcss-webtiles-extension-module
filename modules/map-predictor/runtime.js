@@ -35,6 +35,11 @@ const DEFAULT_MAX_TEMPLATES = 112;
 const DEFAULT_SYNC_MAX_TEMPLATES = 96;
 const MODULE_NAME = 'MapPredictor';
 const RC_HANDLER_ID = 'map-predictor-rc';
+const PAUSED_CONTEXT_HANDLER_ID = 'map-predictor-paused-context';
+// TranslationModule localizes protocol fields at the default priority. The
+// paused tracker needs the same raw-wire ordering as WebtilesAdapter so a
+// branch change made during Ctrl-M pause is resumed with canonical place data.
+const RAW_WIRE_CAPTURE_PRIORITY = 1;
 const HOTKEY_CODE = 'KeyM';
 
 const PAN_LORDS = Object.freeze({
@@ -2787,6 +2792,7 @@ export default class MapPredictorRuntime {
         this.runtimeAbortController = null;
         this.rcHandlerInstalled = false;
         this.hotkeyInstalled = false;
+        this.pausedContextTrackerInstalled = false;
         this.statusSubscribers = new Set();
         this.pausedMatch = null;
         this.pausedResultReason = null;
@@ -2868,6 +2874,45 @@ export default class MapPredictorRuntime {
                 this.activateRuntime({resume: true});
                 this.sendLocalMessage('<b>[MapPredictor]</b> Enabled for this game.');
             }
+        };
+        this.handlePausedContextMessage = message => {
+            if (this.runtimeEnabled || !this.rcEnabled
+                || !message || typeof message !== 'object') {
+                return false;
+            }
+            if (message.msg === 'version') {
+                const versionText = typeof message.text === 'string'
+                    ? message.text
+                    : '';
+                if (versionText) {
+                    this.resumeContext = {
+                        ...(this.resumeContext || {}),
+                        versionText
+                    };
+                }
+                return false;
+            }
+            if (message.msg !== 'player') {
+                return false;
+            }
+            const previousPlayer = this.resumeContext?.player || {};
+            const nextPlayer = {...previousPlayer};
+            for (const field of ['place', 'depth', 'name', 'turn']) {
+                if (Object.prototype.hasOwnProperty.call(message, field)) {
+                    nextPlayer[field] = message[field];
+                }
+            }
+            if (Object.prototype.hasOwnProperty.call(message, 'pos')) {
+                nextPlayer.pos = Number.isInteger(message.pos?.x)
+                    && Number.isInteger(message.pos?.y)
+                    ? {x: message.pos.x, y: message.pos.y}
+                    : undefined;
+            }
+            this.resumeContext = {
+                ...(this.resumeContext || {}),
+                player: nextPlayer
+            };
+            return false;
         };
         if (this.eagerRuntime) {
             this.initializeRuntime();
@@ -2983,9 +3028,10 @@ export default class MapPredictorRuntime {
             return false;
         }
         const alreadyEnabled = this.runtimeEnabled;
+        const context = resume ? this.resumeContext : null;
+        this.removePausedContextTracker();
         this.runtimeEnabled = true;
         this.initializeRuntime();
-        const context = resume ? this.resumeContext : null;
         if (newSession) {
             this.gameSession++;
             this.autoRevealApplied = false;
@@ -3006,7 +3052,10 @@ export default class MapPredictorRuntime {
         }
         this.status = 'waiting-for-version';
         if (context?.player?.place) {
-            this.onPlayer(context.player);
+            const currentPlayer = this.webtilesAdapter?.seedPlayerContext?.(
+                context.player
+            ) || context.player;
+            this.onPlayer(currentPlayer);
         }
         if (resume && this.webtilesAdapter?.binding) {
             const cells = this.webtilesAdapter.rehydrateKnowledge?.() || [];
@@ -3029,6 +3078,7 @@ export default class MapPredictorRuntime {
     } = {}) {
         if (!this.runtimeEnabled) {
             if (releaseBinding) {
+                this.removePausedContextTracker();
                 this.webtilesAdapter?.destroy({releaseBinding: true});
                 this.webtilesAdapter = null;
                 this.resumeContext = null;
@@ -3101,7 +3151,41 @@ export default class MapPredictorRuntime {
         this.autoRevealApplied = false;
         this.status = status;
         this.error = null;
+        if (!releaseBinding && status === 'paused' && this.rcEnabled) {
+            this.installPausedContextTracker();
+        } else {
+            this.removePausedContextTracker();
+        }
         this.emitStatus();
+        return true;
+    }
+
+    installPausedContextTracker() {
+        if (this.pausedContextTrackerInstalled || !this.rcEnabled) {
+            return false;
+        }
+        const receiveBefore = this.dwem?.Modules?.IOHook
+            ?.handle_message?.before;
+        if (typeof receiveBefore?.addHandler !== 'function') {
+            return false;
+        }
+        receiveBefore.addHandler(
+            PAUSED_CONTEXT_HANDLER_ID,
+            this.handlePausedContextMessage,
+            RAW_WIRE_CAPTURE_PRIORITY
+        );
+        this.pausedContextTrackerInstalled = true;
+        return true;
+    }
+
+    removePausedContextTracker() {
+        if (!this.pausedContextTrackerInstalled) {
+            return false;
+        }
+        this.dwem?.Modules?.IOHook?.handle_message?.before?.removeHandler?.(
+            PAUSED_CONTEXT_HANDLER_ID
+        );
+        this.pausedContextTrackerInstalled = false;
         return true;
     }
 
@@ -3130,6 +3214,7 @@ export default class MapPredictorRuntime {
     }
 
     clearSessionState() {
+        this.removePausedContextTracker();
         this.gameSession = 0;
         this.autoRevealApplied = false;
         this.levelKey = null;

@@ -806,6 +806,14 @@ export default class WebtilesAdapter {
         return cloneValue(this._player);
     }
 
+    seedPlayerContext(player) {
+        if (!player || typeof player !== 'object' || Array.isArray(player)) {
+            return this.player;
+        }
+        this._player = cloneValue(player);
+        return this.player;
+    }
+
     get revealEnabled() {
         return this._revealEnabled;
     }
