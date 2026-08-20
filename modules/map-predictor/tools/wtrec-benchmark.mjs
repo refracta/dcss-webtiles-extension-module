@@ -181,6 +181,11 @@ async function installRecorder(page, targets) {
         const observations = () => cloneCells([
             ...(runtime.matcher?.observations?.values?.() || [])
         ]);
+        const displayedPredictions = () => cloneCells(
+            Array.isArray(adapter.displayablePredictions)
+                ? adapter.displayablePredictions
+                : adapter.predictions
+        );
         const identity = match => match?.name
             ? [
                 match.name,
@@ -196,7 +201,7 @@ async function installRecorder(page, targets) {
                 player: debug.player,
                 observations: runtime.matcher?.observations?.size || 0,
                 known: adapter._observedCells?.size || 0,
-                displayed: adapter.predictions.length,
+                displayed: displayedPredictions().length,
                 native: adapter._nativeCells?.size || 0,
                 matchIdentity: identity(debug.match),
                 autoRevealApplied: Boolean(debug.autoRevealApplied)
@@ -223,7 +228,7 @@ async function installRecorder(page, targets) {
                 capturedAt: state.currentEventTime,
                 finalizedAt: null,
                 predictionMode: facade.getDebugState().predictionMode,
-                displayedPredictions: cloneCells(adapter.predictions),
+                displayedPredictions: displayedPredictions(),
                 safePredictions: cloneCells(result.predictions),
                 provisionalPredictions: cloneCells(result.provisionalPredictions),
                 bestDisplayPredictions: cloneCells(
@@ -256,7 +261,7 @@ async function installRecorder(page, targets) {
                 levelKey: debug.levelKey,
                 observations: debug.observationCount || 0,
                 known: adapter._observedCells?.size || 0,
-                displayed: adapter.predictions.length,
+                displayed: displayedPredictions().length,
                 native: adapter._nativeCells?.size || 0,
                 safe: debug.safePredictionCount || 0,
                 provisional: debug.provisionalPredictionCount || 0,
@@ -370,6 +375,10 @@ async function installRecorder(page, targets) {
             'predictions',
             () => capture('predictions')
         );
+        const unsubscribeDisplayablePredictions = adapter.on(
+            'displayable-predictions',
+            () => capture('displayable-predictions')
+        );
 
         globalThis.__mapPredictorBenchmark = {
             state,
@@ -383,6 +392,7 @@ async function installRecorder(page, targets) {
                     state.stopped = true;
                     unsubscribeStatus();
                     unsubscribePredictions();
+                    unsubscribeDisplayablePredictions();
                     ioHook.handle_message.before.removeHandler(handlerId);
                     ioHook.handle_message.after.removeHandler(handlerId);
                     runtime.resetLevel = originalReset;
@@ -397,7 +407,7 @@ async function installRecorder(page, targets) {
                         bound: Boolean(adapter.binding),
                         known: adapter._observedCells?.size || 0,
                         native: adapter._nativeCells?.size || 0,
-                        displayed: adapter.predictions.length,
+                        displayed: displayedPredictions().length,
                         playerOnLevel: adapter.playerOnLevel,
                         bindingRecovered: state.bindingRecovered
                     },

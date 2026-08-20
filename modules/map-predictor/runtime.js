@@ -2773,6 +2773,58 @@ function automaticPredictionPlan(result) {
     return {mode: 'none', predictions: []};
 }
 
+function adapterLogicalPredictions(adapter) {
+    return Array.isArray(adapter?.predictions) ? adapter.predictions : [];
+}
+
+function adapterLogicalPredictionCount(adapter) {
+    const count = Number(adapter?.predictionCount);
+    return Number.isSafeInteger(count) && count >= 0
+        ? count
+        : adapterLogicalPredictions(adapter).length;
+}
+
+function adapterDisplayablePredictions(adapter) {
+    // Lightweight test/fallback adapters written before availability was
+    // split from matcher output treat every logical prediction as
+    // displayable. Production WebtilesAdapter exposes the distinct set.
+    return Array.isArray(adapter?.displayablePredictions)
+        ? adapter.displayablePredictions
+        : adapterLogicalPredictions(adapter);
+}
+
+function adapterDisplayablePredictionCount(adapter) {
+    const count = Number(adapter?.displayablePredictionCount);
+    return Number.isSafeInteger(count) && count >= 0
+        ? count
+        : adapterDisplayablePredictions(adapter).length;
+}
+
+function displayablePredictionsFor(adapter, predictions) {
+    if (typeof adapter?.displayablePredictionsFor === 'function') {
+        return adapter.displayablePredictionsFor(predictions);
+    }
+    return Array.isArray(predictions) ? predictions : [];
+}
+
+function samePredictionCells(left, right) {
+    if (!Array.isArray(left) || !Array.isArray(right)
+        || left.length !== right.length) {
+        return false;
+    }
+    return left.every((cell, index) => {
+        const other = right[index];
+        return cell?.x === other?.x
+            && cell?.y === other?.y
+            && cell?.kind === other?.kind
+            && cell?.terrain === other?.terrain
+            && cell?.feature === other?.feature
+            && cell?.type === other?.type
+            && cell?.mf === other?.mf
+            && Boolean(cell?.showKnown) === Boolean(other?.showKnown);
+    });
+}
+
 export default class MapPredictorRuntime {
     static name = MODULE_NAME;
     static version = '0.2';
@@ -2832,6 +2884,9 @@ export default class MapPredictorRuntime {
         this.notificationFingerprint = null;
         this.forceRevealActive = false;
         this.revealEnabledBeforeForce = null;
+        this.forcePredictionsFollowCurrentPlan = false;
+        this.displayableForcePredictionCount = 0;
+        this.forcePredictionAvailabilityKnown = true;
         this.commandsRegistered = false;
         this.destroyed = false;
         this.evaluationDelay = options.evaluationDelay ?? EVALUATION_DELAY_MS;
@@ -3148,6 +3203,9 @@ export default class MapPredictorRuntime {
         this.result = null;
         this.forceRevealActive = false;
         this.revealEnabledBeforeForce = null;
+        this.forcePredictionsFollowCurrentPlan = false;
+        this.displayableForcePredictionCount = 0;
+        this.forcePredictionAvailabilityKnown = true;
         this.autoRevealApplied = false;
         this.status = status;
         this.error = null;
@@ -3227,6 +3285,9 @@ export default class MapPredictorRuntime {
         this.pausedMatch = null;
         this.pausedResultReason = null;
         this.notificationFingerprint = null;
+        this.forcePredictionsFollowCurrentPlan = false;
+        this.displayableForcePredictionCount = 0;
+        this.forcePredictionAvailabilityKnown = true;
     }
 
     endGame() {
@@ -3577,6 +3638,18 @@ export default class MapPredictorRuntime {
         if (!this.runtimeEnabled || !this.matcher || !this.webtilesAdapter) {
             return;
         }
+        if (!this.forceRevealActive
+            && !this.forcePredictionsFollowCurrentPlan
+            && Array.isArray(this.result?.forcePredictions)
+            && this.result.forcePredictions.length > 0
+            && this.forcePredictionAvailabilityKnown) {
+            // An alternate force-only coordinate can become server-owned
+            // without changing the current automatic display set. Invalidate
+            // its optional cached preview cheaply; /force_reveal resolves the
+            // exact set on demand.
+            this.forcePredictionAvailabilityKnown = false;
+            this.emitStatus();
+        }
         const updates = normalizeWebtilesKnowledgeUpdates(
             cells,
             binding || this.webtilesAdapter.binding || {}
@@ -3637,6 +3710,59 @@ export default class MapPredictorRuntime {
 
     onRevealChanged() {
         // Exposed as a callback for the adapter; no server state is changed.
+        this.emitStatus();
+    }
+
+    onDisplayablePredictionsChanged(predictions) {
+        if (!this.runtimeEnabled || !this.webtilesAdapter) {
+            return;
+        }
+        const count = Array.isArray(predictions)
+            ? predictions.length
+            : adapterDisplayablePredictionCount(this.webtilesAdapter);
+        this.refreshForceAvailability();
+        if (count === 0 && this.result?.best
+            && adapterLogicalPredictionCount(this.webtilesAdapter) > 0) {
+            if (this.forceRevealActive) {
+                const restoreReveal = this.revealEnabledBeforeForce === true;
+                this.forceRevealActive = false;
+                this.revealEnabledBeforeForce = null;
+                this.webtilesAdapter.setRevealEnabled(false);
+                this.webtilesAdapter.clearPredictions();
+                // Ownership of the final forced cell ends the temporary
+                // override exactly like toggling /force_reveal off. Rebuild
+                // the normal best plan, then restore the user's pre-force
+                // /reveal choice only when that plan still has a displayable
+                // cell.
+                this.handleResult(this.result);
+                this.webtilesAdapter.setRevealEnabled(
+                    restoreReveal
+                        && adapterDisplayablePredictionCount(
+                            this.webtilesAdapter
+                        ) > 0
+                );
+                this.emitStatus();
+                return;
+            }
+            this.status = 'no-displayable-terrain';
+        } else if (count > 0 && this.result?.best
+            && !this.forceRevealActive) {
+            if (this.status === 'no-displayable-terrain') {
+                // Availability can grow without a new matcher evaluation when
+                // WebTiles returns from another floor or gains the visual
+                // sample needed for a native cell. Re-run the retained result
+                // so the first real display opportunity consumes automatic
+                // reveal; an already-consumed latch still preserves manual OFF.
+                this.handleResult(this.result);
+                return;
+            }
+            this.status = this.result.ready
+                ? 'map-inferred'
+                : 'map-provisional';
+        }
+        // This callback also covers authoritative cells which are known to
+        // WebTiles but deliberately omitted from matcher evidence. Wake status
+        // subscribers immediately rather than waiting for another evaluation.
         this.emitStatus();
     }
 
@@ -3895,6 +4021,9 @@ export default class MapPredictorRuntime {
         this.notificationFingerprint = null;
         this.forceRevealActive = false;
         this.revealEnabledBeforeForce = null;
+        this.forcePredictionsFollowCurrentPlan = false;
+        this.displayableForcePredictionCount = 0;
+        this.forcePredictionAvailabilityKnown = true;
         if (resetAutoReveal) {
             this.autoRevealApplied = false;
         }
@@ -4043,16 +4172,60 @@ export default class MapPredictorRuntime {
         this.evaluationTimer = null;
     }
 
+    configureForceAvailability(result) {
+        const forcePredictions = Array.isArray(result?.forcePredictions)
+            ? result.forcePredictions
+            : [];
+        const currentPlan = Array.isArray(result?.bestDisplayPredictions)
+            ? result.bestDisplayPredictions
+            : [];
+        this.forcePredictionsFollowCurrentPlan = forcePredictions.length > 0
+            && samePredictionCells(forcePredictions, currentPlan);
+        this.displayableForcePredictionCount = 0;
+        this.forcePredictionAvailabilityKnown = forcePredictions.length === 0
+            || this.forcePredictionsFollowCurrentPlan;
+    }
+
+    refreshForceAvailability() {
+        const forcePredictions = Array.isArray(this.result?.forcePredictions)
+            ? this.result.forcePredictions
+            : [];
+        if (forcePredictions.length === 0) {
+            this.displayableForcePredictionCount = 0;
+            this.forcePredictionAvailabilityKnown = true;
+        } else if (this.forceRevealActive
+            || this.forcePredictionsFollowCurrentPlan) {
+            this.displayableForcePredictionCount =
+                adapterDisplayablePredictionCount(this.webtilesAdapter);
+            this.forcePredictionAvailabilityKnown = true;
+        } else {
+            // Production matcher results use the current best set here. Keep
+            // unusual/custom alternate sets lazy: scanning a Zig-size force
+            // footprint on every status or map delta is prohibitively costly,
+            // and a cached count could become stale on a force-only coordinate.
+            this.displayableForcePredictionCount = 0;
+            this.forcePredictionAvailabilityKnown = false;
+        }
+        return this.displayableForcePredictionCount;
+    }
+
     handleResult(result) {
         if (!this.runtimeEnabled || !this.matcher || !this.webtilesAdapter) {
             return;
         }
         this.result = result;
+        this.configureForceAvailability(result);
         if (this.forceRevealActive) {
             const forced = Array.isArray(result?.forcePredictions)
                 ? result.forcePredictions
                 : [];
-            if (!result?.best || !forced.length) {
+            const displayableForced = displayablePredictionsFor(
+                this.webtilesAdapter,
+                forced
+            );
+            this.displayableForcePredictionCount = displayableForced.length;
+            this.forcePredictionAvailabilityKnown = true;
+            if (!result?.best || !displayableForced.length) {
                 const restoreReveal = this.revealEnabledBeforeForce === true;
                 this.forceRevealActive = false;
                 this.revealEnabledBeforeForce = null;
@@ -4070,6 +4243,18 @@ export default class MapPredictorRuntime {
                     ...cell,
                     confidence
                 })));
+                this.refreshForceAvailability();
+                if (adapterDisplayablePredictionCount(
+                    this.webtilesAdapter
+                ) === 0) {
+                    const restoreReveal = this.revealEnabledBeforeForce === true;
+                    this.forceRevealActive = false;
+                    this.revealEnabledBeforeForce = null;
+                    this.webtilesAdapter.setRevealEnabled(restoreReveal);
+                    this.status = 'no-displayable-terrain';
+                    this.emitStatus();
+                    return;
+                }
                 this.webtilesAdapter.setRevealEnabled(true);
                 this.status = 'map-forced';
                 this.emitStatus();
@@ -4079,6 +4264,7 @@ export default class MapPredictorRuntime {
         const automatic = automaticPredictionPlan(result);
         if (automatic.mode === 'none') {
             this.webtilesAdapter.clearPredictions();
+            this.refreshForceAvailability();
             if (this.templates.length) {
                 this.status = 'matching';
             }
@@ -4091,6 +4277,16 @@ export default class MapPredictorRuntime {
             ...cell,
             confidence
         })));
+        this.refreshForceAvailability();
+        if (adapterDisplayablePredictionCount(this.webtilesAdapter) === 0) {
+            // Preserve the logical best-placement result for diagnostics, but
+            // do not claim to map terrain when every cell is already known,
+            // an unsupported feature, or a solid wall interior which native
+            // magic mapping deliberately omits.
+            this.status = 'no-displayable-terrain';
+            this.emitStatus();
+            return;
+        }
         this.status = result.ready
             ? 'map-inferred'
             : 'map-provisional';
@@ -4138,16 +4334,21 @@ export default class MapPredictorRuntime {
         if (!this.runtimeEnabled || !this.webtilesAdapter) {
             return false;
         }
-        if (!this.webtilesAdapter.predictions.length) {
+        if (adapterDisplayablePredictionCount(this.webtilesAdapter) === 0
+            && !this.webtilesAdapter.revealEnabled) {
             const detail = this.result?.reason === 'anchor-unverified'
                 ? ' The terrain matched, but the arrival square was not the map portal; use /force_reveal for an explicit best-effort placement.'
                 : this.result?.reason === 'placement-unverified'
                     ? ' The source matched, but its position has not been exhaustively verified.'
-                : this.result?.reason === 'policy-disabled'
-                    ? ' This map family is detection-only until its dynamic alternatives are fully verified.'
-                    : '';
+                    : this.result?.reason === 'policy-disabled'
+                        ? ' This map family is detection-only until its dynamic alternatives are fully verified.'
+                    : adapterLogicalPredictionCount(this.webtilesAdapter) > 0
+                        ? ' No supported unseen inferred terrain remains.'
+                        : '';
             this.sendLocalMessage(
-                '<b>[MapPredictor]</b> No supported fixed-map prediction yet.'
+                (adapterLogicalPredictionCount(this.webtilesAdapter) > 0
+                    ? '<b>[MapPredictor]</b> No supported unseen inferred terrain remains.'
+                    : '<b>[MapPredictor]</b> No supported fixed-map prediction yet.')
                 + detail
             );
             return false;
@@ -4175,7 +4376,10 @@ export default class MapPredictorRuntime {
             // manual /reveal OFF from before the force override stays OFF.
             this.handleResult(this.result);
             this.webtilesAdapter.setRevealEnabled(
-                restoreReveal && this.webtilesAdapter.predictions.length > 0
+                restoreReveal
+                    && adapterDisplayablePredictionCount(
+                        this.webtilesAdapter
+                    ) > 0
             );
             this.sendLocalMessage(
                 '<b>[MapPredictor]</b> Forced terrain cleared from the client map.'
@@ -4193,7 +4397,13 @@ export default class MapPredictorRuntime {
             );
             return false;
         }
-        if (!predictions.length) {
+        const displayablePredictions = displayablePredictionsFor(
+            this.webtilesAdapter,
+            predictions
+        );
+        this.displayableForcePredictionCount = displayablePredictions.length;
+        this.forcePredictionAvailabilityKnown = true;
+        if (!displayablePredictions.length) {
             const name = escapeHtml(
                 this.result.best?.template?.name || 'matched candidate'
             );
@@ -4201,6 +4411,7 @@ export default class MapPredictorRuntime {
                 `<b>[MapPredictor]</b> ${name} matched, but there are no `
                 + 'unrevealed inferred cells left to force.'
             );
+            this.emitStatus();
             return false;
         }
 
@@ -4211,6 +4422,21 @@ export default class MapPredictorRuntime {
             ...cell,
             confidence
         })));
+        this.refreshForceAvailability();
+        const mappedCount = adapterDisplayablePredictionCount(
+            this.webtilesAdapter
+        );
+        if (mappedCount === 0) {
+            this.forceRevealActive = false;
+            this.revealEnabledBeforeForce = null;
+            this.handleResult(this.result);
+            this.sendLocalMessage(
+                '<b>[MapPredictor]</b> The matched candidate has no supported '
+                + 'unrevealed inferred cells left to force.'
+            );
+            this.emitStatus();
+            return false;
+        }
         this.webtilesAdapter.setRevealEnabled(true);
         this.status = 'map-forced';
         const name = escapeHtml(
@@ -4223,7 +4449,7 @@ export default class MapPredictorRuntime {
         this.sendLocalMessage(
             `<b>[MapPredictor] UNSAFE FORCE${ambiguous ? ' / AMBIGUOUS' : ''}:</b> `
             + `${name} (${percentage}%, `
-            + `${reason}) mapped ${predictions.length} inferred cells. `
+            + `${reason}) mapped ${mappedCount} inferred cells. `
             + 'The placement may be wrong; type <b>/force_reveal</b> again to undo it.'
         );
         this.emitStatus();
@@ -4255,6 +4481,9 @@ export default class MapPredictorRuntime {
         this.notificationFingerprint = null;
         this.forceRevealActive = false;
         this.revealEnabledBeforeForce = null;
+        this.forcePredictionsFollowCurrentPlan = false;
+        this.displayableForcePredictionCount = 0;
+        this.forcePredictionAvailabilityKnown = true;
         this.webtilesAdapter.clearPredictions();
         this.templates = [];
         this.sourceKey = null;
@@ -4319,10 +4548,15 @@ export default class MapPredictorRuntime {
             + `(${escapeHtml(match.placementSearch || 'unknown')} placement) `
             + `@ ${match.offsetX ?? '?'},${match.offsetY ?? '?'}; `
             + `${summary.plausibleCandidateCount} plausible, `
+            + `${summary.displayablePredictionCount} displayable / `
+            + `${summary.predictionCount} logical current-best, `
             + `${summary.safePredictionCount} safe / `
             + `${summary.provisionalPredictionCount} provisional consensus / `
             + `${summary.bestDisplayPredictionCount} current-best display / `
-            + `${summary.forcePredictionCount} best-only force cells; `
+            + (summary.forcePredictionAvailabilityKnown
+                ? `${summary.forcePredictionCount} displayable force cells `
+                : 'force availability checked on request ')
+            + `(${summary.logicalForcePredictionCount} logical); `
             + `reason ${escapeHtml(summary.resultReason || 'unknown')}, `
             + `forced ${summary.forceRevealActive ? 'on' : 'off'}.`
         );
@@ -4358,6 +4592,22 @@ export default class MapPredictorRuntime {
         const match = activeMatch || (!this.runtimeEnabled
             ? this.pausedMatch
             : null);
+        const logicalPredictionCount = adapterLogicalPredictionCount(
+            this.webtilesAdapter
+        );
+        const displayablePredictionCount = adapterDisplayablePredictionCount(
+            this.webtilesAdapter
+        );
+        const logicalForcePredictionCount = Array.isArray(
+            this.result?.forcePredictions
+        )
+            ? this.result.forcePredictions.length
+            : 0;
+        const forcePredictionAvailabilityKnown = logicalForcePredictionCount === 0
+            || this.forcePredictionAvailabilityKnown;
+        const displayableForcePredictionCount = forcePredictionAvailabilityKnown
+            ? this.displayableForcePredictionCount
+            : null;
         return {
             rcEnabled: this.rcEnabled,
             runtimeEnabled: this.runtimeEnabled,
@@ -4377,8 +4627,9 @@ export default class MapPredictorRuntime {
             sourcePaths: [...this.sourcePaths],
             templates: this.templates.map(template => template.name),
             observationCount: this.matcher?.observations?.size ?? 0,
-            predictionCount: this.webtilesAdapter?.predictions?.length ?? 0,
-            predictionMode: (this.webtilesAdapter?.predictions?.length ?? 0) === 0
+            predictionCount: logicalPredictionCount,
+            displayablePredictionCount,
+            predictionMode: displayablePredictionCount === 0
                 ? 'none'
                 : this.forceRevealActive
                     ? 'forced'
@@ -4396,9 +4647,9 @@ export default class MapPredictorRuntime {
             )
                 ? this.result.bestDisplayPredictions.length
                 : 0,
-            forcePredictionCount: Array.isArray(this.result?.forcePredictions)
-                ? this.result.forcePredictions.length
-                : 0,
+            forcePredictionCount: displayableForcePredictionCount,
+            forcePredictionAvailabilityKnown,
+            logicalForcePredictionCount,
             plausibleCandidateCount: this.result?.plausibleCandidateCount ?? 0,
             revealEnabled: this.webtilesAdapter?.revealEnabled ?? false,
             forceRevealActive: this.forceRevealActive,

@@ -751,6 +751,13 @@ export default class WebtilesAdapter {
         this._clientVersion = null;
         this._player = {};
         this._predictions = new Map();
+        // Matcher output is intentionally retained in `_predictions` for
+        // diagnostics and later re-evaluation. This second map contains only
+        // cells which the current WebTiles binding could actually display:
+        // supported terrain, magic-map-visible wall edges, and coordinates
+        // which remain unknown to the server. It is independent of the
+        // user's /reveal choice.
+        this._displayablePredictions = new Map();
         this._observedCells = new Map();
         this._terrainSamples = new Map();
         this._nativeCells = new Map();
@@ -820,6 +827,21 @@ export default class WebtilesAdapter {
 
     get predictions() {
         return Array.from(this._predictions.values(), cloneValue);
+    }
+
+    get predictionCount() {
+        return this._predictions.size;
+    }
+
+    get displayablePredictions() {
+        return Array.from(
+            this._displayablePredictions.values(),
+            cloneValue
+        );
+    }
+
+    get displayablePredictionCount() {
+        return this._displayablePredictions.size;
     }
 
     get observedCells() {
@@ -1171,13 +1193,11 @@ export default class WebtilesAdapter {
         this.setXModeActive(this.isViewMapState(binding.renderer.ui_state));
         if (this._nativeMode) {
             this.removePredictionOverlays();
-            if (this._revealEnabled && this._predictions.size > 0) {
-                this.applyNativePredictions(this._predictions);
-            }
         } else {
             this.ensureOverlays();
             this.observeBaseCanvases();
         }
+        this.refreshDisplayablePredictions();
         this.scheduleRender();
         this.emit('binding', binding);
         this.notifyOwner('onWebtilesBound', binding);
@@ -1989,14 +2009,23 @@ export default class WebtilesAdapter {
                 this.binding
             );
         }
+        // Reconcile availability immediately from authoritative
+        // map_knowledge. Some known screen cells are deliberately unsuitable
+        // as matcher evidence, so waiting for the next matcher evaluation can
+        // otherwise leave the status claiming that a stale cell is still
+        // displayable. Native restoration/reapplication is handled below.
+        this.refreshDisplayablePredictions({
+            applyNative: false,
+            scheduleRender: false
+        });
         if (capture.retainCurrentState
             && this._nativeMode
             && this._revealEnabled
-            && this._predictions.size > 0) {
+            && this._displayablePredictions.size > 0) {
             // Returning from an off-level X map (or completing a spectator
             // full resync) rebuilds native map knowledge. Reapply the retained
             // current-floor prediction only after that authoritative merge.
-            this.applyNativePredictions(this._predictions);
+            this.applyNativePredictions(this._displayablePredictions);
         } else if (nativeReapplyKeys.length > 0
             && this._nativeMode
             && this._revealEnabled) {
@@ -2565,6 +2594,150 @@ export default class WebtilesAdapter {
         return cloneValue(cells);
     }
 
+    normalizePredictions(input) {
+        const normalized = new Map();
+        const defaultConfidence = input && typeof input === 'object'
+            ? input.confidence
+            : undefined;
+        for (const [key, value] of predictionEntries(input)) {
+            const prediction = normalizePrediction(
+                value,
+                key,
+                defaultConfidence
+            );
+            if (!prediction
+                || Math.abs(prediction.x) > this.maxAbsCoordinate
+                || Math.abs(prediction.y) > this.maxAbsCoordinate) {
+                continue;
+            }
+            normalized.set(cellKey(prediction.x, prediction.y), prediction);
+        }
+        return normalized;
+    }
+
+    predictionKnowledge(key, prediction) {
+        // Once a prediction is injected, map_knowledge contains our synthetic
+        // cell. Its saved pre-injection snapshot is the authoritative answer
+        // for availability until a real server delta takes ownership.
+        const nativeRecord = this._nativeCells.get(key);
+        if (nativeRecord) {
+            return cloneValue(nativeRecord.snapshot);
+        }
+        if (!this._nativeMode) {
+            // The canvas fallback historically renders without querying or
+            // mutating map_knowledge. Authoritative received cells are kept
+            // in `_observedCells`; use the same knowledgeIsKnown predicate as
+            // native mode while preserving that contract.
+            return cloneValue(this._observedCells.get(key));
+        }
+        if (this._playerOnLevel === false) {
+            // map_knowledge currently belongs to the floor selected in the X
+            // map, while `_observedCells` deliberately retains the player's
+            // floor. An asynchronous matcher result must not let that other
+            // floor claim or reject current-floor prediction coordinates.
+            return cloneValue(this._observedCells.get(key));
+        }
+        return this.readKnowledge(prediction.x, prediction.y);
+    }
+
+    displayablePredictionMap(input = this._predictions) {
+        const normalized = input instanceof Map
+            ? new Map(input)
+            : this.normalizePredictions(input);
+        const displayable = new Map();
+        for (const [key, prediction] of normalized) {
+            const kind = this.predictionKind(prediction);
+            if (this._nativeMode) {
+                if (!NATIVE_SAFE_TERRAIN_KINDS.has(kind)) {
+                    continue;
+                }
+            }
+            // Neither native magic mapping nor the canvas fallback should
+            // promise solid wall interiors. Only the outline beside predicted
+            // or already-observed open terrain is useful/reachable map data.
+            if (kind === 'wall'
+                && !this.wallIsMagicMapBoundary(
+                    prediction,
+                    normalized
+                )) {
+                continue;
+            }
+
+            const knowledge = this.predictionKnowledge(key, prediction);
+            if ((!prediction.showKnown && this.knowledgeIsKnown(knowledge))
+                || (this._nativeMode && this._playerOnLevel !== false
+                    && knowledge === undefined)) {
+                continue;
+            }
+            // Canvas fallback can draw every supported coarse terrain kind
+            // directly. Native mode must additionally be able to construct a
+            // valid WebTiles cell from a sampled or fixed background.
+            if (this._nativeMode
+                && (this.knowledgeIsKnown(knowledge)
+                    || !this.nativePredictionCell(prediction))) {
+                continue;
+            }
+            displayable.set(key, prediction);
+        }
+        return displayable;
+    }
+
+    displayablePredictionsFor(input) {
+        return Array.from(
+            this.displayablePredictionMap(input).values(),
+            cloneValue
+        );
+    }
+
+    predictionMapsEqual(left, right) {
+        if (left.size !== right.size) {
+            return false;
+        }
+        for (const [key, prediction] of left) {
+            const other = right.get(key);
+            if (!other
+                || prediction.kind !== other.kind
+                || prediction.mf !== other.mf
+                || prediction.confidence !== other.confidence
+                || prediction.showKnown !== other.showKnown) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    refreshDisplayablePredictions({
+        applyNative = true,
+        scheduleRender = true
+    } = {}) {
+        const next = this.displayablePredictionMap(this._predictions);
+        const changed = !this.predictionMapsEqual(
+            this._displayablePredictions,
+            next
+        );
+        this._displayablePredictions = next;
+
+        if (this._nativeMode && applyNative) {
+            if (this._revealEnabled) {
+                this.applyNativePredictions(this._displayablePredictions);
+            } else {
+                this.clearNativePredictions();
+            }
+        }
+        if (changed) {
+            const predictions = this.displayablePredictions;
+            this.emit('displayable-predictions', predictions);
+            this.notifyOwner(
+                'onDisplayablePredictionsChanged',
+                predictions
+            );
+        }
+        if (scheduleRender) {
+            this.scheduleRender();
+        }
+        return this._displayablePredictions.size;
+    }
+
     applyNativePredictions(input = this._predictions) {
         if (!this._nativeMode || !this.binding
             || this._playerOnLevel === false) {
@@ -2574,22 +2747,7 @@ export default class WebtilesAdapter {
         // Re-applying a result can revoke only part of the previous result;
         // repaint every restored coordinate before injecting the replacement.
         this.rollbackNativeCells(true);
-        const normalizedPredictions = new Map();
-        const defaultConfidence = input && typeof input === 'object'
-            ? input.confidence
-            : undefined;
-        for (const [key, value] of predictionEntries(input)) {
-            const prediction = normalizePrediction(value, key, defaultConfidence);
-            if (!prediction
-                || Math.abs(prediction.x) > this.maxAbsCoordinate
-                || Math.abs(prediction.y) > this.maxAbsCoordinate) {
-                continue;
-            }
-            normalizedPredictions.set(
-                cellKey(prediction.x, prediction.y),
-                prediction
-            );
-        }
+        const normalizedPredictions = this.normalizePredictions(input);
         const injected = this.injectNativePredictions(normalizedPredictions);
         this.validateShadowMapCursor();
         return injected;
@@ -2600,7 +2758,10 @@ export default class WebtilesAdapter {
             || this._playerOnLevel === false) {
             return [];
         }
-        const injected = this.injectNativePredictions(this._predictions, keys);
+        const injected = this.injectNativePredictions(
+            this._displayablePredictions,
+            keys
+        );
         this.validateShadowMapCursor();
         return injected;
     }
@@ -2662,43 +2823,29 @@ export default class WebtilesAdapter {
     }
 
     setPredictions(input) {
-        const next = new Map();
-        const defaultConfidence = input && typeof input === 'object'
-            ? input.confidence
-            : undefined;
-        for (const [key, value] of predictionEntries(input)) {
-            const prediction = normalizePrediction(value, key, defaultConfidence);
-            if (!prediction) {
-                continue;
-            }
-            if (Math.abs(prediction.x) > this.maxAbsCoordinate
-                || Math.abs(prediction.y) > this.maxAbsCoordinate) {
-                continue;
-            }
-            next.set(cellKey(prediction.x, prediction.y), prediction);
-        }
-        this._predictions = next;
+        this._predictions = this.normalizePredictions(input);
         this.emit('predictions', this.predictions);
-        if (this._nativeMode) {
-            if (this._revealEnabled) {
-                this.applyNativePredictions(this._predictions);
-            } else {
-                this.clearNativePredictions();
-            }
-        }
-        this.scheduleRender();
+        this.refreshDisplayablePredictions();
         return this.predictions;
     }
 
     clearPredictions() {
         const hadPredictions = this._predictions.size > 0;
+        const hadDisplayablePredictions = this._displayablePredictions.size > 0;
         this.clearNativePredictions();
-        if (!hadPredictions) {
+        if (!hadPredictions && !hadDisplayablePredictions) {
             this.scheduleRender();
             return;
         }
         this._predictions.clear();
-        this.emit('predictions', []);
+        this._displayablePredictions.clear();
+        if (hadPredictions) {
+            this.emit('predictions', []);
+        }
+        if (hadDisplayablePredictions) {
+            this.emit('displayable-predictions', []);
+            this.notifyOwner('onDisplayablePredictionsChanged', []);
+        }
         this.scheduleRender();
     }
 
@@ -2713,7 +2860,7 @@ export default class WebtilesAdapter {
         this._revealEnabled = next;
         if (this._nativeMode) {
             if (next) {
-                this.applyNativePredictions(this._predictions);
+                this.applyNativePredictions(this._displayablePredictions);
             } else {
                 this.clearNativePredictions();
             }
@@ -2739,6 +2886,7 @@ export default class WebtilesAdapter {
             revealEnabled: this.revealEnabled,
             nativeVisual: this.nativeVisualStatus,
             predictions: this.predictions,
+            displayablePredictions: this.displayablePredictions,
             observedCells: this.observedCells
         };
     }
@@ -2781,7 +2929,7 @@ export default class WebtilesAdapter {
         this.clearOverlay(this.dungeonOverlay);
         this.clearOverlay(this.minimapOverlay);
 
-        if (!this._revealEnabled || this._predictions.size === 0
+        if (!this._revealEnabled || this._displayablePredictions.size === 0
             || this._playerOnLevel === false) {
             return;
         }
@@ -2934,10 +3082,7 @@ export default class WebtilesAdapter {
             return;
         }
 
-        for (const prediction of this._predictions.values()) {
-            if (!prediction.showKnown && this.isServerKnown(prediction.x, prediction.y)) {
-                continue;
-            }
+        for (const prediction of this._displayablePredictions.values()) {
             if (typeof renderer.in_view === 'function'
                 && !renderer.in_view(prediction.x, prediction.y)) {
                 continue;
@@ -2977,10 +3122,7 @@ export default class WebtilesAdapter {
             return;
         }
 
-        for (const prediction of this._predictions.values()) {
-            if (!prediction.showKnown && this.isServerKnown(prediction.x, prediction.y)) {
-                continue;
-            }
+        for (const prediction of this._displayablePredictions.values()) {
             const rectangle = {
                 x: displayX + (prediction.x - cellX) * cellWidth,
                 y: displayY + (prediction.y - cellY) * cellHeight,
@@ -3146,6 +3288,7 @@ export default class WebtilesAdapter {
         this._serverMapCursor = null;
         this.clearNativePredictions();
         this._predictions.clear();
+        this._displayablePredictions.clear();
         this._observedCells.clear();
         if (releaseBinding) {
             this._unreliableTerrainCells.clear();

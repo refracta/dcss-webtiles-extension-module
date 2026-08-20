@@ -57,14 +57,46 @@ export function createMapPredictorStatus(summary) {
         summary.bestDisplayPredictionCount
     );
     const forcePredictionCount = count(summary.forcePredictionCount);
+    const forcePredictionAvailabilityKnown =
+        summary.forcePredictionAvailabilityKnown !== false;
+    const logicalForcePredictionCount = count(
+        summary.logicalForcePredictionCount
+    );
     const predictionCount = count(summary.predictionCount);
+    const displayablePredictionCount = summary.displayablePredictionCount
+        === undefined
+        ? predictionCount
+        : count(summary.displayablePredictionCount);
     const revealEnabled = summary.revealEnabled === true;
     const accepted = summary.resultReason === 'ready';
     const ambiguous = match?.unique === false
         || count(summary.plausibleCandidateCount) > 1;
-    const displayed = revealEnabled && predictionCount > 0;
-    const hidden = !revealEnabled && predictionCount > 0;
+    const displayed = revealEnabled && displayablePredictionCount > 0;
+    const hidden = !revealEnabled && displayablePredictionCount > 0;
     const blocked = Boolean(match) && bestDisplayPredictionCount === 0;
+    const exhausted = Boolean(match) && bestDisplayPredictionCount > 0
+        && displayablePredictionCount === 0;
+    const forceAvailable = forced
+        || (forcePredictionAvailabilityKnown
+            ? forcePredictionCount > 0
+            : logicalForcePredictionCount > 0);
+    const revealControl = displayed
+        ? 'on'
+        : hidden
+            ? 'off'
+            : revealEnabled
+                ? 'on (no cells; can hide future predictions)'
+                : 'unavailable';
+    const forceCells = forcePredictionAvailabilityKnown
+        ? `${forcePredictionCount} explicit-force eligible`
+        : `${logicalForcePredictionCount} logical force candidates (availability checked on request)`;
+    const forceControl = forced
+        ? 'active'
+        : !forceAvailable
+            ? 'unavailable'
+            : forcePredictionAvailabilityKnown
+                ? 'available'
+                : 'available (checked when requested)';
     let verdict = 'WAITING';
     let display = 'off (waiting for a supported prediction)';
     let colour = 8;
@@ -86,6 +118,9 @@ export function createMapPredictorStatus(summary) {
         verdict = 'ERROR';
         display = 'off (runtime error)';
         colour = 12;
+    } else if (exhausted) {
+        verdict = 'NOTHING TO DISPLAY (no supported unseen terrain)';
+        display = 'off (nothing displayable remains)';
     } else if (blocked) {
         verdict = 'BLOCKED (best candidate has no constrained unseen cells)';
         display = 'blocked';
@@ -102,8 +137,8 @@ export function createMapPredictorStatus(summary) {
         `Verdict: ${verdict}; reason: ${tooltipValue(summary.resultReason, summary.status || 'not evaluated')}; ambiguity: ${ambiguous ? 'yes' : 'no'}`,
         `Evidence: ${count(match?.evidenceCells)} cells, ${count(match?.distinctKinds)} kinds, ${coverage || 'n/a'} coverage`,
         `Candidates: ${templateCount} loaded, ${count(summary.plausibleCandidateCount)} plausible`,
-        `Cells: ${predictionCount} selected for display, ${bestDisplayPredictionCount} current-best, ${safePredictionCount} safe diagnostic, ${provisionalPredictionCount} consensus diagnostic, ${forcePredictionCount} explicit-force eligible`,
-        `Controls: display ${display}; /reveal ${hidden ? 'off' : revealEnabled ? 'on' : 'unavailable'}; /force_reveal ${forced ? 'active' : forcePredictionCount > 0 ? 'available' : 'unavailable'}`
+        `Cells: ${displayablePredictionCount} displayable, ${predictionCount} logical selected, ${bestDisplayPredictionCount} current-best, ${safePredictionCount} safe diagnostic, ${provisionalPredictionCount} consensus diagnostic, ${forceCells}`,
+        `Controls: display ${display}; /reveal ${revealControl}; /force_reveal ${forceControl}`
     ];
     if (summary.error) {
         details.push(

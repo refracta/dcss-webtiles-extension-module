@@ -1195,6 +1195,12 @@ test('off-level X maps retain current-floor evidence and manual reveal state', (
             f: 17,
             mf: enums.MF_WALL,
             t: {bg: 0x77}
+        }, {
+            x: 20,
+            y: 21,
+            f: 17,
+            mf: enums.MF_WALL,
+            t: {bg: 0x77}
         }]
     });
     dwem.Modules.IOHook.handle_message({
@@ -1212,6 +1218,11 @@ test('off-level X maps retain current-floor evidence and manual reveal state', (
     assert.equal(adapter.revealEnabled, true);
     assert.equal(adapter._nativeCells.size, 0);
     assert.equal(adapter._terrainSamples.size, 1);
+    // A late matcher result belongs to the player's floor. The same
+    // coordinate is known on the currently displayed X-map floor, but must
+    // not make current-floor availability disappear.
+    adapter.setPredictions([{x: 20, y: 21, kind: 'floor'}]);
+    assert.equal(adapter.displayablePredictionCount, 1);
     assert.deepEqual(adapter.applyNativePredictions(adapter.predictions), []);
     assert.equal(cells.get('3,4').mf, enums.MF_WALL);
 
@@ -1764,6 +1775,101 @@ test('native magic mapping injects only wall outlines beside predicted or observ
     assert.equal(adapter.dungeonOverlay, null);
     assert.equal(adapter.minimapOverlay, null);
     adapter.destroy();
+});
+
+test('tracks logical predictions separately from displayable native terrain', () => {
+    const availability = [];
+    const harness = nativeMapHarness({
+        onDisplayablePredictionsChanged(predictions) {
+            availability.push(predictions.length);
+        }
+    });
+    const {adapter, dwem, cells, enums} = harness;
+    const knownCells = [{
+        x: 1,
+        y: 1,
+        f: 6,
+        mf: enums.MF_FLOOR,
+        t: {bg: 0x2A}
+    }];
+    for (let y = 9; y <= 11; y++) {
+        for (let x = 9; x <= 11; x++) {
+            if (x !== 10 || y !== 10) {
+                knownCells.push({
+                    x,
+                    y,
+                    f: 17,
+                    mf: enums.MF_WALL,
+                    t: {bg: 0x77}
+                });
+            }
+        }
+    }
+    dwem.Modules.IOHook.handle_message({msg: 'map', cells: knownCells});
+    // A sparse screen delta can keep f/mf unseen while carrying a real
+    // terrain background. knowledgeIsKnown, not matcher normalization, owns
+    // the displayability decision.
+    cells.set('30,30', {
+        x: 30,
+        y: 30,
+        f: 0,
+        mf: enums.MF_UNSEEN,
+        t: {bg: 0x35}
+    });
+    adapter.rememberTerrainSamples([
+        {
+            kind: 'floor',
+            cell: {f: 6, mf: enums.MF_FLOOR, t: {bg: 0x2A}}
+        },
+        {
+            kind: 'wall',
+            cell: {f: 17, mf: enums.MF_WALL, t: {bg: 0x77}}
+        }
+    ]);
+
+    const logical = [
+        {x: 1, y: 1, kind: 'floor'},
+        {x: 5, y: 5, kind: 'stair'},
+        {x: 10, y: 10, kind: 'wall'},
+        {x: 20, y: 20, kind: 'floor'},
+        {x: 30, y: 30, kind: 'floor'}
+    ];
+    adapter.setPredictions(logical);
+
+    assert.equal(adapter.predictions.length, 5);
+    assert.deepEqual(
+        adapter.displayablePredictions.map(({x, y}) => ({x, y})),
+        [{x: 20, y: 20}]
+    );
+    assert.equal(adapter.displayablePredictionCount, 1);
+    assert.equal(adapter.displayablePredictionsFor(logical).length, 1);
+
+    adapter.setRevealEnabled(true);
+    assert.equal(adapter._nativeCells.size, 1);
+    assert.equal(cells.get('20,20').mf, enums.MF_MAP_FLOOR);
+
+    // A real LOS delta takes ownership without changing the retained matcher
+    // result. Availability and status callbacks must nevertheless reach zero
+    // immediately.
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        cells: [{
+            x: 20,
+            y: 20,
+            f: 23,
+            mf: enums.MF_FLOOR,
+            t: {bg: 0x35}
+        }]
+    });
+    assert.equal(adapter.predictions.length, 5);
+    assert.equal(adapter.displayablePredictionCount, 0);
+    assert.deepEqual(adapter.displayablePredictions, []);
+    assert.equal(adapter._nativeCells.size, 0);
+    assert.equal(availability.at(-1), 0);
+
+    adapter.destroy();
+    assert.equal(adapter.predictions.length, 0);
+    assert.equal(adapter.displayablePredictionCount, 0);
 });
 
 test('repairs a sparse real LOS diff after restoring its synthetic cell', () => {
@@ -2532,4 +2638,112 @@ test('draws predictions on separate transparent dungeon and minimap canvases', (
     adapter.destroy();
     assert.equal(dom.elements.has('map-predictor-dungeon-overlay'), false);
     assert.equal(dom.elements.has('map-predictor-minimap-overlay'), false);
+});
+
+test('canvas availability follows authoritative knowledge while reveal is hidden', () => {
+    const dom = fakeDom();
+    const known = new Map();
+    const availability = [];
+    const owner = {
+        onDisplayablePredictionsChanged(predictions) {
+            availability.push(predictions.length);
+        }
+    };
+    const {dwem} = fakeDwem(owner);
+    const adapter = new WebtilesAdapter(owner, {
+        dwem,
+        document: dom.document,
+        window: dom.window,
+        nativeMode: false
+    });
+    const renderer = {
+        element: dom.dungeon,
+        in_view() {
+            return true;
+        },
+        canvas_coords(x, y) {
+            return {x: x * 10, y: y * 10, width: 10, height: 10};
+        }
+    };
+    adapter.install();
+    adapter.bindWebtiles({
+        mapKnowledge: {
+            get(x, y) {
+                return known.get(`${x},${y}`) || {x, y};
+            }
+        },
+        renderer,
+        enums: {MF_UNSEEN: 0},
+        getMinimapProjection() {
+            return {
+                cellWidth: 2,
+                cellHeight: 2,
+                cellX: 0,
+                cellY: 0,
+                displayX: 0,
+                displayY: 0,
+                enabled: true
+            };
+        }
+    });
+    known.set('5,2', {
+        x: 5,
+        y: 2,
+        f: 6,
+        mf: 1,
+        t: {bg: 0x2A}
+    });
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        cells: [{x: 5, y: 2, f: 6, mf: 1, t: {bg: 0x2A}}]
+    });
+    adapter.setPredictions([
+        {x: 2, y: 2, kind: 'floor'},
+        {x: 3, y: 2, kind: 'floor'},
+        {x: 4, y: 2, kind: 'portal'},
+        {x: 5, y: 2, kind: 'statue', showKnown: true},
+        // A disconnected solid wall interior is not useful terrain even in
+        // the canvas fallback and must not keep a completed-map suggestion up.
+        {x: 20, y: 20, kind: 'wall'}
+    ]);
+    adapter.setRevealEnabled(true);
+    assert.equal(adapter.predictions.length, 5);
+    assert.equal(adapter.displayablePredictionCount, 4);
+    const dungeonOverlay = dom.elements.get('map-predictor-dungeon-overlay');
+    assert.equal(
+        dungeonOverlay.context.calls.filter(([name]) => name === 'fillRect').length,
+        4
+    );
+
+    known.set('2,2', {
+        x: 2,
+        y: 2,
+        f: 0,
+        mf: 0,
+        t: {bg: 0x35}
+    });
+    dwem.Modules.IOHook.handle_message({
+        msg: 'map',
+        cells: [{x: 2, y: 2, f: 0, mf: 0, t: {bg: 0x35}}]
+    });
+
+    assert.equal(adapter.predictions.length, 5);
+    assert.deepEqual(
+        adapter.displayablePredictions.map(({x, y}) => ({x, y})),
+        [
+            {x: 3, y: 2},
+            {x: 4, y: 2},
+            {x: 5, y: 2}
+        ]
+    );
+    assert.equal(availability.at(-1), 3);
+    assert.equal(
+        dungeonOverlay.context.calls.filter(([name]) => name === 'fillRect').length,
+        7
+    );
+
+    adapter.setRevealEnabled(false);
+    assert.equal(adapter.displayablePredictionCount, 3);
+    assert.equal(adapter.revealEnabled, false);
+    adapter.destroy();
 });

@@ -25,6 +25,9 @@ class FakeAdapter {
         this.installed = false;
         this.binding = null;
         this.predictions = [];
+        this.displayablePredictions = [];
+        this.displayableFilter = predictions => predictions;
+        this.displayableQueryCount = 0;
         this.revealEnabled = false;
         this.destroyed = false;
         this.samples = [];
@@ -36,11 +39,20 @@ class FakeAdapter {
 
     setPredictions(predictions) {
         this.predictions = [...predictions];
+        this.displayablePredictions = [
+            ...this.displayableFilter(this.predictions)
+        ];
         return this.predictions;
+    }
+
+    displayablePredictionsFor(predictions) {
+        this.displayableQueryCount++;
+        return [...this.displayableFilter(predictions || [])];
     }
 
     clearPredictions() {
         this.predictions = [];
+        this.displayablePredictions = [];
     }
 
     rememberTerrainSamples(samples) {
@@ -1774,6 +1786,182 @@ test('module loads exact-version sources, infers a map, and reveals locally', as
     assert.equal(adapter.predictions.length, 0);
 });
 
+test('logical candidates with no displayable terrain stay diagnostic-only', () => {
+    const {module, adapter, commands, messages, template} = createHarness();
+    module.onLoad();
+    adapter.displayableFilter = () => [];
+    const result = compactReadyResult(template);
+    result.forcePredictions = [...result.bestDisplayPredictions];
+
+    module.handleResult(result);
+
+    const state = module.getDebugState();
+    assert.equal(state.status, 'no-displayable-terrain');
+    assert.equal(state.predictionCount, result.bestDisplayPredictions.length);
+    assert.equal(state.displayablePredictionCount, 0);
+    assert.equal(state.predictionMode, 'none');
+    assert.equal(state.forcePredictionCount, 0);
+    assert.equal(
+        state.logicalForcePredictionCount,
+        result.forcePredictions.length
+    );
+    assert.equal(state.autoRevealApplied, false);
+    assert.equal(adapter.revealEnabled, false);
+    assert.equal(
+        messages.some(message => message.includes('Automatically mapped')),
+        false
+    );
+    const queryCount = adapter.displayableQueryCount;
+    for (let index = 0; index < 25; index++) {
+        module.getDebugState();
+    }
+    assert.equal(adapter.displayableQueryCount, queryCount);
+
+    commands.get('/reveal').handler();
+    assert.equal(adapter.revealEnabled, false);
+    assert.match(messages.at(-1), /No supported unseen inferred terrain remains/u);
+    commands.get('/force_reveal').handler();
+    assert.equal(module.forceRevealActive, false);
+    assert.match(messages.at(-1), /no unrevealed inferred cells left to force/u);
+});
+
+test('alternate force availability is resolved only when force is requested', () => {
+    const {module, adapter, commands, template} = createHarness();
+    module.onLoad();
+    const result = compactReadyResult(template);
+    const automatic = [result.bestDisplayPredictions[0]];
+    result.bestDisplayPredictions = automatic;
+    result.forcePredictions = [
+        ...automatic,
+        {x: 900, y: 901, kind: 'floor'}
+    ];
+
+    module.handleResult(result);
+    let state = module.getDebugState();
+    assert.equal(state.forcePredictionAvailabilityKnown, false);
+    assert.equal(state.forcePredictionCount, null);
+    assert.equal(adapter.displayableQueryCount, 0);
+
+    commands.get('/force_reveal').handler();
+    state = module.getDebugState();
+    assert.equal(module.forceRevealActive, true);
+    assert.equal(state.forcePredictionAvailabilityKnown, true);
+    assert.equal(state.forcePredictionCount, 2);
+    assert.equal(adapter.displayableQueryCount, 1);
+});
+
+test('debug counts use constant-time adapter counters instead of cloning cells', () => {
+    const {module, adapter, template} = createHarness();
+    module.onLoad();
+    module.handleResult(compactReadyResult(template));
+    const logicalCount = adapter.predictions.length;
+    const displayableCount = adapter.displayablePredictions.length;
+    Object.defineProperties(adapter, {
+        predictionCount: {get: () => logicalCount},
+        displayablePredictionCount: {get: () => displayableCount},
+        predictions: {
+            get() {
+                assert.fail('debug state must not clone logical prediction cells');
+            }
+        },
+        displayablePredictions: {
+            get() {
+                assert.fail('debug state must not clone displayable prediction cells');
+            }
+        }
+    });
+
+    const state = module.getDebugState();
+    assert.equal(state.predictionCount, logicalCount);
+    assert.equal(state.displayablePredictionCount, displayableCount);
+});
+
+test('newly displayable terrain applies automatic reveal exactly once', () => {
+    const {module, adapter, template} = createHarness();
+    module.onLoad();
+    adapter.displayableFilter = () => [];
+    const result = compactReadyResult(template);
+
+    module.handleResult(result);
+    assert.equal(module.getDebugState().status, 'no-displayable-terrain');
+    assert.equal(module.autoRevealApplied, false);
+    assert.equal(adapter.revealEnabled, false);
+
+    adapter.displayableFilter = predictions => predictions;
+    adapter.displayablePredictions = [...adapter.predictions];
+    module.onDisplayablePredictionsChanged(adapter.displayablePredictions);
+
+    assert.equal(module.getDebugState().status, 'map-inferred');
+    assert.equal(module.autoRevealApplied, true);
+    assert.equal(adapter.revealEnabled, true);
+});
+
+test('new availability preserves manual reveal OFF after the automatic latch', () => {
+    const {module, adapter, template} = createHarness();
+    module.onLoad();
+    const result = compactReadyResult(template);
+    module.handleResult(result);
+    module.toggleReveal();
+    assert.equal(module.autoRevealApplied, true);
+    assert.equal(adapter.revealEnabled, false);
+
+    adapter.displayableFilter = () => [];
+    adapter.setPredictions(adapter.predictions);
+    module.onDisplayablePredictionsChanged([]);
+    assert.equal(module.getDebugState().status, 'no-displayable-terrain');
+
+    adapter.displayableFilter = predictions => predictions;
+    adapter.displayablePredictions = [...adapter.predictions];
+    module.onDisplayablePredictionsChanged(adapter.displayablePredictions);
+
+    assert.equal(module.getDebugState().status, 'map-inferred');
+    assert.equal(adapter.revealEnabled, false);
+});
+
+test('reveal can be hidden while logical terrain is temporarily unavailable', () => {
+    const {module, adapter, commands, template} = createHarness();
+    module.onLoad();
+    module.handleResult(compactReadyResult(template));
+    adapter.displayableFilter = () => [];
+    adapter.setPredictions(adapter.predictions);
+    module.onDisplayablePredictionsChanged([]);
+
+    assert.equal(adapter.revealEnabled, true);
+    commands.get('/reveal').handler();
+    assert.equal(adapter.revealEnabled, false);
+});
+
+test('ownership of the last forced cell restores a manual reveal hide', () => {
+    const {module, adapter, commands, template} = createHarness();
+    module.onLoad();
+    const result = compactReadyResult(template);
+    result.forcePredictions = [...result.bestDisplayPredictions];
+    module.handleResult(result);
+    commands.get('/reveal').handler();
+    assert.equal(adapter.revealEnabled, false);
+
+    commands.get('/force_reveal').handler();
+    assert.equal(module.forceRevealActive, true);
+    assert.equal(adapter.revealEnabled, true);
+
+    adapter.displayableFilter = () => [];
+    adapter.displayablePredictions = [];
+    module.onDisplayablePredictionsChanged([]);
+
+    assert.equal(module.forceRevealActive, false);
+    assert.equal(module.revealEnabledBeforeForce, null);
+    assert.equal(adapter.revealEnabled, false);
+    assert.deepEqual(
+        adapter.predictions,
+        result.bestDisplayPredictions.map(cell => ({
+            ...cell,
+            confidence: result.best.score
+        }))
+    );
+    assert.equal(module.getDebugState().displayablePredictionCount, 0);
+    assert.equal(module.getDebugState().status, 'no-displayable-terrain');
+});
+
 test('MapPredictor notices use the in-game message pane, never chat', () => {
     const {
         module,
@@ -1841,7 +2029,10 @@ test('a 100% policy-disabled best candidate is displayed automatically', () => {
     assert.match(messages.at(-1), /unaccepted candidate/);
     assert.match(messages.at(-1), /100\.00%/);
     assert.match(messages.at(-1), /3 plausible/);
-    assert.match(messages.at(-1), /6 best-only force cells/);
+    assert.match(
+        messages.at(-1),
+        /6 displayable force cells \(6 logical\)/
+    );
     assert.match(messages.at(-1), /policy-disabled/);
 
     commands.get('/force_reveal').handler();

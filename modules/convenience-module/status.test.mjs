@@ -20,7 +20,10 @@ function readySummary(overrides = {}) {
         provisionalPredictionCount: 120,
         bestDisplayPredictionCount: 135,
         forcePredictionCount: 135,
+        forcePredictionAvailabilityKnown: true,
+        logicalForcePredictionCount: 135,
         predictionCount: 135,
+        displayablePredictionCount: 135,
         predictionMode: 'best',
         revealEnabled: true,
         forceRevealActive: false,
@@ -54,7 +57,7 @@ test('Map status summarizes score and detailed matcher state', () => {
     assert.match(status.desc, /Verdict: AUTO BEST GUESS \(accepted match\); reason: ready; ambiguity: no/u);
     assert.match(status.desc, /Evidence: 384 cells, 4 kinds, 42\.5% coverage/u);
     assert.match(status.desc, /Candidates: 2 loaded, 1 plausible/u);
-    assert.match(status.desc, /Cells: 135 selected for display, 135 current-best, 120 safe diagnostic, 120 consensus diagnostic, 135 explicit-force eligible/u);
+    assert.match(status.desc, /Cells: 135 displayable, 135 logical selected, 135 current-best, 120 safe diagnostic, 120 consensus diagnostic, 135 explicit-force eligible/u);
     assert.match(status.desc, /Controls: display on \(automatic gray-hatched best candidate\); \/reveal on; \/force_reveal available/u);
     assert.equal(status.desc.split('\n').length, 8);
     assert.doesNotMatch(status.desc, / \| /u);
@@ -96,6 +99,7 @@ test('Map status distinguishes an unaccepted automatic best candidate', () => {
         bestDisplayPredictionCount: 180,
         forcePredictionCount: 180,
         predictionCount: 180,
+        displayablePredictionCount: 180,
         predictionMode: 'best'
     }));
 
@@ -136,6 +140,7 @@ test('Map status is blocked only when the best has no constrained cells', () => 
         bestDisplayPredictionCount: 0,
         forcePredictionCount: 0,
         predictionCount: 0,
+        displayablePredictionCount: 0,
         revealEnabled: false
     }));
 
@@ -145,6 +150,48 @@ test('Map status is blocked only when the best has no constrained cells', () => 
         /Verdict: BLOCKED \(best candidate has no constrained unseen cells\)/u
     );
     assert.match(status.desc, /Controls: display blocked/u);
+});
+
+test('Map status does not advertise logical cells which cannot be displayed', () => {
+    const status = createMapPredictorStatus(readySummary({
+        predictionCount: 2072,
+        displayablePredictionCount: 0,
+        forcePredictionCount: 0,
+        revealEnabled: true
+    }));
+
+    assert.equal(status.col, 8);
+    assert.match(
+        status.desc,
+        /Verdict: NOTHING TO DISPLAY \(no supported unseen terrain\)/u
+    );
+    assert.match(
+        status.desc,
+        /Cells: 0 displayable, 2072 logical selected/u
+    );
+    assert.match(
+        status.desc,
+        /\/reveal on \(no cells; can hide future predictions\)/u
+    );
+    assert.match(status.desc, /\/force_reveal unavailable/u);
+    assert.doesNotMatch(status.desc, /AUTO BEST GUESS/u);
+});
+
+test('Map status defers an alternate force-set availability scan', () => {
+    const status = createMapPredictorStatus(readySummary({
+        forcePredictionCount: null,
+        forcePredictionAvailabilityKnown: false,
+        logicalForcePredictionCount: 117000
+    }));
+
+    assert.match(
+        status.desc,
+        /117000 logical force candidates \(availability checked on request\)/u
+    );
+    assert.match(
+        status.desc,
+        /\/force_reveal available \(checked when requested\)/u
+    );
 });
 
 test('Map status reserves unsafe wording for an explicit force override', () => {
@@ -169,6 +216,7 @@ test('Map status exposes runtime failures instead of labelling them waiting', ()
         bestDisplayPredictionCount: 0,
         forcePredictionCount: 0,
         predictionCount: 0,
+        displayablePredictionCount: 0,
         revealEnabled: false,
         error: {code: 'HTTPError', message: 'source download failed'}
     }));
