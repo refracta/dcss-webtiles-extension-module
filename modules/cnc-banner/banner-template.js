@@ -36,9 +36,9 @@ export default class BannerTemplate {
         },
         {
             id: 'cctt-tournament',
-            name: 'Crawl Cosplay Trunk Tournament',
-            startUTC: new Date(Date.UTC(2025, 11 - 1, 28, 0, 0, 0)),
-            endUTC: new Date(Date.UTC(2026, 1 - 1, 3, 0, 0, 0)),
+            name: 'Crawl Cosplay Trunk Tournament (0.35)',
+            startUTC: new Date(Date.UTC(2026, 9 - 1, 18, 0, 0, 0)),
+            endUTC: new Date(Date.UTC(2026, 10 - 1, 23, 0, 0, 0)),
             url: 'https://www.crawlcosplay.org/cctt'
         },
         {
