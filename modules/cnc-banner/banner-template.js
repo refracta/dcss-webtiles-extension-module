@@ -15,10 +15,11 @@ export default class BannerTemplate {
     tournaments = [
         {
             id: 'stable-tournament',
-            name: '0.34 Tournament',
-            startUTC: new Date(Date.UTC(2026, 1, 6, 20, 0, 0)),
-            endUTC: new Date(Date.UTC(2026, 1, 22, 20, 0, 0)),
-            url: 'https://crawl.develz.org/tournament/0.34/'
+            name: '0.35 Tournament',
+            startUTC: new Date(Date.UTC(2026, 12 - 1, 4, 20, 0, 0)),
+            endUTC: new Date(Date.UTC(2026, 12 - 1, 20, 20, 0, 0)),
+            // Use the announcement until the official tournament site is published.
+            url: 'https://crawl.develz.org/wordpress/0-35-trunk-update-and-tournament-announcement'
         },
         {
             id: 'ccsdt-tournament',
