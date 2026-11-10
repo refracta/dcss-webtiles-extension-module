@@ -11,11 +11,11 @@ const DONATION_SUMMARY_STYLE = `
         box-sizing: border-box;
         margin: 0 0 12px 0;
         padding: 9px 11px;
-        border: 1px solid rgba(117, 183, 106, 0.55);
-        border-left: 3px solid #75b76a;
+        border: 1px solid var(--cnc-donation-border, rgba(117, 183, 106, 0.55));
+        border-left: 3px solid var(--cnc-donation-accent, #75b76a);
         border-radius: 6px;
-        background: rgba(9, 16, 12, 0.88);
-        color: #dcebd7;
+        background: var(--cnc-donation-background, rgba(9, 16, 12, 0.88));
+        color: var(--cnc-donation-text, #dcebd7);
         font-size: 13px;
         line-height: 1.45;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -46,11 +46,11 @@ const DONATION_SUMMARY_STYLE = `
         font-weight: 600;
     }
     #banner .cnc-donation-rank-title {
-        color: #9fd896;
+        color: var(--cnc-donation-label, #9fd896);
         font-weight: 600;
     }
     #banner .cnc-donation-last-label {
-        color: #9fd896;
+        color: var(--cnc-donation-label, #9fd896);
         font-weight: 600;
     }
     #banner .cnc-donation-more {
@@ -59,11 +59,11 @@ const DONATION_SUMMARY_STYLE = `
     }
     #banner .cnc-donation-thanks {
         margin-top: 5px;
-        color: #b9cbb5;
+        color: var(--cnc-donation-muted, #b9cbb5);
     }
     #banner .cnc-donation-loading,
     #banner .cnc-donation-empty {
-        color: #aebdae;
+        color: var(--cnc-donation-muted, #aebdae);
     }
     #banner .cnc-donation-error {
         color: #ffb3a7;

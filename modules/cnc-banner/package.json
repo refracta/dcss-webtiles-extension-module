@@ -2,7 +2,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check chzzk-live-list.js && node --check index.js",
+    "check": "node --check chzzk-live-list.js && node --check index.js && node --check banner-template.js && node --check banner-theme.js && node --check donation-summary.js && node --check themes/active.js && node --check themes/xom.js && node --check themes/nemelex.js && node --check themes/yiuf-quotes.js",
     "test": "node --test chzzk-live-list.test.js"
   }
 }

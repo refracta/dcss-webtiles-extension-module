@@ -37,7 +37,7 @@ const TEST_SOCKET_SERVER = 'wss://test.nemelex.cards:443/socket';
 
 export default class CNCBanner {
     static name = 'CNCBanner';
-    static version = '1.5';
+    static version = '1.6';
     static dependencies = ['IOHook', 'SiteInformation', 'ModuleManager', 'WebSocketFactory', 'WTRec', 'CNCUserinfo'];
     static description = 'This module sets the banner for the CNC server.';
 
@@ -196,7 +196,7 @@ export default class CNCBanner {
     }
 
     getRandomColor() {
-        return randomChoice(['#ff4000', '#008cc0', '#cad700', '#009800', '#8000ff']);
+        return randomChoice(this.banner.theme.theme.colors);
     }
 
     colorizeText() {
@@ -205,10 +205,7 @@ export default class CNCBanner {
             return;
         }
 
-        const words = coloredText.textContent.split(' ');
-        this.colors = this.colors || words.map(() => this.getRandomColor());
-        const coloredWords = words.map((word, index) => `<span style="color:${this.colors[index]};">${word}</span>`);
-        coloredText.innerHTML = coloredWords.join(' ');
+        coloredText.innerHTML = this.banner.theme.colorize(coloredText.textContent);
     }
 
     getDonationSummaryHTML(locale = 'ko') {

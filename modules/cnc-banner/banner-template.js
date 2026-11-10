@@ -1,4 +1,5 @@
 import {getAprilFoolsOverlayHTML} from './seasonal-theme.js';
+import BannerTheme from './banner-theme.js';
 import {escapeHtml, getLocale, getModuleBaseUrl, shouldUseAprilFools} from './utils.js';
 
 const SOUND_SUPPORT_ARCE_URL = 'https://crawl.nemelex.cards/?arce_append=%23%20Recommended%20settings%0Asounds_on%20%3D%20true%0Asound_pack%20%2B%3D%20https%3A%2F%2Fsound-packs.nemelex.cards%2FDCSS-UST%2Fv1.0.1.zip%0Asound_pack%20%2B%3D%20https%3A%2F%2Fosp.nemelex.cards%2Fbuild%2Flatest.zip%3A%5B%22init.txt%22%5D%0Aone_SDL_sound_channel%20%3D%20true%0Asound_fade_time%20%3D%200.5%0Abgm_volume%20%3D%200.5';
@@ -10,6 +11,7 @@ export default class BannerTemplate {
     constructor(donations, chzzkLives) {
         this.donations = donations;
         this.chzzkLives = chzzkLives;
+        this.theme = new BannerTheme();
     }
 
     tournaments = [
@@ -147,11 +149,12 @@ export default class BannerTemplate {
     }
 
     getHeaderLink(locale) {
-        const text = locale === 'ko' ? '카드 안에 모든 것이 있나니!' : "It's all in the cards!";
+        const text = this.theme.getText(locale);
         const latencyTitle = locale === 'ko'
             ? '서버 지연 시간입니다. 다시 측정하려면 클릭, 지연 시간 측정기를 확인하려면 우클릭하세요'
             : 'This is your server latency. Click to remeasure, Right click to show latency indicator';
-        return `<a href="https://refracta.github.io/nemelx-altar-3d" id="coloredText">${text}</a>
+        return `${this.theme.getStyle()}
+        <a href="${this.theme.theme.viewerUrl}?lang=${locale}" id="coloredText" data-cnc-theme="${this.theme.theme.id}" data-quote-id="${this.theme.quote.id}">${this.theme.colorize(text)}</a>
         <a title="${latencyTitle}" style="text-decoration: none" href="javascript:DWEM.Modules.CNCBanner.updateLatencyText(true)" oncontextmenu="DWEM.Modules.CNCBanner.toggleLatencyIndicator(event)">(<span id="latency">?</span> MS)</a>
         <div id="latency-indicator" style="display: none; max-width: 500px"></div>
         <br>`;
@@ -172,7 +175,7 @@ export default class BannerTemplate {
 
     getInfoPanel(locale, margin, aprilFools = false) {
         return `
-        <p style="padding:5px; border-radius:10px; background-color:#2c6f17; display:inline-block; margin:${margin}; line-height:1.3;">
+        <p class="cnc-info-panel" style="padding:5px; border-radius:10px; display:inline-block; margin:${margin}; line-height:1.3;">
             ${this.getInfoLinks(locale)}
             <br>
             ${this.getSshText(locale)}
