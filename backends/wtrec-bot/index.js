@@ -46,6 +46,12 @@ const CNC_2ND_ANNIVERSARY_RECORDING_PERIOD = {
     start: '2026-06-17T15:00:00.000Z',
     end: '2026-07-01T15:00:00.000Z'
 };
+// Match the 0.35 tournament advertised in modules/cnc-banner/banner-template.js.
+const DCSS_035_RECORDING_PERIOD = {
+    name: 'dcss-0.35-tournament',
+    start: '2026-12-04T20:00:00.000Z',
+    end: '2026-12-20T20:00:00.000Z'
+};
 const CONFIGURED_SPECIAL_RECORDING_PERIODS = Array.isArray(config.specialRecordingPeriods)
     ? config.specialRecordingPeriods
     : [{
@@ -55,6 +61,7 @@ const CONFIGURED_SPECIAL_RECORDING_PERIODS = Array.isArray(config.specialRecordi
     }];
 const SPECIAL_RECORDING_PERIODS = [
     CNC_2ND_ANNIVERSARY_RECORDING_PERIOD,
+    DCSS_035_RECORDING_PERIOD,
     ...CONFIGURED_SPECIAL_RECORDING_PERIODS
 ];
 const DONOR_RECORDING_MESSAGE = 'Thank you for your server support. Server-side WTREC recording has been enabled.';
@@ -77,6 +84,15 @@ function getRecordingReason(data) {
     }
 
     return Math.random() < RANDOM_RECORDING_RATE ? 'random' : null;
+}
+
+function getCurrentRecordingReason(entry, specialPeriodActive) {
+    if (!entry.username || getUsernameKey(entry.username) === 'cncpublicchat') return null;
+    if (isDonorRecordingUsername(entry.username)) return 'donor';
+    if (specialPeriodActive) return 'period';
+    // Keep the original random draw. A past tournament or donor eligibility
+    // must not permanently qualify a player for new recordings after it ends.
+    return entry.recordingReason === 'random' ? 'random' : null;
 }
 
 function enqueueWTREC(socket, username, reason = 'unknown') {
@@ -234,22 +250,25 @@ while (true) {
             socket.onerror = () => reject(new Error(socket.failureReason || 'lobby connection error'));
             interval = setInterval(() => {
                 if (socket.readyState !== 1 || !socket.loggedIn) return;
+                const specialPeriodActive = isSpecialRecordingPeriod();
                 for (const [key, retryAt] of retryNotBefore) {
                     if (Date.now() >= retryAt) retryNotBefore.delete(key);
                 }
                 // Reconcile the current lobby, not just newly added games. A
                 // failed recording must be retried even if its player stays in-game.
                 for (const entry of Object.values(lobby)) {
-                    const reason = isDonorRecordingUsername(entry.username) ? 'donor' : entry.recordingReason;
+                    const reason = getCurrentRecordingReason(entry, specialPeriodActive);
                     if (reason) enqueueWTREC(socket, entry.username, reason);
                 }
                 const recording = socket.launchQueue.shift();
                 if (!recording) return;
                 const key = getUsernameKey(recording.username);
                 queuedRecordings.delete(key);
-                if (!Object.values(lobby).some(entry => getUsernameKey(entry.username) === key)) return;
+                const entry = Object.values(lobby).find(entry => getUsernameKey(entry.username) === key);
+                const reason = entry && getCurrentRecordingReason(entry, specialPeriodActive);
+                if (!reason) return;
                 try {
-                    launchWTREC(recording.username, recording.reason);
+                    launchWTREC(recording.username, reason);
                 } catch (error) {
                     console.error(new Date(), recording.username, 'record launch failed', error.message);
                 }

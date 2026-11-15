@@ -4,6 +4,16 @@ The bot watches selected WebTiles lobby players and saves server-side WTREC
 archives. `ASCIIPhilia` and configured eligible donors are always selected;
 other players retain the configured random/tournament selection rules.
 
+The [DCSS 0.35 tournament](https://crawl.develz.org/wordpress/0-35-trunk-update-and-tournament-announcement)
+enables 100% selection for all gameplay sessions from **2026-12-04 20:00 UTC**
+(inclusive) until **2026-12-20 20:00 UTC** (exclusive), matching the CNC banner.
+In Korea this is **December 5, 05:00 through December 21, 05:00 KST**.
+Players already in the lobby are picked up when the period starts, without a
+restart or reconnect. After it ends, new recordings return to donor/random
+selection; recordings already underway finish normally. `CNCPublicChat` remains
+excluded because it is a chat session. The built-in tournament period also
+applies when `config.specialRecordingPeriods` supplies other custom periods.
+
 ## Connection recovery
 
 Both lobby and recording connections have a connection deadline and an incoming

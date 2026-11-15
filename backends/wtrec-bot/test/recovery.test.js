@@ -15,6 +15,8 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function fixture(t, options = {}) {
     const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'wtrec-test-'));
+    const username = options.username || 'ASCIIPhilia';
+    const lobbyEntries = options.lobbyEntries || [{id: 1, username, game_id: 'test'}];
     const state = {connections: [], watches: [], logs: '', resources: options.resources || 'ok', login: options.login !== false,
         start: options.start !== false, requests: 0, ready: 0};
     const server = http.createServer((request, response) => {
@@ -47,12 +49,13 @@ async function fixture(t, options = {}) {
             const data = JSON.parse(message.utf8Data);
             if (data.msg === 'login' && state.login) {
                 send(connection, {msg: 'login_success', username: 'wtrec'}, {msg: 'lobby_clear'},
-                    {msg: 'lobby_entry', id: 1, username: 'ASCIIPhilia', game_id: 'test'}, {msg: 'lobby_complete'});
+                    ...lobbyEntries.map(entry => ({msg: 'lobby_entry', ...entry})), {msg: 'lobby_complete'});
             } else if (data.msg === 'watch') {
+                connection.watchedUsername = data.username;
                 state.watches.push(connection);
                 if (state.start) send(connection,
                     {msg: 'game_client', version: 'test', content: '<html><head></head><body></body></html>'},
-                    {msg: 'player', name: 'ASCIIPhilia', xl: 7});
+                    {msg: 'player', name: data.username, xl: 7});
             } else if (data.msg === 'chat_msg') {
                 state.ready++;
             }
@@ -70,9 +73,33 @@ async function fixture(t, options = {}) {
         username: 'wtrec', password: 'test-password', randomRecordingRate: 0,
         socketConnectTimeoutMs: 500, socketIdleTimeoutMs: 350, socketLoginTimeoutMs: 300,
         recordingStartTimeoutMs: 300, resourceFetchTimeoutMs: 150, resourcePreparationTimeoutMs: 1000,
-        reconnectDelayMs: 100, recordingRetryDelayMs: 1100, queueIntervalMs: 30
+        reconnectDelayMs: 100, recordingRetryDelayMs: 1100, queueIntervalMs: 30,
+        ...options.config
     }));
-    const child = spawn(process.execPath, [source], {cwd: directory, stdio: ['ignore', 'pipe', 'pipe']});
+    const args = [];
+    if (options.now) {
+        const clock = path.join(directory, 'clock.cjs');
+        await fs.writeFile(clock, `
+            const OriginalDate = Date;
+            let now = ${Date.parse(options.now)};
+            globalThis.Date = class extends OriginalDate {
+                constructor(...args) { super(...(args.length ? args : [now])); }
+                static now() { return now; }
+            };
+            process.on('message', message => {
+                now = message.now;
+                process.send({now});
+            });
+        `);
+        args.push('--require', clock);
+    }
+    args.push(source);
+    const child = spawn(process.execPath, args, {cwd: directory, stdio: ['ignore', 'pipe', 'pipe', 'ipc']});
+    state.setTime = async value => {
+        const changed = once(child, 'message');
+        child.send({now: Date.parse(value)});
+        await changed;
+    };
     for (const stream of [child.stdout, child.stderr]) stream.on('data', chunk => { state.logs += chunk; });
     t.after(async () => {
         if (child.exitCode === null && child.signalCode === null) {
@@ -97,7 +124,7 @@ async function fixture(t, options = {}) {
     };
     state.send = send;
     state.recordings = async () => {
-        const folder = path.join(directory, 'data/wtrec/ASCIIPhilia');
+        const folder = path.join(directory, `data/wtrec/${username}`);
         try { return (await fs.readdir(folder)).filter(name => name.endsWith('.wtrec')).map(name => path.join(folder, name)); }
         catch (error) { if (error.code === 'ENOENT') return []; throw error; }
     };
@@ -170,4 +197,42 @@ test('a missing game_client cannot pin a player while heartbeats continue', {tim
     s.start = true;
     await s.waitFor(() => s.ready === 1);
     assert.equal(s.watches.length, 2);
+});
+
+test('the December tournament picks up every existing game at its start, even with custom periods', {timeout: 12000}, async t => {
+    const s = await fixture(t, {
+        now: '2026-12-04T19:59:59.999Z',
+        config: {specialRecordingPeriods: [], randomRecordingRate: 0},
+        lobbyEntries: [
+            {id: 1, username: 'TournamentPlayer', game_id: 'dcss-0.35'},
+            {id: 2, username: 'OtherVersionPlayer', game_id: 'dcss-git'},
+            {id: 3, username: 'CNCPublicChat', game_id: 'dcss-git'}
+        ]
+    });
+    await s.waitFor(() => s.logs.includes('[lobby] login succeeded'));
+    await delay(150);
+    assert.equal(s.watches.length, 0);
+    await s.setTime('2026-12-04T20:00:00.000Z');
+    // No new lobby_entry is sent: the clock transition alone selects both games.
+    await s.waitFor(() => s.logs.split('record started (').length === 3);
+    assert.deepEqual(s.watches.map(connection => connection.watchedUsername).sort(), ['OtherVersionPlayer', 'TournamentPlayer']);
+});
+
+test('the tournament end is exclusive and does not retain period-only eligibility', {timeout: 12000}, async t => {
+    const s = await fixture(t, {
+        username: 'TournamentPlayer',
+        now: '2026-12-20T19:59:59.999Z',
+        config: {specialRecordingPeriods: [], randomRecordingRate: 0}
+    });
+    await s.waitFor(() => s.logs.includes('TournamentPlayer record started ('));
+    await s.setTime('2026-12-20T20:00:00.000Z');
+    s.send(s.connections[0], {msg: 'lobby_entry', id: 2, username: 'LatePlayer', game_id: 'dcss-0.35'});
+    s.send(s.watches[0], {msg: 'go_lobby'});
+    await s.waitFor(async () => (await s.recordings()).length === 1);
+    // Advance beyond the retry cooldown so it cannot hide stale eligibility.
+    await s.setTime('2026-12-20T20:01:00.000Z');
+    await delay(200);
+    assert.equal(s.watches.length, 1);
+    const recording = await s.readRecording((await s.recordings())[0]);
+    assert.equal(recording.interrupted, undefined);
 });
