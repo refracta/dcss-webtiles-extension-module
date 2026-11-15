@@ -5,12 +5,28 @@ import fetch from 'node-fetch';
 import {TextDecoder} from 'util';
 import crypto from 'crypto';
 import JSZip from "jszip";
+import {terminateSocket} from "./socket-watchdog.js";
 
 fs.mkdirSync('data/resources', {recursive: true});
 fs.mkdirSync('data/wtrec', {recursive: true});
 const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 const activeRecordings = new Set();
 const queuedRecordings = new Set();
+const retryNotBefore = new Map();
+const CONNECT_TIMEOUT_MS = timeoutSetting('socketConnectTimeoutMs', 20_000);
+const IDLE_TIMEOUT_MS = timeoutSetting('socketIdleTimeoutMs', 90_000);
+const LOGIN_TIMEOUT_MS = timeoutSetting('socketLoginTimeoutMs', 30_000);
+const RECORDING_START_TIMEOUT_MS = timeoutSetting('recordingStartTimeoutMs', 30_000);
+const RESOURCE_FETCH_TIMEOUT_MS = timeoutSetting('resourceFetchTimeoutMs', 15_000);
+const RESOURCE_PREPARATION_TIMEOUT_MS = timeoutSetting('resourcePreparationTimeoutMs', 120_000);
+const RECONNECT_DELAY_MS = timeoutSetting('reconnectDelayMs', 10_000);
+const RECORDING_RETRY_DELAY_MS = timeoutSetting('recordingRetryDelayMs', 10_000);
+const QUEUE_INTERVAL_MS = timeoutSetting('queueIntervalMs', 1_000);
+
+function timeoutSetting(name, fallback) {
+    const value = Number(config[name]);
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+}
 const donorRecordingUsernames = new Set();
 
 const RANDOM_RECORDING_RATE = clamp(Number(config.randomRecordingRate ?? 0.05), 0, 1);
@@ -65,9 +81,11 @@ function getRecordingReason(data) {
 
 function enqueueWTREC(socket, username, reason = 'unknown') {
     const key = getUsernameKey(username);
-    if (!key || activeRecordings.has(key) || queuedRecordings.has(key)) {
+    if (!key || activeRecordings.has(key) || queuedRecordings.has(key) ||
+        Date.now() < (retryNotBefore.get(key) || 0)) {
         return;
     }
+    retryNotBefore.delete(key);
     queuedRecordings.add(key);
     socket.launchQueue.push({username, reason});
 }
@@ -189,55 +207,103 @@ await refreshDonorRecordingUsernames();
 setInterval(refreshDonorRecordingUsernames, DONATION_REFRESH_INTERVAL_MS);
 
 while (true) {
-    let lobby, socket, interval;
+    let lobby = {}, socket, interval;
     try {
         await new Promise((resolve, reject) => {
-            lobby = {};
-            socket = extend(WebsocketFactory.create(config.websocket, {
-                handle_message: async function (data) {
-                    if (data.msg === 'ping') {
-                        socket.pong();
-                    } else if (data.msg === 'lobby_entry') {
-                        if (!lobby[data.id]) {
-                            const reason = getRecordingReason(data);
-                            if (reason) {
-                                enqueueWTREC(socket, data.username, reason);
-                            }
-                        }
-                        lobby[data.id] = data;
-                    } else if (data.msg === 'lobby_remove') {
-                        delete lobby[data.id];
-                    } else if (data.msg === 'lobby_clear') {
-                        lobby = {};
-                    }
+            socket = createSocket('lobby', data => {
+                if (data.msg === 'ping') {
+                    socket.pong();
+                } else if (data.msg === 'lobby_entry') {
+                    const entry = {...lobby[data.id], ...data};
+                    if (!lobby[data.id]) entry.recordingReason = getRecordingReason(entry);
+                    lobby[data.id] = entry;
+                } else if (data.msg === 'lobby_remove') {
+                    const key = getUsernameKey(lobby[data.id]?.username);
+                    delete lobby[data.id];
+                    retryNotBefore.delete(key);
+                } else if (data.msg === 'lobby_clear') {
+                    lobby = {};
+                    clearQueuedRecordings(socket.launchQueue);
+                    socket.launchQueue = [];
+                } else if (data.msg === 'lobby_complete') {
+                    console.log(new Date(), `lobby received: ${Object.keys(lobby).length} games`);
                 }
-            }));
+            });
             socket.launchQueue = [];
-            socket.onclose = socket.onerror = function (event) {
-                reject(event);
-            }
-            interval = setInterval(_ => {
-                if (socket.launchQueue.length > 0) {
-                    const recording = socket.launchQueue.shift();
-                    queuedRecordings.delete(getUsernameKey(recording.username));
-                    launchWTREC(recording.username, recording.reason);
+            socket.onclose = event => reject(new Error(socket.failureReason || event.reason || 'lobby connection closed'));
+            socket.onerror = () => reject(new Error(socket.failureReason || 'lobby connection error'));
+            interval = setInterval(() => {
+                if (socket.readyState !== 1 || !socket.loggedIn) return;
+                for (const [key, retryAt] of retryNotBefore) {
+                    if (Date.now() >= retryAt) retryNotBefore.delete(key);
                 }
-            }, 1000);
-        })
-    } catch (e) {
-        console.error(new Date(), e.reason);
+                // Reconcile the current lobby, not just newly added games. A
+                // failed recording must be retried even if its player stays in-game.
+                for (const entry of Object.values(lobby)) {
+                    const reason = isDonorRecordingUsername(entry.username) ? 'donor' : entry.recordingReason;
+                    if (reason) enqueueWTREC(socket, entry.username, reason);
+                }
+                const recording = socket.launchQueue.shift();
+                if (!recording) return;
+                const key = getUsernameKey(recording.username);
+                queuedRecordings.delete(key);
+                if (!Object.values(lobby).some(entry => getUsernameKey(entry.username) === key)) return;
+                try {
+                    launchWTREC(recording.username, recording.reason);
+                } catch (error) {
+                    console.error(new Date(), recording.username, 'record launch failed', error.message);
+                }
+            }, QUEUE_INTERVAL_MS);
+        });
+    } catch (error) {
+        console.error(new Date(), `lobby reconnect in ${RECONNECT_DELAY_MS}ms: ${error.message || error}`);
     } finally {
         clearQueuedRecordings(socket?.launchQueue);
         clearInterval(interval);
-        await new Promise(resolve => setTimeout(resolve, 1000 * 10));
+        terminateSocket(socket, 'lobby reconnect');
+        await new Promise(resolve => setTimeout(resolve, RECONNECT_DELAY_MS));
     }
 }
 
+function createSocket(label, handleMessage) {
+    let loginTimer;
+    const socket = extend(WebsocketFactory.create(config.websocket, {
+        label,
+        connectTimeoutMs: CONNECT_TIMEOUT_MS,
+        idleTimeoutMs: IDLE_TIMEOUT_MS,
+        handle_message(data) {
+            if (data.msg === 'login_success') {
+                clearTimeout(loginTimer);
+                socket.loggedIn = true;
+                console.log(new Date(), `[${label}] login succeeded`);
+            } else if (data.msg === 'login_fail') {
+                terminateSocket(socket, 'login failed');
+                return;
+            }
+            return handleMessage(data);
+        }
+    }));
+    socket.addEventListener('open', () => {
+        if (socket.readyState === 1) {
+            loginTimer = setTimeout(() => terminateSocket(socket, 'login timeout'), LOGIN_TIMEOUT_MS);
+        }
+    });
+    socket.addEventListener('close', () => clearTimeout(loginTimer));
+    return socket;
+}
 
-async function getScriptMap(valuePath) {
+async function fetchBlob(url, signal) {
+    const response = await fetch(url, {
+        signal: AbortSignal.any([signal, AbortSignal.timeout(RESOURCE_FETCH_TIMEOUT_MS)])
+    });
+    if (!response.ok) throw new Error(`Resource HTTP ${response.status}`);
+    return await response.blob();
+}
+
+async function getScriptMap(valuePath, signal) {
     const scriptMap = {}
     const getDeps = async (path) => {
-        const blob = await fetch(`${config.entrypoint}${path}`).then(r => r.blob());
+        const blob = await fetchBlob(`${config.entrypoint}${path}`, signal);
         scriptMap[path] = blob;
         const rawDeps = getDependencies(new TextDecoder().decode(await blob.arrayBuffer()));
         return rawDeps.map(dep => `${valuePath}/${dep.slice(2)}.js`);
@@ -287,142 +353,151 @@ function generateWTRecName() {
     return `${year}-${month}-${day}.${hours}:${minutes}:${seconds}.wtrec`;
 }
 
+async function prepareRecordingResources(socket, username, data, signal) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        signal.throwIfAborted();
+        try {
+            const {window} = new JSDOM(data.content);
+            const styles = Array.from(window.document.querySelectorAll('link')).map(link => link.getAttribute('href'));
+            const images = Array.from(window.document.querySelectorAll('img')).map(image => image.getAttribute('src'));
+            window.close();
+            const paths = [...styles, ...images];
+            const blobs = await Promise.all(paths.map(path => fetchBlob(config.entrypoint + path, signal)));
+            const resourceMap = Object.fromEntries(paths.map((path, index) => [path, blobs[index]]));
+            Object.assign(resourceMap, await getScriptMap(`/gamedata/${data.version}`, signal));
+            const resources = Object.keys(resourceMap);
+            const buffers = await Promise.all(Object.values(resourceMap).map(blob => blob.arrayBuffer().then(Buffer.from)));
+            const hashes = buffers.map(buffer => crypto.createHash('sha256').update(buffer).digest('hex')).sort();
+            socket.resourceHash = crypto.createHash('sha256').update(JSON.stringify(hashes)).digest('hex');
+            socket.resourcePath = `resources/${socket.resourceHash}.zip`;
+            socket.localPath = `data/${socket.resourcePath}`;
+            socket.wtrecName = generateWTRecName();
+            if (!fs.existsSync(socket.localPath)) {
+                const zip = new JSZip();
+                resources.forEach((resource, index) => zip.file(resource, buffers[index]));
+                const buffer = await zip.generateAsync({type: 'nodebuffer'});
+                signal.throwIfAborted();
+                fs.writeFileSync(socket.localPath, buffer);
+            }
+            signal.throwIfAborted();
+            console.log(new Date(), username, `record started (${socket.resourceHash})`);
+            return true;
+        } catch (error) {
+            console.error(new Date(), username, `record start error (${attempt}): ${error.message}`);
+            if (signal.aborted || attempt === 3) throw error;
+        }
+    }
+}
+
 function launchWTREC(username, reason = 'unknown') {
     const key = getUsernameKey(username);
-    if (activeRecordings.has(key)) {
-        return;
-    }
+    if (activeRecordings.has(key)) return;
     activeRecordings.add(key);
 
-    let socket;
-    const cleanup = () => activeRecordings.delete(key);
+    let socket, startTimer, finishing = false;
+    const resources = new AbortController();
+    const cleanup = () => {
+        activeRecordings.delete(key);
+        retryNotBefore.set(key, Date.now() + RECORDING_RETRY_DELAY_MS);
+    };
+    const finish = async (endMessage, interrupted = false) => {
+        if (finishing) return;
+        finishing = true;
+        clearTimeout(startTimer);
+        // Preserve a completed resource bundle and the messages already captured.
+        // Incomplete resource downloads must settle before this player can retry.
+        if (interrupted) resources.abort();
+        terminateSocket(socket, interrupted ? 'recording interrupted' : 'recording completed');
+        try {
+            if (!await socket?.readyPromise) return;
+            socket.data.push({
+                ...(endMessage || {msg: 'go_lobby'}),
+                wtrec: {type: 'receive', timing: Date.now() - socket.startTime}
+            });
+            const directory = `data/wtrec/${username}`;
+            fs.mkdirSync(directory, {recursive: true});
+            const json = JSON.stringify({
+                version: '0.1',
+                resourceHash: socket.resourceHash,
+                resourcePath: `${config.wtrecPath}/${socket.resourcePath}`,
+                type: 'server',
+                ...(interrupted ? {interrupted: true} : {}),
+                data: socket.data
+            });
+            const zip = new JSZip();
+            zip.file('wtrec.json', json, {compression: 'DEFLATE', compressionOptions: {level: 9}});
+            const buffer = await zip.generateAsync({type: 'nodebuffer'});
+            const path = `${directory}/${socket.wtrecName}`;
+            fs.writeFileSync(`${path}.tmp`, buffer);
+            fs.renameSync(`${path}.tmp`, path);
+            console.log(new Date(), username, interrupted ? 'partial record saved' : 'record ended');
+        } catch (error) {
+            console.error(new Date(), username, 'record save error', error.message || error);
+        } finally {
+            resources.abort();
+            cleanup();
+        }
+    };
 
     try {
-        socket = extend(WebsocketFactory.create(config.websocket, {
-        handle_message: async function (data) {
+        socket = createSocket(`recording:${username}`, data => {
+            if (finishing) return;
             if (data.msg === 'ping') {
                 socket.pong();
             } else if (data.msg === 'login_success') {
                 socket.data = [{msg: 'watch', username, wtrec: {type: 'send', timing: 0}}];
                 socket.isRecording = true;
-                socket.startTime = new Date().getTime();
-
+                socket.startTime = Date.now();
+                startTimer = setTimeout(() => terminateSocket(socket, 'recording start timeout'), RECORDING_START_TIMEOUT_MS);
                 socket.watch(username);
-            } else if (data.msg === 'game_client') {
-                if (reason === 'donor' && !socket.donorMessageSent) {
-                    socket.donorMessageSent = true;
-                    socket.chat_msg(DONOR_RECORDING_MESSAGE);
-                }
-
-                socket.readyPromise = new Promise(async resolve => {
-                    const currentTime = new Date().getTime();
-                    const timing = currentTime - socket.startTime;
-                    socket.data.push({...data, wtrec: {type: 'receive', timing}});
-                    for (let i = 1; i < 3 + 1; i++) {
-                        try {
-                            const {window: {document}} = new JSDOM(data.content);
-                            const version = data.version;
-                            const keyPath = `game-${version}`;
-                            const valuePath = `/gamedata/${version}`;
-                            const styles = Array.from(document.querySelectorAll('link'))
-                                .map(link => link.getAttribute('href'));
-                            const styleBlobs = await Promise.all(styles.map(path => fetch(config.entrypoint + path).then(r => r.blob())));
-                            const styleMap = styles.map((path, index) => ({[path]: styleBlobs[index]})).reduce((a, e) => ({...a, ...e}), {});
-                            const images = Array.from(document.querySelectorAll('img'))
-                                .map(link => link.getAttribute('src'));
-                            const imagesBlobs = await Promise.all(images.map(path => fetch(config.entrypoint + path).then(r => r.blob())));
-                            const imagesMap = images.map((path, index) => ({[path]: imagesBlobs[index]})).reduce((a, e) => ({...a, ...e}), {});
-                            const scriptMap = await getScriptMap(valuePath);
-                            const resourceMap = {...styleMap, ...imagesMap, ...scriptMap};
-                            const resources = Object.keys(resourceMap);
-                            const resourceBuffers = await Promise.all(Object.values(resourceMap).map(b => b.arrayBuffer().then(ab => Buffer.from(ab))));
-                            const hashes = resourceBuffers.map(buffer => {
-                                const hash = crypto.createHash('sha256');
-                                hash.update(buffer);
-                                return hash.digest('hex');
-                            });
-                            hashes.sort();
-                            const hash = crypto.createHash('sha256');
-                            hash.update(JSON.stringify(hashes));
-                            socket.resourceHash = hash.digest('hex');
-                            socket.resourcePath = `resources/${socket.resourceHash}.zip`;
-                            socket.localPath = `data/${socket.resourcePath}`;
-                            socket.wtrecName = generateWTRecName();
-                            if (!fs.existsSync(socket.localPath)) {
-                                const zip = new JSZip();
-                                for (let i = 0; i < resources.length; i++) {
-                                    const resource = resources[i];
-                                    const buffer = resourceBuffers[i];
-                                    zip.file(resource, buffer);
-                                }
-                                const buffer = await zip.generateAsync({type: "nodebuffer"});
-                                fs.writeFileSync(socket.localPath, buffer);
-                            }
-                            console.log(username, `record started (${socket.resourceHash})`);
-                            resolve();
-                            break;
-                        } catch (e) {
-                            console.log(username, `record start error (${i})`);
-                        }
-                    }
-                });
-            } else if (socket.isRecording && data.msg === 'go_lobby') {
-                try {
-                    await socket.readyPromise;
-                    const currentTime = new Date().getTime();
-                    const timing = currentTime - socket.startTime;
-                    socket.data.push({...data, wtrec: {type: 'receive', timing}});
-
-                    fs.mkdirSync(`data/wtrec/${username}`, {recursive: true});
-                    const json = JSON.stringify({
-                        version: '0.1',
-                        resourceHash: socket.resourceHash,
-                        resourcePath: `${config.wtrecPath}/${socket.resourcePath}`,
-                        type: 'server',
-                        data: socket.data
+            } else if (data.msg === 'game_client' && socket.isRecording) {
+                if (socket.readyPromise) return;
+                clearTimeout(startTimer);
+                socket.data.push({...data, wtrec: {type: 'receive', timing: Date.now() - socket.startTime}});
+                const signal = AbortSignal.any([resources.signal, AbortSignal.timeout(RESOURCE_PREPARATION_TIMEOUT_MS)]);
+                socket.readyPromise = prepareRecordingResources(socket, username, data, signal)
+                    .then(ready => {
+                        if (!finishing && reason === 'donor') socket.chat_msg(DONOR_RECORDING_MESSAGE);
+                        return ready;
+                    }).catch(error => {
+                        console.error(new Date(), username, 'record preparation failed', error.message);
+                        // The promise settles with false, so finalization never waits
+                        // forever after all resource preparation attempts fail.
+                        void finish(null, true);
+                        return false;
                     });
-                    // fs.writeFileSync(`wtrec/${username}/${socket.wtrecName}.json`, json, 'utf8');
-                    /* const zip = new JSZip();
-                    await zip.loadAsync(fs.readFileSync(socket.localPath));
-                    zip.file('wtrec.json', json);
-                    const buffer = await zip.generateAsync({type: "nodebuffer"});
-                    fs.writeFileSync(`wtrec/${username}/${socket.wtrecName}.zip`, buffer); */
-                    const wtrecZip = new JSZip();
-                    wtrecZip.file('wtrec.json', json, {compression: "DEFLATE", compressionOptions: {level: 9}});
-                    const wtrecBuffer = await wtrecZip.generateAsync({type: "nodebuffer"});
-                    fs.writeFileSync(`data/wtrec/${username}/${socket.wtrecName}`, wtrecBuffer);
-                    console.log(username, 'record ended');
-                } catch (e) {
-                    console.error(e);
-                    console.log(username, 'record save error');
-                } finally {
-                    cleanup();
-                    socket.close();
-                }
-            } else if (socket.isRecording) {
-                if (['login_cookie', 'html', 'ping', 'set_game_links'].includes(data.msg)) {
-                    return;
-                }
-                const currentTime = new Date().getTime();
-                const timing = currentTime - socket.startTime;
-                socket.data.push({...data, wtrec: {type: 'receive', timing}});
+            } else if (socket.isRecording && data.msg === 'go_lobby') {
+                return finish(data);
+            } else if (socket.isRecording && !['login_cookie', 'html', 'set_game_links'].includes(data.msg)) {
+                socket.data.push({...data, wtrec: {type: 'receive', timing: Date.now() - socket.startTime}});
             }
-        }
-        }));
-        socket.onclose = socket.onerror = cleanup;
-    } catch (e) {
+        });
+        socket.onclose = event => {
+            if (!finishing) console.error(new Date(), username, 'record connection closed:', socket.failureReason || event.reason);
+            void finish(null, true);
+        };
+        socket.onerror = () => {
+            if (!finishing) console.error(new Date(), username, 'record connection error');
+            void finish(null, true);
+        };
+    } catch (error) {
+        clearTimeout(startTimer);
+        resources.abort();
         cleanup();
-        throw e;
+        throw error;
     }
 }
 
 function extend(socket) {
     socket.safe_send = function (data) {
-        data = JSON.stringify(data);
         if (this.readyState === 1) {
-            this.send(data);
+            try {
+                this.send(JSON.stringify(data));
+            } catch (error) {
+                terminateSocket(this, `send failed: ${error.message}`);
+            }
         } else {
-            console.error(`socket status: ${this.readyState}, data: ${data}`)
+            console.error(`socket status: ${this.readyState}, message: ${data.msg}`);
         }
     }
 
