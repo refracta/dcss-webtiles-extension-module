@@ -7,7 +7,6 @@ export default {
     variables: {
         'info-background': '#2c6f17',
         'info-text': '#ffffff',
-        'info-link': '#f4d700',
         'donation-border': 'rgba(117, 183, 106, 0.55)',
         'donation-accent': '#75b76a',
         'donation-background': 'rgba(9, 16, 12, 0.88)',

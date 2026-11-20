@@ -26,13 +26,17 @@ export default class BannerTheme {
     getStyle() {
         const variables = Object.entries(this.theme.variables)
             .map(([name, value]) => `--cnc-${name}: ${value};`).join('\n');
+        // Themes without a link override retain WebTiles' normal and hover colours.
+        const linkStyle = this.theme.variables['info-link']
+            ? '#banner .cnc-info-panel a { color: var(--cnc-info-link); }'
+            : '';
         return `<style>
             #banner { ${variables} }
             #banner .cnc-info-panel {
                 background-color: var(--cnc-info-background);
                 color: var(--cnc-info-text);
             }
-            #banner .cnc-info-panel a { color: var(--cnc-info-link); }
+            ${linkStyle}
             #banner #coloredText { overflow-wrap: anywhere; line-height: 1.5; }
             #banner #coloredText:focus-visible { outline: 2px solid var(--cnc-donation-accent); }
         </style>`;
